@@ -31,8 +31,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 - [x] `.gitignore`, `.gitattributes`, `.editorconfig`
 - [x] `global.json` (pin .NET 10 SDK), `Directory.Build.props` (nullable, analyzers, versioning), `Directory.Packages.props` (central package management)
-- [ ] Solution `Argus.slnx` with `Argus.Contracts`, `Argus.Server`, `Argus.Agent`, `Argus.Server.Tests`, `Argus.Agent.Tests`
-- [ ] `docs/architecture.md` — components, data flow, data model overview
+- [x] Solution `Argus.slnx` with `Argus.Contracts`, `Argus.Server`, `Argus.Agent`, `Argus.Server.Tests`, `Argus.Agent.Tests`
+- [x] `docs/architecture.md` — components, data flow, data model overview
 
 ## Phase 1 — Shared contracts (`Argus.Contracts`)
 
