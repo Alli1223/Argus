@@ -42,8 +42,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 2 — Server foundation (`Argus.Server`)
 
-- [ ] Minimal API skeleton: feature folders, strongly typed options with validation, JSON console logging
-- [ ] ProblemDetails, global exception handler, built-in minimal API validation
+- [x] Minimal API skeleton: feature folders, strongly typed options with validation, JSON console logging
+- [x] ProblemDetails, global exception handler, built-in minimal API validation
 - [ ] Health checks: `/health/live` and `/health/ready` (database)
 - [ ] OpenAPI document + Scalar API reference (Development only)
 - [ ] `deploy/docker-compose.dev.yml` with TimescaleDB for local development
