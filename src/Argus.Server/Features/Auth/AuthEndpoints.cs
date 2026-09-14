@@ -21,6 +21,7 @@ public static class AuthEndpoints
 
         auth.MapGet("/status", GetStatusAsync).AllowAnonymous();
         auth.MapPost("/setup", SetupAsync).AllowAnonymous();
+        auth.MapPost("/register", RegisterAsync).AllowAnonymous();
         auth.MapPost("/login", LoginAsync).AllowAnonymous();
         auth.MapPost("/logout", LogoutAsync).AllowAnonymous();
         auth.MapGet("/me", GetCurrentUserAsync);
@@ -51,21 +52,53 @@ public static class AuthEndpoints
                 detail: "An administrator account already exists. Sign in instead.");
         }
 
-        var user = NewUser(request, time);
-        var result = await users.CreateAsync(user, request.Password);
-        if (result.Succeeded)
+        var (user, result) = await UserAccounts.CreateAsync(users, request, Roles.Admin, time);
+        if (user is null)
         {
-            result = await users.AddToRoleAsync(user, Roles.Admin);
-        }
-
-        if (!result.Succeeded)
-        {
-            return IdentityValidationProblem(result);
+            return UserAccounts.IdentityValidationProblem(result);
         }
 
         await transaction.CommitAsync(cancellationToken);
         await signIn.SignInAsync(user, isPersistent: true);
-        return TypedResults.Ok(await ToResponseAsync(user, users));
+        return TypedResults.Ok(await UserAccounts.ToResponseAsync(user, users));
+    }
+
+    private static async Task<Results<Ok<CurrentUserResponse>, ValidationProblem, ProblemHttpResult>> RegisterAsync(
+        NewAccountRequest request,
+        ArgusDbContext db,
+        UserManager<ArgusUser> users,
+        SignInManager<ArgusUser> signIn,
+        IOptions<AuthOptions> options,
+        TimeProvider time,
+        CancellationToken cancellationToken)
+    {
+        if (!options.Value.AllowRegistration)
+        {
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Registration disabled",
+                detail: "Ask an administrator to create an account for you.");
+        }
+
+        // The first account has to come from setup so that it becomes an administrator.
+        if (!await db.Users.AnyAsync(cancellationToken))
+        {
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Setup required",
+                detail: "Argus has not been set up yet. Create the administrator account first.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var (user, result) = await UserAccounts.CreateAsync(users, request, Roles.User, time);
+        if (user is null)
+        {
+            return UserAccounts.IdentityValidationProblem(result);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        await signIn.SignInAsync(user, isPersistent: false);
+        return TypedResults.Ok(await UserAccounts.ToResponseAsync(user, users));
     }
 
     private static async Task<Results<Ok<CurrentUserResponse>, ProblemHttpResult>> LoginAsync(
@@ -104,7 +137,7 @@ public static class AuthEndpoints
         user.LastLoginAt = time.GetUtcNow();
         await users.UpdateAsync(user);
         await signIn.SignInAsync(user, request.RememberMe);
-        return TypedResults.Ok(await ToResponseAsync(user, users));
+        return TypedResults.Ok(await UserAccounts.ToResponseAsync(user, users));
     }
 
     private static async Task<NoContent> LogoutAsync(SignInManager<ArgusUser> signIn)
@@ -119,40 +152,8 @@ public static class AuthEndpoints
         var user = await users.GetUserAsync(principal);
         return user is null
             ? TypedResults.Unauthorized()
-            : TypedResults.Ok(await ToResponseAsync(user, users));
+            : TypedResults.Ok(await UserAccounts.ToResponseAsync(user, users));
     }
-
-    internal static ArgusUser NewUser(NewAccountRequest request, TimeProvider time)
-    {
-        var email = request.Email.Trim();
-        return new ArgusUser
-        {
-            UserName = email,
-            Email = email,
-            DisplayName = request.DisplayName.Trim(),
-            CreatedAt = time.GetUtcNow(),
-        };
-    }
-
-    internal static async Task<CurrentUserResponse> ToResponseAsync(ArgusUser user, UserManager<ArgusUser> users)
-    {
-        var roles = (await users.GetRolesAsync(user)).Order(StringComparer.Ordinal).ToList();
-        return new CurrentUserResponse(user.Id, user.Email ?? "", user.DisplayName, roles, roles.Contains(Roles.Admin));
-    }
-
-    /// <summary>Maps Identity errors onto the request fields they concern.</summary>
-    internal static ValidationProblem IdentityValidationProblem(IdentityResult result) =>
-        TypedResults.ValidationProblem(result.Errors
-            // The user name is the email address, so the email errors already cover these.
-            .Where(error => error.Code is not (nameof(IdentityErrorDescriber.DuplicateUserName)
-                or nameof(IdentityErrorDescriber.InvalidUserName)))
-            .GroupBy(error => error.Code switch
-            {
-                _ when error.Code.StartsWith("Password", StringComparison.Ordinal) => "password",
-                _ when error.Code.Contains("Email", StringComparison.Ordinal) => "email",
-                _ => "",
-            })
-            .ToDictionary(group => group.Key, group => group.Select(error => error.Description).ToArray()));
 
     private static ProblemHttpResult InvalidCredentials() =>
         TypedResults.Problem(

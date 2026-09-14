@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Argus.Server.Features.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
@@ -5,15 +6,18 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Argus.Server.Tests.Infrastructure;
 
 /// <summary>A started server with its own database, shared by the tests of one class.</summary>
-public sealed class ArgusAppFixture(PostgresFixture postgres) : IAsyncLifetime
+public class ArgusAppFixture(PostgresFixture postgres) : IAsyncLifetime
 {
     public const string CsrfHeader = "X-Argus-Csrf";
 
     public ArgusFactory Factory { get; private set; } = null!;
 
+    /// <summary>Extra configuration for the server under test.</summary>
+    protected virtual IReadOnlyDictionary<string, string?> Settings { get; } = new Dictionary<string, string?>();
+
     public async ValueTask InitializeAsync()
     {
-        Factory = new ArgusFactory(await postgres.CreateDatabaseAsync());
+        Factory = new ArgusFactory(await postgres.CreateDatabaseAsync(), Settings);
 
         // Starting the server applies migrations, so failures surface here rather than mid-test.
         _ = Factory.Server;
@@ -24,6 +28,14 @@ public sealed class ArgusAppFixture(PostgresFixture postgres) : IAsyncLifetime
     {
         var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Add(CsrfHeader, "1");
+        return client;
+    }
+
+    public async Task<HttpClient> CreateSignedInClientAsync(string email, string password)
+    {
+        var client = CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
+        response.EnsureSuccessStatusCode();
         return client;
     }
 
@@ -52,4 +64,11 @@ public sealed class ArgusAppFixture(PostgresFixture postgres) : IAsyncLifetime
         });
 
     public async ValueTask DisposeAsync() => await Factory.DisposeAsync();
+}
+
+/// <summary>A server with self-registration switched on.</summary>
+public sealed class OpenRegistrationFixture(PostgresFixture postgres) : ArgusAppFixture(postgres)
+{
+    protected override IReadOnlyDictionary<string, string?> Settings { get; } =
+        new Dictionary<string, string?> { ["Argus:Auth:AllowRegistration"] = "true" };
 }
