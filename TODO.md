@@ -55,8 +55,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 - [x] ASP.NET Core Identity (Guid keys, `Admin`/`User` roles) + initial migration
 - [x] Cookie auth tuned for the SPA: 401/403 instead of redirects, secure cookie flags, sliding expiration
-- [ ] `GET /api/auth/status` and `POST /api/auth/setup` (first-run admin creation)
-- [ ] `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` with account lockout
+- [x] `GET /api/auth/status` and `POST /api/auth/setup` (first-run admin creation)
+- [x] `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` with account lockout
 - [ ] Optional self-registration (`Argus:Auth:AllowRegistration`)
 - [ ] `POST /api/account/password` (change password) and profile update
 - [ ] Admin user management endpoints (list, create, change role, disable/enable, reset password, delete)

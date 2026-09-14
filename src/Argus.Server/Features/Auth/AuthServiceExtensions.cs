@@ -1,4 +1,5 @@
 using Argus.Server.Data;
+using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 
@@ -10,9 +11,14 @@ public static class AuthServiceExtensions
 
     public static IServiceCollection AddArgusAuth(this IServiceCollection services)
     {
+        services.AddValidatedOptions<AuthOptions>(AuthOptions.SectionName);
+
         services.AddIdentity<ArgusUser, IdentityRole<Guid>>(options =>
             {
                 options.User.RequireUniqueEmail = true;
+
+                // User names are email addresses, which may contain characters Identity rejects by default.
+                options.User.AllowedUserNameCharacters = "";
 
                 // Length beats composition rules (NIST SP 800-63B).
                 options.Password.RequiredLength = 10;

@@ -45,6 +45,7 @@ app.MapArgusHealthChecks();
 
 var api = app.MapGroup("/api");
 api.MapInfoEndpoints();
+api.MapAuthEndpoints();
 
 await app.InitializeDatabaseAsync();
 
