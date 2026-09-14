@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Argus.Server.Features.Health;
 using Argus.Server.Features.Info;
 using Argus.Server.Infrastructure;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,11 +13,18 @@ builder.Services.AddValidation();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddArgusHealthChecks();
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
 
 app.MapArgusHealthChecks();
 
