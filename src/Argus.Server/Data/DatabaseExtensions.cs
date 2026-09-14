@@ -1,3 +1,4 @@
+using Argus.Server.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -14,6 +15,8 @@ public static class DatabaseExtensions
     /// </summary>
     public static IServiceCollection AddArgusDatabase(this IServiceCollection services)
     {
+        services.AddValidatedOptions<DatabaseOptions>(DatabaseOptions.SectionName);
+
         services.AddSingleton(sp =>
         {
             var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString(ConnectionStringName);

@@ -7,7 +7,7 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddArgusOptions(builder.Configuration);
+builder.Services.AddArgusOptions();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddValidation();
@@ -34,6 +34,8 @@ app.MapArgusHealthChecks();
 var api = app.MapGroup("/api");
 api.MapInfoEndpoints();
 
-app.Run();
+await app.InitializeDatabaseAsync();
+
+await app.RunAsync();
 
 public partial class Program;
