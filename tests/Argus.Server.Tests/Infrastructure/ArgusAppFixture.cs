@@ -72,3 +72,10 @@ public sealed class OpenRegistrationFixture(PostgresFixture postgres) : ArgusApp
     protected override IReadOnlyDictionary<string, string?> Settings { get; } =
         new Dictionary<string, string?> { ["Argus:Auth:AllowRegistration"] = "true" };
 }
+
+/// <summary>A server with a tiny sign-in rate limit.</summary>
+public sealed class ThrottledFixture(PostgresFixture postgres) : ArgusAppFixture(postgres)
+{
+    protected override IReadOnlyDictionary<string, string?> Settings { get; } =
+        new Dictionary<string, string?> { ["Argus:RateLimits:AuthPermitsPerMinute"] = "3" };
+}

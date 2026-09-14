@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Argus.Server.Features.Auth;
+using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 
@@ -13,7 +14,7 @@ public static class AccountEndpoints
         var account = routes.MapGroup("/account").WithTags("Account");
 
         account.MapPut("/profile", UpdateProfileAsync);
-        account.MapPost("/password", ChangePasswordAsync);
+        account.MapPost("/password", ChangePasswordAsync).RequireRateLimiting(RateLimiting.AuthPolicy);
 
         return routes;
     }

@@ -60,9 +60,9 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Optional self-registration (`Argus:Auth:AllowRegistration`)
 - [x] `POST /api/account/password` (change password) and profile update
 - [x] Admin user management endpoints (list, create, change role, disable/enable, reset password, delete)
-- [ ] CSRF defence: custom header required on unsafe cookie-authenticated requests
-- [ ] Security headers middleware and rate limiting on auth endpoints
-- [ ] Integration test infrastructure (WebApplicationFactory + Testcontainers TimescaleDB) and auth tests
+- [x] CSRF defence: custom header required on unsafe cookie-authenticated requests
+- [x] Security headers middleware and rate limiting on auth endpoints
+- [x] Integration test infrastructure (WebApplicationFactory + Testcontainers TimescaleDB) and auth tests
 
 ## Phase 4 — Hosts, enrollment & agent authentication
 

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Argus.Server.Data;
+using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -20,9 +21,9 @@ public static class AuthEndpoints
         var auth = routes.MapGroup("/auth").WithTags("Auth");
 
         auth.MapGet("/status", GetStatusAsync).AllowAnonymous();
-        auth.MapPost("/setup", SetupAsync).AllowAnonymous();
-        auth.MapPost("/register", RegisterAsync).AllowAnonymous();
-        auth.MapPost("/login", LoginAsync).AllowAnonymous();
+        auth.MapPost("/setup", SetupAsync).AllowAnonymous().RequireRateLimiting(RateLimiting.AuthPolicy);
+        auth.MapPost("/register", RegisterAsync).AllowAnonymous().RequireRateLimiting(RateLimiting.AuthPolicy);
+        auth.MapPost("/login", LoginAsync).AllowAnonymous().RequireRateLimiting(RateLimiting.AuthPolicy);
         auth.MapPost("/logout", LogoutAsync).AllowAnonymous();
         auth.MapGet("/me", GetCurrentUserAsync);
 

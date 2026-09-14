@@ -24,6 +24,7 @@ builder.Services.AddDataProtection()
     .SetApplicationName("Argus")
     .PersistKeysToDbContext<ArgusDbContext>();
 builder.Services.AddArgusAuth();
+builder.Services.AddArgusRateLimiting();
 
 builder.Services.AddArgusHealthChecks()
     .AddDbContextCheck<ArgusDbContext>("database", tags: [HealthEndpoints.ReadyTag]);
@@ -34,7 +35,16 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.UseSecurityHeaders();
+app.UseCsrfProtection();
+
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
