@@ -1,3 +1,4 @@
+using Argus.Server.Features.Metrics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -11,8 +12,9 @@ public static class DatabaseInitializer
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(2);
 
     /// <summary>
-    /// Waits for the database, applies pending migrations (unless disabled) and verifies that the
-    /// TimescaleDB extension is available. Runs before the server starts accepting requests.
+    /// Waits for the database, applies pending migrations (unless disabled), verifies that the
+    /// TimescaleDB extension is available and applies the configured retention policies.
+    /// Runs before the server starts accepting requests.
     /// </summary>
     public static async Task InitializeDatabaseAsync(this WebApplication app, CancellationToken cancellationToken = default)
     {
@@ -65,7 +67,12 @@ public static class DatabaseInitializer
                 "The TimescaleDB extension is not installed in the Argus database. " +
                 "Use the timescale/timescaledb image or install the extension (https://docs.timescale.com).");
 
-        logger.LogInformation("Database ready (TimescaleDB {Version})", version);
+        var retention = services.GetRequiredService<IOptions<RetentionOptions>>().Value;
+        await RetentionPolicies.ApplyAsync(dataSource, retention, cancellationToken);
+
+        logger.LogInformation(
+            "Database ready (TimescaleDB {Version}); keeping raw samples {RawDays} days, 5-minute rollups {FiveMinuteDays} days, hourly rollups {HourlyDays} days",
+            version, retention.RawDays, retention.FiveMinuteDays, retention.HourlyDays);
     }
 
     private static bool IsTransient(Exception ex) =>

@@ -16,6 +16,10 @@ public sealed class RateLimitOptions
     /// <summary>Agent registrations allowed per client IP per minute (a fleet may share one NAT address).</summary>
     [Range(1, 100_000)]
     public int AgentRegisterPermitsPerMinute { get; set; } = 60;
+
+    /// <summary>Metric batches allowed per agent per minute (agents send one every collection interval).</summary>
+    [Range(1, 100_000)]
+    public int AgentIngestPermitsPerMinute { get; set; } = 120;
 }
 
 public static class RateLimiting
@@ -25,6 +29,9 @@ public static class RateLimiting
 
     /// <summary>Policy for agents exchanging enrollment tokens.</summary>
     public const string AgentRegisterPolicy = "agent-register";
+
+    /// <summary>Policy for agents posting metrics.</summary>
+    public const string AgentIngestPolicy = "agent-ingest";
 
     public static IServiceCollection AddArgusRateLimiting(this IServiceCollection services)
     {
@@ -45,19 +52,27 @@ public static class RateLimiting
             };
 
             limiter.AddPolicy(AuthPolicy, context =>
-                PerClientPerMinute(context, options => options.AuthPermitsPerMinute));
+                PerMinute(context, ClientAddress(context), options => options.AuthPermitsPerMinute));
             limiter.AddPolicy(AgentRegisterPolicy, context =>
-                PerClientPerMinute(context, options => options.AgentRegisterPermitsPerMinute));
+                PerMinute(context, ClientAddress(context), options => options.AgentRegisterPermitsPerMinute));
+
+            // Agent authentication runs after the rate limiter, so agents are told apart by (a hash of) their key.
+            limiter.AddPolicy(AgentIngestPolicy, context =>
+                PerMinute(context, SecretTokens.Hash(context.Request.Headers.Authorization.ToString()),
+                    options => options.AgentIngestPermitsPerMinute));
         });
 
         return services;
     }
 
-    private static RateLimitPartition<string> PerClientPerMinute(HttpContext context, Func<RateLimitOptions, int> permits)
+    private static string ClientAddress(HttpContext context) =>
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    private static RateLimitPartition<string> PerMinute(HttpContext context, string partitionKey, Func<RateLimitOptions, int> permits)
     {
         var options = context.RequestServices.GetRequiredService<IOptions<RateLimitOptions>>().Value;
         return RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey,
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = permits(options),

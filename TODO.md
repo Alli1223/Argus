@@ -76,15 +76,15 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 5 — Time-series storage & ingestion
 
-- [ ] `host_metrics` hypertable (wide row: CPU, memory, swap, load, disk IO, network, processes, uptime)
-- [ ] `filesystem_metrics` and `network_metrics` hypertables
-- [ ] Latest top-process snapshot per host
-- [ ] `POST /api/agent/v1/metrics` — validated batch ingestion, idempotent `INSERT … SELECT unnest(…) ON CONFLICT DO NOTHING`, updates last seen
-- [ ] Ingestion safeguards: batch and body size limits, timestamp sanity window, per-agent rate limiting
-- [ ] Compression policies on raw hypertables
-- [ ] Continuous aggregates: 5-minute and 1-hour rollups (avg / max)
-- [ ] Retention policies (configurable raw / 5m / 1h retention)
-- [ ] Ingestion integration tests
+- [x] `host_metrics` hypertable (wide row: CPU, memory, swap, load, disk IO, network, processes, uptime)
+- [x] `filesystem_metrics` and `network_metrics` hypertables
+- [x] Latest top-process snapshot per host
+- [x] `POST /api/agent/v1/metrics` — validated batch ingestion, idempotent `INSERT … SELECT unnest(…) ON CONFLICT DO NOTHING`, updates last seen
+- [x] Ingestion safeguards: batch and body size limits, timestamp sanity window, per-agent rate limiting
+- [x] Compression policies on raw hypertables
+- [x] Continuous aggregates: 5-minute and 1-hour rollups (avg / max)
+- [x] Retention policies (configurable raw / 5m / 1h retention)
+- [x] Ingestion integration tests
 
 ## Phase 6 — Agent core (`Argus.Agent`)
 

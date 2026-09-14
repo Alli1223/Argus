@@ -12,9 +12,10 @@ public sealed class ArgusFactory(string connectionString, IReadOnlyDictionary<st
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Argus", connectionString);
 
-        // Tests sign in and register far more often than people do; the throttling tests lower these again.
+        // Tests call far more often than people and agents do; the throttling tests lower these again.
         builder.UseSetting("Argus:RateLimits:AuthPermitsPerMinute", "100000");
         builder.UseSetting("Argus:RateLimits:AgentRegisterPermitsPerMinute", "100000");
+        builder.UseSetting("Argus:RateLimits:AgentIngestPermitsPerMinute", "100000");
 
         foreach (var (key, value) in settings)
         {

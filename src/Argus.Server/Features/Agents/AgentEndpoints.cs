@@ -3,6 +3,7 @@ using Argus.Contracts.Agent;
 using Argus.Server.Data;
 using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Hosts;
+using Argus.Server.Features.Metrics;
 using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,9 @@ namespace Argus.Server.Features.Agents;
 /// <summary>The API agents talk to. Routes come from the shared contracts so both sides agree.</summary>
 public static class AgentEndpoints
 {
+    /// <summary>Largest (decompressed) metrics batch accepted.</summary>
+    private const long MaxMetricsBodyBytes = 8 * 1024 * 1024;
+
     public static IEndpointRouteBuilder MapAgentEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapPost(AgentApi.Register, RegisterAsync)
@@ -23,6 +27,12 @@ public static class AgentEndpoints
         routes.MapPut(AgentApi.Inventory, UpdateInventoryAsync)
             .WithTags("Agent")
             .RequireAuthorization(AgentKeyDefaults.Policy);
+
+        routes.MapPost(AgentApi.Metrics, IngestMetricsAsync)
+            .WithTags("Agent")
+            .RequireAuthorization(AgentKeyDefaults.Policy)
+            .RequireRateLimiting(RateLimiting.AgentIngestPolicy)
+            .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(MaxMetricsBodyBytes));
 
         return routes;
     }
@@ -129,6 +139,41 @@ public static class AgentEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(options.Value.ToAgentSettings());
+    }
+
+    private static async Task<Results<Ok<MetricsBatchResponse>, ProblemHttpResult>> IngestMetricsAsync(
+        MetricsBatch batch,
+        ClaimsPrincipal principal,
+        MetricsIngestor ingestor,
+        IOptions<IngestOptions> ingestOptions,
+        IOptions<AgentOptions> agentOptions,
+        TimeProvider time,
+        ILoggerFactory loggers,
+        CancellationToken cancellationToken)
+    {
+        if (MetricsBatchValidator.ValidateShape(batch) is { } problem)
+        {
+            return TypedResults.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid metrics batch", detail: problem);
+        }
+
+        var now = time.GetUtcNow();
+        var hostId = principal.GetHostId();
+        var samples = MetricsBatchValidator.Sanitize(
+            batch.Samples,
+            now,
+            maxAge: TimeSpan.FromHours(ingestOptions.Value.MaxSampleAgeHours),
+            maxClockSkew: TimeSpan.FromSeconds(ingestOptions.Value.MaxClockSkewSeconds),
+            out var dropped);
+
+        if (dropped > 0)
+        {
+            loggers.CreateLogger(typeof(AgentEndpoints).FullName!).LogWarning(
+                "Dropped {Count} sample(s) from host {HostId} with timestamps outside the accepted window; check the host's clock",
+                dropped, hostId);
+        }
+
+        var accepted = await ingestor.IngestAsync(hostId, samples, now, cancellationToken);
+        return TypedResults.Ok(new MetricsBatchResponse { Accepted = accepted, Settings = agentOptions.Value.ToAgentSettings() });
     }
 
     private static Dictionary<string, string[]>? ValidateRegistration(RegisterAgentRequest request)

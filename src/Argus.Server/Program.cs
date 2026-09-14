@@ -6,6 +6,7 @@ using Argus.Server.Features.Auth;
 using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Health;
 using Argus.Server.Features.Info;
+using Argus.Server.Features.Metrics;
 using Argus.Server.Features.Users;
 using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
@@ -18,6 +19,7 @@ builder.Services.AddArgusOptions();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddValidation();
+builder.Services.AddRequestDecompression();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
@@ -27,6 +29,7 @@ builder.Services.AddDataProtection()
     .PersistKeysToDbContext<ArgusDbContext>();
 builder.Services.AddArgusAuth();
 builder.Services.AddArgusAgents();
+builder.Services.AddArgusMetrics();
 builder.Services.AddArgusRateLimiting();
 
 builder.Services.AddArgusHealthChecks()
@@ -37,6 +40,7 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseRequestDecompression();
 
 if (!app.Environment.IsDevelopment())
 {
