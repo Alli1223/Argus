@@ -29,7 +29,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 0 — Repository foundation
 
-- [ ] `.gitignore`, `.gitattributes`, `.editorconfig`
+- [x] `.gitignore`, `.gitattributes`, `.editorconfig`
 - [ ] `global.json` (pin .NET 10 SDK), `Directory.Build.props` (nullable, analyzers, versioning), `Directory.Packages.props` (central package management)
 - [ ] Solution `Argus.slnx` with `Argus.Contracts`, `Argus.Server`, `Argus.Agent`, `Argus.Server.Tests`, `Argus.Agent.Tests`
 - [ ] `docs/architecture.md` — components, data flow, data model overview
