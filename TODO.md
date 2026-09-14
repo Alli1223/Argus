@@ -49,7 +49,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] `deploy/docker-compose.dev.yml` with TimescaleDB for local development
 - [x] `ArgusDbContext` (EF Core + Npgsql, snake_case naming) and `dotnet-ef` local tool
 - [x] Automatic migrations on startup (configurable) + TimescaleDB extension check
-- [ ] Data protection keys persisted in the database
+- [x] Data protection keys persisted in the database
 
 ## Phase 3 — Authentication & users
 
