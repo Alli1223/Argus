@@ -36,9 +36,9 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 1 — Shared contracts (`Argus.Contracts`)
 
-- [ ] Agent API DTOs: registration request/response, `SystemInfo` inventory, metrics batch, host sample, filesystem sample, network interface sample, process info, server-pushed agent settings
-- [ ] Source-generated `JsonSerializerContext` (trim-safe) shared by agent and server
-- [ ] Serialization round-trip tests
+- [x] Agent API DTOs: registration request/response, `SystemInfo` inventory, metrics batch, host sample, filesystem sample, network interface sample, process info, server-pushed agent settings
+- [x] Source-generated `JsonSerializerContext` (trim-safe) shared by agent and server
+- [x] Serialization round-trip tests
 
 ## Phase 2 — Server foundation (`Argus.Server`)
 
