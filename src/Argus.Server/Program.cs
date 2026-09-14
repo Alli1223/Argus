@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Argus.Server.Features.Health;
 using Argus.Server.Features.Info;
 using Argus.Server.Infrastructure;
 
@@ -10,11 +11,14 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddValidation();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddArgusHealthChecks();
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+
+app.MapArgusHealthChecks();
 
 var api = app.MapGroup("/api");
 api.MapInfoEndpoints();

@@ -44,7 +44,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 - [x] Minimal API skeleton: feature folders, strongly typed options with validation, JSON console logging
 - [x] ProblemDetails, global exception handler, built-in minimal API validation
-- [ ] Health checks: `/health/live` and `/health/ready` (database)
+- [x] Health checks: `/health/live` and `/health/ready` (database)
 - [ ] OpenAPI document + Scalar API reference (Development only)
 - [x] `deploy/docker-compose.dev.yml` with TimescaleDB for local development
 - [ ] `ArgusDbContext` (EF Core + Npgsql, snake_case naming) and `dotnet-ef` local tool
