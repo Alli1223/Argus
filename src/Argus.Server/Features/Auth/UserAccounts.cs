@@ -35,14 +35,14 @@ internal static class UserAccounts
     }
 
     /// <summary>Maps Identity errors onto the request fields they concern.</summary>
-    public static ValidationProblem IdentityValidationProblem(IdentityResult result) =>
+    public static ValidationProblem IdentityValidationProblem(IdentityResult result, string passwordField = "password") =>
         TypedResults.ValidationProblem(result.Errors
             // The user name is the email address, so the email errors already cover these.
             .Where(error => error.Code is not (nameof(IdentityErrorDescriber.DuplicateUserName)
                 or nameof(IdentityErrorDescriber.InvalidUserName)))
             .GroupBy(error => error.Code switch
             {
-                _ when error.Code.StartsWith("Password", StringComparison.Ordinal) => "password",
+                _ when error.Code.StartsWith("Password", StringComparison.Ordinal) => passwordField,
                 _ when error.Code.Contains("Email", StringComparison.Ordinal) => "email",
                 _ => "",
             })

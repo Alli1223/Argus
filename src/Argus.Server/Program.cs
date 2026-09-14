@@ -4,6 +4,7 @@ using Argus.Server.Features.Account;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Health;
 using Argus.Server.Features.Info;
+using Argus.Server.Features.Users;
 using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Scalar.AspNetCore;
@@ -48,6 +49,7 @@ var api = app.MapGroup("/api");
 api.MapInfoEndpoints();
 api.MapAuthEndpoints();
 api.MapAccountEndpoints();
+api.MapUserEndpoints();
 
 await app.InitializeDatabaseAsync();
 

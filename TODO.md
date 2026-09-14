@@ -59,7 +59,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` with account lockout
 - [x] Optional self-registration (`Argus:Auth:AllowRegistration`)
 - [x] `POST /api/account/password` (change password) and profile update
-- [ ] Admin user management endpoints (list, create, change role, disable/enable, reset password, delete)
+- [x] Admin user management endpoints (list, create, change role, disable/enable, reset password, delete)
 - [ ] CSRF defence: custom header required on unsafe cookie-authenticated requests
 - [ ] Security headers middleware and rate limiting on auth endpoints
 - [ ] Integration test infrastructure (WebApplicationFactory + Testcontainers TimescaleDB) and auth tests
