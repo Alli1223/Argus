@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -41,7 +43,12 @@ public static class DatabaseInitializer
 
         if (options.MigrateOnStartup)
         {
-            var pending = (await db.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+            // Asking for pending migrations before the history table exists makes EF log a failed
+            // query, so on a fresh database every migration is pending.
+            var historyExists = await db.GetService<IHistoryRepository>().ExistsAsync(cancellationToken);
+            var pending = historyExists
+                ? (await db.Database.GetPendingMigrationsAsync(cancellationToken)).ToList()
+                : db.Database.GetMigrations().ToList();
             if (pending.Count > 0)
             {
                 logger.LogInformation("Applying {Count} database migration(s): {Migrations}",
