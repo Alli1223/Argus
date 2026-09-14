@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Argus.Server.Data;
 using Argus.Server.Features.Health;
 using Argus.Server.Features.Info;
 using Argus.Server.Infrastructure;
@@ -12,7 +13,9 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddValidation();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.AddArgusHealthChecks();
+builder.Services.AddArgusDatabase();
+builder.Services.AddArgusHealthChecks()
+    .AddDbContextCheck<ArgusDbContext>("database", tags: [HealthEndpoints.ReadyTag]);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

@@ -47,7 +47,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Health checks: `/health/live` and `/health/ready` (database)
 - [x] OpenAPI document + Scalar API reference (Development only)
 - [x] `deploy/docker-compose.dev.yml` with TimescaleDB for local development
-- [ ] `ArgusDbContext` (EF Core + Npgsql, snake_case naming) and `dotnet-ef` local tool
+- [x] `ArgusDbContext` (EF Core + Npgsql, snake_case naming) and `dotnet-ef` local tool
 - [ ] Automatic migrations on startup (configurable) + TimescaleDB extension check
 - [ ] Data protection keys persisted in the database
 
