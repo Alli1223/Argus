@@ -43,12 +43,12 @@ public static class DatabaseInitializer
 
         if (options.MigrateOnStartup)
         {
-            // Asking for pending migrations before the history table exists makes EF log a failed
-            // query, so on a fresh database every migration is pending.
-            var historyExists = await db.GetService<IHistoryRepository>().ExistsAsync(cancellationToken);
-            var pending = historyExists
-                ? (await db.Database.GetPendingMigrationsAsync(cancellationToken)).ToList()
-                : db.Database.GetMigrations().ToList();
+            // EF probes the history table by querying it, which logs a failed command on a fresh
+            // database. Creating it up front (exactly as Migrate would) keeps the first start clean.
+            var history = db.GetService<IHistoryRepository>();
+            await db.Database.ExecuteSqlRawAsync(history.GetCreateIfNotExistsScript(), cancellationToken);
+
+            var pending = (await db.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
             if (pending.Count > 0)
             {
                 logger.LogInformation("Applying {Count} database migration(s): {Migrations}",
