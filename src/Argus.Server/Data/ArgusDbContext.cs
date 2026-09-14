@@ -1,4 +1,6 @@
 using Argus.Server.Features.Auth;
+using Argus.Server.Features.Enrollment;
+using Argus.Server.Features.Hosts;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -11,6 +13,10 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options)
 {
     /// <summary>ASP.NET Core data protection key ring (encrypts auth cookies), shared across restarts.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+    public DbSet<MonitoredHost> Hosts => Set<MonitoredHost>();
+
+    public DbSet<EnrollmentToken> EnrollmentTokens => Set<EnrollmentToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -66,8 +66,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 4 — Hosts, enrollment & agent authentication
 
-- [ ] `Host` entity (inventory, owner, tags, notes, last seen, agent key hash) + migration
-- [ ] Secure token / key generation and SHA-256 hashing helpers
+- [x] `Host` entity (inventory, owner, tags, notes, last seen, agent key hash) + migration
+- [x] Secure token / key generation and SHA-256 hashing helpers
 - [ ] `EnrollmentToken` entity + endpoints (create — shown once, list, revoke; expiry and max uses)
 - [ ] Agent API-key authentication scheme (hashed lookup with short cache)
 - [ ] `POST /api/agent/v1/register` — exchange an enrollment token for host id + agent key (re-links an existing host by machine id)
