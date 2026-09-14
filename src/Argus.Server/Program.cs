@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
 using Argus.Server.Data;
 using Argus.Server.Features.Account;
+using Argus.Server.Features.Agents;
 using Argus.Server.Features.Auth;
+using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Health;
 using Argus.Server.Features.Info;
 using Argus.Server.Features.Users;
@@ -24,6 +26,7 @@ builder.Services.AddDataProtection()
     .SetApplicationName("Argus")
     .PersistKeysToDbContext<ArgusDbContext>();
 builder.Services.AddArgusAuth();
+builder.Services.AddArgusAgents();
 builder.Services.AddArgusRateLimiting();
 
 builder.Services.AddArgusHealthChecks()
@@ -60,6 +63,9 @@ api.MapInfoEndpoints();
 api.MapAuthEndpoints();
 api.MapAccountEndpoints();
 api.MapUserEndpoints();
+api.MapEnrollmentEndpoints();
+
+app.MapAgentEndpoints();
 
 await app.InitializeDatabaseAsync();
 
