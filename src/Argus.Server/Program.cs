@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Argus.Server.Data;
+using Argus.Server.Features.Account;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Health;
 using Argus.Server.Features.Info;
@@ -46,6 +47,7 @@ app.MapArgusHealthChecks();
 var api = app.MapGroup("/api");
 api.MapInfoEndpoints();
 api.MapAuthEndpoints();
+api.MapAccountEndpoints();
 
 await app.InitializeDatabaseAsync();
 

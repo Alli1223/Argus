@@ -57,8 +57,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Cookie auth tuned for the SPA: 401/403 instead of redirects, secure cookie flags, sliding expiration
 - [x] `GET /api/auth/status` and `POST /api/auth/setup` (first-run admin creation)
 - [x] `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` with account lockout
-- [ ] Optional self-registration (`Argus:Auth:AllowRegistration`)
-- [ ] `POST /api/account/password` (change password) and profile update
+- [x] Optional self-registration (`Argus:Auth:AllowRegistration`)
+- [x] `POST /api/account/password` (change password) and profile update
 - [ ] Admin user management endpoints (list, create, change role, disable/enable, reset password, delete)
 - [ ] CSRF defence: custom header required on unsafe cookie-authenticated requests
 - [ ] Security headers middleware and rate limiting on auth endpoints
