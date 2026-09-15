@@ -26,13 +26,15 @@ blue-violet centre).
 | `ink` | `#1a2140` | `#dfe2f3` | Text |
 | `paper` | `#f5f6fa` | `#1b2042` | Page background |
 | `surface` | `#ffffff` | `#262c50` | Panels, inputs |
-| `iris` | `#414cc7` | `#8c95ff` | Interactive: links, buttons, focus |
+| `iris` | `#414cc7` | `#7582ee` | Interactive: links, buttons, focus |
 | `healthy` | `#0d8566` | `#36c9a0` | OK / online |
 | `bronze` | `#c2860c` | `#e8b030` | Warning |
 | `crimson` | `#d0342a` | `#f15a4e` | Critical |
 | `slate` | `#6a7099` | `#8d93b9` | Offline, muted text |
 
-Dark mode is a deep indigo ("the pupil"), not a tinted near-black.
+Dark mode is a deep indigo ("the pupil"), not a tinted near-black. Its filled colours are the bright
+steps above, so text on filled buttons and badges is dark (`#151a37`) there, not white: white on
+`#7582ee` is only 3.4:1.
 
 ## Charts and meters
 

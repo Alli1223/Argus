@@ -1,4 +1,10 @@
-import { createTheme, type CSSVariablesResolver, type MantineColorsTuple } from "@mantine/core";
+import {
+  createTheme,
+  defaultVariantColorsResolver,
+  type CSSVariablesResolver,
+  type MantineColorsTuple,
+  type VariantColorsResolver,
+} from "@mantine/core";
 
 // The palette comes from the eye of a peacock feather (see docs/ui-design.md): a blue-violet
 // centre for everything interactive, and the feather's green, bronze and a crimson for status.
@@ -89,10 +95,23 @@ const night: MantineColorsTuple = [
 
 const sans = '"Archivo Variable", "Archivo", system-ui, sans-serif';
 
+/**
+ * Dark mode fills with the bright steps (iris 4 and its siblings), where white text falls below 4.5:1,
+ * so filled controls take their text colour from `--argus-on-filled` instead: white in light mode,
+ * deep indigo in dark mode.
+ */
+const variantColorResolver: VariantColorsResolver = (input) => {
+  const colors = defaultVariantColorsResolver(input);
+  return input.variant === "filled" && colors.color === "var(--mantine-color-white)"
+    ? { ...colors, color: "var(--argus-on-filled)" }
+    : colors;
+};
+
 export const theme = createTheme({
   primaryColor: "iris",
   primaryShade: { light: 7, dark: 4 },
   colors: { iris, healthy, bronze, crimson, gray, dark: night },
+  variantColorResolver,
 
   fontFamily: sans,
   fontFamilyMonospace: '"Martian Mono Variable", "Martian Mono", ui-monospace, monospace',
@@ -115,7 +134,8 @@ export const theme = createTheme({
   cursorType: "pointer",
 
   components: {
-    Badge: { defaultProps: { radius: "xl", variant: "light" } },
+    // Sentence case everywhere: tags keep the case they were typed in.
+    Badge: { defaultProps: { radius: "xl", variant: "light" }, styles: { root: { textTransform: "none" } } },
     Table: { defaultProps: { verticalSpacing: 6, horizontalSpacing: "sm", highlightOnHover: true } },
     Tooltip: { defaultProps: { openDelay: 250, withArrow: true } },
   },
@@ -128,11 +148,13 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--mantine-color-text": "#1a2140",
     "--argus-surface": "#ffffff",
     "--argus-border": gray[2],
+    "--argus-on-filled": "#ffffff",
   },
   dark: {
     "--mantine-color-body": night[7],
     "--mantine-color-text": night[0],
     "--argus-surface": night[6],
     "--argus-border": night[5],
+    "--argus-on-filled": night[8],
   },
 });
