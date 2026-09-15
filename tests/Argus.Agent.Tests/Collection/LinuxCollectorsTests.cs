@@ -69,7 +69,10 @@ public class LinuxCollectorsTests
     {
         Assert.SkipUnless(OperatingSystem.IsLinux(), "Linux only");
         var collector = new SampleCollector(
-            new LinuxMetricsSource(NullLogger<LinuxMetricsSource>.Instance), new ProcessCollector(), TimeProvider.System);
+            new LinuxMetricsSource(NullLogger<LinuxMetricsSource>.Instance),
+            new ProcessCollector(),
+            new NoServiceStatus(),
+            TimeProvider.System);
         collector.Prime();
         await Task.Delay(MeasuringInterval, TestContext.Current.CancellationToken);
 

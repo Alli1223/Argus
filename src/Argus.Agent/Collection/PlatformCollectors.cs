@@ -34,4 +34,20 @@ internal static class PlatformCollectors
 
         throw new PlatformNotSupportedException("The Argus agent runs on Linux and Windows.");
     }
+
+    /// <summary>Service checks where the system allows them; Linux without systemd has none.</summary>
+    public static IServiceStatusSource CreateServiceStatusSource(ILoggerFactory loggers)
+    {
+        if (OperatingSystem.IsLinux() && SystemdServices.IsAvailable)
+        {
+            return new SystemdServices(loggers.CreateLogger<SystemdServices>());
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            return new WindowsServices(loggers.CreateLogger<WindowsServices>());
+        }
+
+        return new NoServiceStatus();
+    }
 }

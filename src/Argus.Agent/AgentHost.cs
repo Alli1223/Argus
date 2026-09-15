@@ -49,6 +49,8 @@ internal static class AgentHost
         builder.Services.AddSingleton(new StateStore(agentConfig.ResolvedStateDirectory));
         builder.Services.AddSingleton(services => PlatformCollectors.CreateMetricsSource(services.GetRequiredService<ILoggerFactory>()));
         builder.Services.AddSingleton(_ => PlatformCollectors.CreateSystemInfoSource());
+        builder.Services.AddSingleton(services =>
+            PlatformCollectors.CreateServiceStatusSource(services.GetRequiredService<ILoggerFactory>()));
         builder.Services.AddSingleton<ProcessCollector>();
         builder.Services.AddSingleton<SampleCollector>();
         builder.Services.AddSingleton(new SampleBuffer(agentConfig.BufferCapacity));

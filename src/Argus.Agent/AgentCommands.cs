@@ -65,7 +65,11 @@ internal static class AgentCommands
     public static async Task<int> CollectAsync(CancellationToken cancellationToken)
     {
         using var loggers = LoggerFactory.Create(logging => logging.AddSimpleConsole());
-        var collector = new SampleCollector(PlatformCollectors.CreateMetricsSource(loggers), new ProcessCollector(), TimeProvider.System);
+        var collector = new SampleCollector(
+            PlatformCollectors.CreateMetricsSource(loggers),
+            new ProcessCollector(),
+            PlatformCollectors.CreateServiceStatusSource(loggers),
+            TimeProvider.System);
         collector.Prime();
 
         // Rates (CPU, disk, network) need an interval to measure over.
