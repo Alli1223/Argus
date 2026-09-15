@@ -1,0 +1,7 @@
+# Caddy in front of Argus: automatic HTTPS for ARGUS_DOMAIN (certificates from Let's Encrypt, so the
+# domain's DNS must point at this machine and ports 80 and 443 must be reachable), forwarding
+# everything, websockets included, to the server.
+{$ARGUS_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy server:8080
+}
