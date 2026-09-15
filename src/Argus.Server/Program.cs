@@ -74,6 +74,8 @@ api.MapUserEndpoints();
 api.MapEnrollmentEndpoints();
 api.MapHostEndpoints();
 api.MapDashboardEndpoints();
+api.MapAlertRuleEndpoints();
+api.MapAlertEndpoints();
 
 app.MapAgentEndpoints();
 

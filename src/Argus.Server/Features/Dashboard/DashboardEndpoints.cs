@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Argus.Server.Data;
 using Argus.Server.Features.Agents;
+using Argus.Server.Features.Alerts;
 using Argus.Server.Features.Hosts;
 using Argus.Server.Features.Metrics;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ public sealed record DashboardSummary(
     int OnlineHosts,
     int OfflineHosts,
     IReadOnlyDictionary<string, int> Platforms,
+    AlertCounts ActiveAlerts,
     IReadOnlyList<HostSummary> BusiestByCpu,
     IReadOnlyList<HostSummary> FullestDisks);
 
@@ -45,6 +47,7 @@ public static class DashboardEndpoints
             OnlineHosts: online.Count,
             OfflineHosts: summaries.Count - online.Count,
             Platforms: summaries.GroupBy(host => host.Platform.ToString()).ToDictionary(group => group.Key, group => group.Count()),
+            ActiveAlerts: await AlertEndpoints.CountFiringAsync(db.Alerts.VisibleTo(user), cancellationToken),
             BusiestByCpu: online
                 .Where(host => host.Latest is not null)
                 .OrderByDescending(host => host.Latest!.CpuPercent)
