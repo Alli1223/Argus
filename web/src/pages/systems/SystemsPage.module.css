@@ -1,0 +1,25 @@
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Room on the right for the copy button; long commands wrap rather than scroll. */
+.command {
+  padding: 12px 104px 12px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+/* The token created on this visit, so it can be found in the list. */
+.highlight {
+  background: var(--mantine-color-iris-light);
+}

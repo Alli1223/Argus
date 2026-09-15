@@ -21,6 +21,8 @@ export type AlertStatus = "Firing" | "Resolved";
 export interface ServerInfo {
   name: string;
   version: string;
+  /** Address agents and people use to reach the server, when configured. */
+  publicUrl: string | null;
 }
 
 export interface AuthStatus {
