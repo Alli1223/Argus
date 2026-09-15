@@ -1,0 +1,17 @@
+# The image is built from sources only; build outputs, dependencies and secrets stay out of the context.
+**/bin/
+**/obj/
+**/node_modules/
+web/dist/
+artifacts/
+TestResults/
+tests/
+docs/
+.git/
+.github/
+.idea/
+.vscode/
+**/*.user
+**/*.swp
+**/.env
+deploy/.env
