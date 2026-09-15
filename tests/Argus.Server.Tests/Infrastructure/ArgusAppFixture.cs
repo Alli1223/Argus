@@ -15,9 +15,14 @@ public class ArgusAppFixture(PostgresFixture postgres) : IAsyncLifetime
     /// <summary>Extra configuration for the server under test.</summary>
     protected virtual IReadOnlyDictionary<string, string?> Settings { get; } = new Dictionary<string, string?>();
 
+    /// <summary>Replaces services of the server under test (applied after the app's own registrations).</summary>
+    protected virtual void ConfigureServices(IServiceCollection services)
+    {
+    }
+
     public async ValueTask InitializeAsync()
     {
-        Factory = new ArgusFactory(await postgres.CreateDatabaseAsync(), Settings);
+        Factory = new ArgusFactory(await postgres.CreateDatabaseAsync(), Settings, ConfigureServices);
 
         // Starting the server applies migrations, so failures surface here rather than mid-test.
         _ = Factory.Server;

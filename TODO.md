@@ -121,11 +121,11 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] `Alert` entity: firing → resolved lifecycle, observed value, acknowledgement; one open alert per rule/host/resource
 - [ ] Alert rule CRUD endpoints + validation
 - [x] Default rules created for new users (CPU, memory, disk, host offline)
-- [ ] Evaluator: sustained-threshold evaluation over a time window for host metrics
-- [ ] Per-filesystem disk rules and host-offline rules
-- [ ] Background evaluation service (interval, per-rule error isolation)
+- [x] Evaluator: sustained-threshold evaluation over a time window for host metrics
+- [x] Per-filesystem disk rules and host-offline rules
+- [x] Background evaluation service (interval, per-rule error isolation)
 - [ ] Alert endpoints: list / filter / paginate, acknowledge
-- [ ] Evaluator unit tests + firing / resolving integration test
+- [x] Evaluator unit tests + firing / resolving integration test
 - [ ] Dashboard summary: active alert counts by severity
 
 ## Phase 9 — Real-time updates

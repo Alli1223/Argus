@@ -1,0 +1,284 @@
+using Argus.Server.Data;
+using Argus.Server.Features.Agents;
+using Dapper;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Npgsql;
+
+namespace Argus.Server.Features.Alerts;
+
+public sealed record AlertEvaluationResult(bool Ran, int Fired, int Resolved);
+
+/// <summary>
+/// Checks every enabled rule against recent data and opens or resolves alerts. Rules only cover
+/// hosts owned by the rule's owner. Each rule's queries run on their own pooled connection, so one
+/// failing rule cannot stop the others.
+/// </summary>
+public sealed class AlertEvaluator(
+    ArgusDbContext db,
+    NpgsqlDataSource dataSource,
+    IOptions<AgentOptions> agents,
+    IEnumerable<IAlertEventSink> sinks,
+    TimeProvider time,
+    ILogger<AlertEvaluator> logger)
+{
+    /// <summary>Session advisory lock so only one evaluation runs at a time, even with several servers.</summary>
+    private const long EvaluationLockKey = 0x4152_4755_5303;
+
+    private sealed record HostInfo(Guid Id, Guid OwnerId, string DisplayName, List<string> Tags, DateTimeOffset? LastSeenAt);
+
+    private sealed record Observation(HostInfo Host, string ResourceKey, Verdict Verdict);
+
+    public async Task<AlertEvaluationResult> EvaluateAsync(CancellationToken cancellationToken)
+    {
+        await using var lockConnection = await dataSource.OpenConnectionAsync(cancellationToken);
+        if (!await lockConnection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                "SELECT pg_try_advisory_lock(@key)", new { key = EvaluationLockKey }, cancellationToken: cancellationToken)))
+        {
+            return new AlertEvaluationResult(Ran: false, Fired: 0, Resolved: 0);
+        }
+
+        try
+        {
+            return await EvaluateLockedAsync(cancellationToken);
+        }
+        finally
+        {
+            await lockConnection.ExecuteAsync(new CommandDefinition(
+                "SELECT pg_advisory_unlock(@key)", new { key = EvaluationLockKey }, cancellationToken: CancellationToken.None));
+        }
+    }
+
+    private async Task<AlertEvaluationResult> EvaluateLockedAsync(CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+
+        // Samples arrive every collection interval; allow two intervals of slack before data counts as stale.
+        var tolerance = TimeSpan.FromSeconds(agents.Value.CollectionIntervalSeconds * 2);
+
+        var rules = await db.AlertRules.AsNoTracking().Where(rule => rule.Enabled).ToListAsync(cancellationToken);
+        var hostsByOwner = (await db.Hosts.AsNoTracking()
+                .Select(host => new HostInfo(host.Id, host.OwnerId, host.DisplayName, host.Tags, host.LastSeenAt))
+                .ToListAsync(cancellationToken))
+            .ToLookup(host => host.OwnerId);
+        var open = await db.Alerts.Where(alert => alert.Status == AlertStatus.Firing).ToListAsync(cancellationToken);
+        var openByKey = open
+            .Where(alert => alert.RuleId is not null)
+            .ToDictionary(alert => (RuleId: alert.RuleId!.Value, alert.HostId, alert.ResourceKey));
+
+        var events = new List<AlertEvent>();
+        foreach (var rule in rules)
+        {
+            try
+            {
+                var inScope = hostsByOwner[rule.OwnerId].Where(host => InScope(rule, host)).ToList();
+                foreach (var (host, resourceKey, verdict) in await ObserveAsync(rule, inScope, now, tolerance, cancellationToken))
+                {
+                    openByKey.TryGetValue((rule.Id, host.Id, resourceKey), out var alert);
+                    if (alert is null && verdict.Fire)
+                    {
+                        alert = Open(rule, host, resourceKey, verdict, now);
+                        openByKey[(rule.Id, host.Id, resourceKey)] = alert;
+                        events.Add(AlertEvent.From(AlertEventKind.Fired, alert, now));
+                    }
+                    else if (alert is { Status: AlertStatus.Firing } && verdict.Clear)
+                    {
+                        Resolve(alert, now, events);
+                    }
+                    else if (alert is { Status: AlertStatus.Firing } && verdict.Value is { } value)
+                    {
+                        alert.Value = value;
+                    }
+                }
+
+                // Hosts that left the rule's scope (a tag was removed, the rule was narrowed) no longer count.
+                var scopeIds = inScope.Select(host => host.Id).ToHashSet();
+                foreach (var alert in open.Where(alert => alert.RuleId == rule.Id && !scopeIds.Contains(alert.HostId)))
+                {
+                    Resolve(alert, now, events);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Evaluating alert rule {RuleId} ({RuleName}) failed", rule.Id, rule.Name);
+            }
+        }
+
+        // Alerts whose rule was disabled or deleted end here.
+        var enabledRuleIds = rules.Select(rule => rule.Id).ToHashSet();
+        foreach (var alert in open.Where(alert => alert.RuleId is not { } ruleId || !enabledRuleIds.Contains(ruleId)))
+        {
+            Resolve(alert, now, events);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        await PublishAsync(events, cancellationToken);
+
+        return new AlertEvaluationResult(
+            Ran: true,
+            Fired: events.Count(e => e.Kind == AlertEventKind.Fired),
+            Resolved: events.Count(e => e.Kind == AlertEventKind.Resolved));
+    }
+
+    private Alert Open(AlertRule rule, HostInfo host, string resourceKey, Verdict verdict, DateTimeOffset now)
+    {
+        var alert = new Alert
+        {
+            RuleId = rule.Id,
+            HostId = host.Id,
+            OwnerId = rule.OwnerId,
+            ResourceKey = resourceKey,
+            Title = AlertDecision.Title(rule, host.DisplayName, resourceKey),
+            Metric = rule.Metric,
+            Operator = rule.Operator,
+            Threshold = rule.Threshold,
+            Severity = rule.Severity,
+            Status = AlertStatus.Firing,
+            Value = verdict.Value,
+            FiredAt = now,
+        };
+        db.Alerts.Add(alert);
+        return alert;
+    }
+
+    private static void Resolve(Alert alert, DateTimeOffset now, List<AlertEvent> events)
+    {
+        if (alert.Status != AlertStatus.Firing)
+        {
+            return;
+        }
+
+        alert.Status = AlertStatus.Resolved;
+        alert.ResolvedAt = now;
+        events.Add(AlertEvent.From(AlertEventKind.Resolved, alert, now));
+    }
+
+    private static bool InScope(AlertRule rule, HostInfo host) =>
+        (rule.HostId is null || rule.HostId == host.Id)
+        && (rule.Tag is null || host.Tags.Contains(rule.Tag));
+
+    private async Task<List<Observation>> ObserveAsync(
+        AlertRule rule, List<HostInfo> hosts, DateTimeOffset now, TimeSpan tolerance, CancellationToken cancellationToken)
+    {
+        if (hosts.Count == 0)
+        {
+            return [];
+        }
+
+        var duration = TimeSpan.FromSeconds(rule.DurationSeconds);
+        if (rule.Metric == AlertMetric.HostOffline)
+        {
+            return hosts.Select(host => new Observation(host, "", AlertDecision.EvaluateOffline(host.LastSeenAt, duration, now))).ToList();
+        }
+
+        var byId = hosts.ToDictionary(host => host.Id);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<StatsRow>(new CommandDefinition(
+            StatsSql(rule.Metric),
+            new
+            {
+                host_ids = byId.Keys.ToArray(),
+                window_start = now - AlertDecision.Window(duration, tolerance),
+                recent_start = now - AlertDecision.ResolveWindow(duration, tolerance),
+                now,
+                resource = string.IsNullOrWhiteSpace(rule.ResourceFilter) ? null : rule.ResourceFilter,
+            },
+            cancellationToken: cancellationToken));
+
+        return rows
+            .Where(row => byId.ContainsKey(row.HostId))
+            .Select(row => new Observation(
+                byId[row.HostId],
+                row.ResourceKey,
+                AlertDecision.Evaluate(rule.Operator, rule.Threshold, duration, row.ToStats(), now, tolerance)))
+            .ToList();
+    }
+
+    /// <summary>Window aggregates per host (and mount point). The value expressions are fixed per metric.</summary>
+    private static string StatsSql(AlertMetric metric)
+    {
+        var source = metric.IsPerFilesystem()
+            ? $"""
+               SELECT f.host_id, f.mount_point AS resource_key, f.time, {ValueExpression(metric)} AS value
+               FROM filesystem_metrics f
+               WHERE f.host_id = ANY(@host_ids) AND f.time > @window_start AND f.time <= @now
+                 AND (@resource::text IS NULL OR f.mount_point = @resource)
+               """
+            : $"""
+               SELECT m.host_id, ''::text AS resource_key, m.time, {ValueExpression(metric)} AS value
+               FROM host_metrics m
+               JOIN hosts h ON h.id = m.host_id
+               WHERE m.host_id = ANY(@host_ids) AND m.time > @window_start AND m.time <= @now
+               """;
+
+        return $"""
+            SELECT host_id, resource_key,
+                   count(value)::int                                        AS samples,
+                   min(time) FILTER (WHERE value IS NOT NULL)               AS first_time,
+                   max(time) FILTER (WHERE value IS NOT NULL)               AS last_time,
+                   min(value)                                               AS min_value,
+                   max(value)                                               AS max_value,
+                   avg(value)                                               AS average,
+                   (count(value) FILTER (WHERE time > @recent_start))::int  AS recent_samples,
+                   min(value) FILTER (WHERE time > @recent_start)           AS recent_min,
+                   max(value) FILTER (WHERE time > @recent_start)           AS recent_max
+            FROM ({source}) s
+            GROUP BY host_id, resource_key
+            """;
+    }
+
+    private static string ValueExpression(AlertMetric metric) => metric switch
+    {
+        AlertMetric.CpuUsage => "m.cpu_usage_pct::float8",
+        AlertMetric.MemoryUsage => "m.mem_used_bytes::float8 / NULLIF(m.mem_total_bytes, 0) * 100",
+        AlertMetric.SwapUsage => "m.swap_used_bytes::float8 / NULLIF(m.swap_total_bytes, 0) * 100",
+        AlertMetric.LoadPerCore => "m.load_1::float8 / NULLIF(h.cpu_logical_processors, 0)",
+        AlertMetric.DiskIoUtilization => "m.disk_util_pct::float8",
+        AlertMetric.NetworkReceive => "m.net_rx_bps",
+        AlertMetric.NetworkTransmit => "m.net_tx_bps",
+        AlertMetric.DiskUsage => "f.used_bytes::float8 / NULLIF(f.used_bytes + f.available_bytes, 0) * 100",
+        AlertMetric.InodeUsage => "f.inodes_used::float8 / NULLIF(f.inodes_total, 0) * 100",
+        _ => throw new ArgumentOutOfRangeException(nameof(metric), metric, "Not a sampled metric."),
+    };
+
+    private async Task PublishAsync(List<AlertEvent> events, CancellationToken cancellationToken)
+    {
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var sink in sinks)
+        {
+            try
+            {
+                await sink.PublishAsync(events, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Alert event sink {Sink} failed", sink.GetType().Name);
+            }
+        }
+    }
+
+    private sealed class StatsRow
+    {
+        public Guid HostId { get; set; }
+        public string ResourceKey { get; set; } = "";
+        public int Samples { get; set; }
+        public DateTime? FirstTime { get; set; }
+        public DateTime? LastTime { get; set; }
+        public double? MinValue { get; set; }
+        public double? MaxValue { get; set; }
+        public double? Average { get; set; }
+        public int RecentSamples { get; set; }
+        public double? RecentMin { get; set; }
+        public double? RecentMax { get; set; }
+
+        public WindowStats ToStats() => new(
+            Samples, Utc(FirstTime), Utc(LastTime), MinValue, MaxValue, Average, RecentSamples, RecentMin, RecentMax);
+
+        private static DateTimeOffset? Utc(DateTime? value) =>
+            value is { } utc ? new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc)) : null;
+    }
+}

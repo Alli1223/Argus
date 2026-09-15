@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Argus.Server.Data;
 using Argus.Server.Features.Account;
 using Argus.Server.Features.Agents;
+using Argus.Server.Features.Alerts;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Dashboard;
 using Argus.Server.Features.Enrollment;
@@ -32,6 +33,7 @@ builder.Services.AddDataProtection()
 builder.Services.AddArgusAuth();
 builder.Services.AddArgusAgents();
 builder.Services.AddArgusMetrics();
+builder.Services.AddArgusAlerts();
 builder.Services.AddArgusRateLimiting();
 
 builder.Services.AddArgusHealthChecks()
