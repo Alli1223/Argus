@@ -24,6 +24,7 @@ public static class AgentLimits
     public const int MaxFilesystemsPerSample = 64;
     public const int MaxInterfacesPerSample = 64;
     public const int MaxTopProcesses = 50;
+    public const int MaxFailedServices = 100;
     public const int MaxIpAddresses = 32;
     public const int MaxNameLength = 256;
 }

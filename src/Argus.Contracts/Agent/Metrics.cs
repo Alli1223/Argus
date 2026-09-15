@@ -45,6 +45,25 @@ public sealed record MetricSample
 
     /// <summary>Busiest processes; agents may only attach this to the newest sample of a batch.</summary>
     public IReadOnlyList<ProcessMetrics>? TopProcesses { get; init; }
+
+    /// <summary>
+    /// Services that should be running but are not: failed systemd units, or stopped Windows services
+    /// set to start automatically. Only on samples where the agent checked (about once a minute); an
+    /// empty list means every service it watches is fine.
+    /// </summary>
+    public IReadOnlyList<ServiceProblem>? FailedServices { get; init; }
+}
+
+public sealed record ServiceProblem
+{
+    /// <summary>The service's name, such as "nginx.service" or "Spooler".</summary>
+    public required string Name { get; init; }
+
+    /// <summary>What the service is, in words, when the system says.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>What is wrong, in the system's own word: "failed" or "stopped".</summary>
+    public required string State { get; init; }
 }
 
 public sealed record CpuMetrics

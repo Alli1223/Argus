@@ -180,8 +180,9 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 13 — Errors & anomalies
 
-- [ ] Agent: failed service detection (systemd failed units / stopped automatic Windows services)
-- [ ] Server: store service status, expose via API, "service failed" alert rule type
+- [x] Agent: failed service detection (systemd failed units / stopped automatic Windows services)
+- [x] Server: store service status and expose it via the API
+- [ ] "Service failed" alert rule type
 - [ ] Anomaly detection rule type (deviation from a rolling baseline)
 - [ ] UI: services panel and the new rule types
 

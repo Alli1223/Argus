@@ -24,6 +24,7 @@ public static class HostEndpoints
         hosts.MapGet("/{id:guid}/filesystems/history", GetFilesystemHistoryAsync);
         hosts.MapGet("/{id:guid}/network", GetNetworkHistoryAsync);
         hosts.MapGet("/{id:guid}/processes", GetProcessesAsync);
+        hosts.MapGet("/{id:guid}/services", GetServicesAsync);
 
         return routes;
     }
@@ -229,6 +230,17 @@ public static class HostEndpoints
         return await series.GetProcessesAsync(id, cancellationToken) is { } snapshot
             ? TypedResults.Ok(snapshot)
             : TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<ServiceStatus>, NotFound>> GetServicesAsync(
+        Guid id, ClaimsPrincipal user, ArgusDbContext db, TimeSeriesQueries series, CancellationToken cancellationToken)
+    {
+        if (!await db.Hosts.VisibleTo(user).AnyAsync(host => host.Id == id, cancellationToken))
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(await series.GetServicesAsync(id, cancellationToken));
     }
 
     private static TimeSpan CollectionInterval(IOptions<AgentOptions> agents) =>
