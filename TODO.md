@@ -142,8 +142,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Auth screens: login, first-run setup, registration; route guards and session handling
 - [x] Dashboard: fleet summary, host tiles with live status, active alerts
 - [x] Hosts list: search, status / tag filters, sorting
-- [ ] Time-series chart component (range picker, tooltips, units)
-- [ ] Host detail: overview (system info, current values) + metric charts
+- [x] Time-series chart component (range picker, tooltips, units)
+- [x] Host detail: overview (system info, current values) + metric charts
 - [ ] Host detail: filesystems, network interfaces, top processes
 - [ ] Host settings: rename, tags, notes, delete
 - [ ] "Add system" flow: create enrollment token, show Linux / Windows install commands
