@@ -140,8 +140,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Theme and app shell (sidebar navigation, header, light / dark)
 - [x] API client (fetch wrapper, CSRF header, error handling) + TanStack Query
 - [x] Auth screens: login, first-run setup, registration; route guards and session handling
-- [ ] Dashboard: fleet summary, host tiles with live status, active alerts
-- [ ] Hosts list: search, status / tag filters, sorting
+- [x] Dashboard: fleet summary, host tiles with live status, active alerts
+- [x] Hosts list: search, status / tag filters, sorting
 - [ ] Time-series chart component (range picker, tooltips, units)
 - [ ] Host detail: overview (system info, current values) + metric charts
 - [ ] Host detail: filesystems, network interfaces, top processes
@@ -153,16 +153,20 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [ ] Live updates via SignalR
 - [ ] Account page (change password) and admin users page
 - [ ] Loading skeletons, empty states, error boundary, 404
+- [ ] Route-level code splitting (the main bundle is over 500 kB)
 - [ ] Server hosts the built SPA (static files, fallback routing, cache headers)
 
 ## Phase 11 — Agent packaging & installation
 
-- [ ] Publish settings for `linux-x64`, `linux-arm64`, `win-x64` self-contained single-file builds
-- [ ] systemd unit (dedicated user, sandboxing)
-- [ ] Linux `install.sh` / `uninstall.sh`
-- [ ] Windows `install.ps1` / `uninstall.ps1` (service, recovery actions, ACLs)
-- [ ] `build/package-agent.sh` producing release archives
-- [ ] Server serves agent binaries and install scripts at `/downloads/*`; UI shows one-line install commands
+- [x] Publish settings for `linux-x64`, `linux-arm64`, `win-x64` self-contained single-file builds
+- [x] systemd unit (dedicated user, sandboxing)
+- [x] Linux `install.sh` / `uninstall.sh`
+- [x] Windows `install.ps1` / `uninstall.ps1` (service, recovery actions, ACLs)
+- [x] `build/package-agent.sh` producing release archives
+- [x] Server serves agent binaries and install scripts at `/downloads/*` (the UI's install commands are part of the "Add system" flow)
+- [ ] Trimmed agent builds (a trimmed linux-x64 build is 14 MB instead of 39 MB; needs a full run against a server first)
+- [ ] Test `install.sh` and the sandboxed systemd unit end to end on a clean Linux VM
+- [ ] Verify the Windows agent (collectors, service install) on a real Windows machine
 
 ## Phase 12 — Docker & deployment
 
