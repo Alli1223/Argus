@@ -195,7 +195,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 15 — CI & polish
 
-- [ ] GitHub Actions: build & test .NET, lint / test / build web, Docker image, agent artifacts
+- [x] GitHub Actions: build & test .NET, lint / test / build web, agent packages
+- [ ] CI builds the Docker image (once Phase 12 adds it)
 - [ ] Frontend unit tests (Vitest)
 - [ ] Configuration reference and API docs
 - [ ] Final README pass
