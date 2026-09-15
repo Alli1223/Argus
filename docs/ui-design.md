@@ -34,6 +34,35 @@ blue-violet centre).
 
 Dark mode is a deep indigo ("the pupil"), not a tinted near-black.
 
+## Charts and meters
+
+Chart series colours were checked with the dataviz palette validator (lightness band, chroma,
+colour-blind separation, normal-vision separation, contrast) against the light panel surface
+`#ffffff` and the dark panel surface `#262c50`. All checks pass.
+
+| Slot | Light | Dark | Used for |
+| --- | --- | --- | --- |
+| 1 | `#4f5be0` iris | `#7582ee` | The main series: CPU, received, read |
+| 2 | `#d55181` magenta | `#d55181` | The second series: sent, write |
+| 3 | `#0a8fb0` cyan | `#1f9fc4` | A third series |
+
+Load averages are ordered (1, 5 and 15 minutes), so they use steps of one hue instead of three
+colours: light `#2c349c` / `#5f6de9` / `#95a0f5`, dark `#dde1ff` / `#95a0f5` / `#5f6de9`, with the
+1-minute average the most prominent.
+
+Rules the charts follow:
+
+- Status colours (healthy, bronze, crimson) are never used for chart series.
+- One y-axis per chart; values with different units get separate charts.
+- 2 px lines, solid hairline gridlines, and a crosshair tooltip that lists every series at the
+  hovered time, values first.
+- A legend whenever a chart has two or more series; a single series is named by the chart title.
+- Every chart can be shown as a table.
+- While new data loads, a chart keeps its previous picture, dimmed, instead of flashing a skeleton.
+
+Meters (tables, the watch) use iris below 75 %, bronze from 75 % and crimson from 90 %, with the
+track a lighter step of the same hue and the number always shown beside the bar.
+
 ## Type
 
 - **Archivo** (variable, weight and width axes) for everything. Headings and the wordmark use a
