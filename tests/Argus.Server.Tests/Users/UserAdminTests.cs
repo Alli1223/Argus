@@ -1,10 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
+using Argus.Contracts.Agent;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Users;
 using Argus.Server.Tests.Infrastructure;
+using Argus.Server.Tests.Metrics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace Argus.Server.Tests.Users;
 
@@ -131,6 +135,34 @@ public sealed class UserAdminTests(ArgusAppFixture app) : IClassFixture<ArgusApp
         var self = await admin.DeleteAsync($"/api/users/{me!.Id}", ct);
         Assert.Equal(HttpStatusCode.Conflict, self.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await admin.PostAsync($"/api/users/{me.Id}/disable", null, ct)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Deleting_someone_removes_their_hosts_history_and_agent_keys()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var admin = await SignedInAdminAsync();
+        var owner = await app.CreateOwnerAsync("oli@example.com");
+        var ownerId = (await owner.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me", ct))!.Id;
+        var (hostId, agent) = await app.RegisterHostAsync(owner, "users-oli-1");
+        await agent.SendSamplesAsync(MetricsIngestionTests.FullSample(DateTimeOffset.UtcNow));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.DeleteAsync($"/api/users/{ownerId}", ct)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/hosts/{hostId}", ct)).StatusCode);
+        var rejected = await agent.PostAsJsonAsync(AgentApi.Metrics,
+            new MetricsBatch { Samples = [MetricsIngestionTests.FullSample(DateTimeOffset.UtcNow)] },
+            AgentJsonContext.Default.MetricsBatch, ct);
+        Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
+
+        var remaining = await app.WithScopeAsync(async services =>
+        {
+            await using var command = services.GetRequiredService<NpgsqlDataSource>().CreateCommand(
+                "SELECT (SELECT count(*) FROM host_metrics WHERE host_id = @id) + (SELECT count(*) FROM filesystem_metrics WHERE host_id = @id)");
+            command.Parameters.AddWithValue("id", hostId);
+            return (long)(await command.ExecuteScalarAsync(ct))!;
+        });
+        Assert.Equal(0, remaining);
     }
 }
 
