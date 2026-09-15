@@ -174,7 +174,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [ ] Production `deploy/docker-compose.yml` + `.env.example` (server, TimescaleDB, volumes, health checks)
 - [ ] Optional Caddy reverse proxy with automatic HTTPS (compose profile)
 - [x] Forwarded headers and public URL configuration
-- [ ] `docs/deployment.md` (install, upgrade, backup / restore)
+- [x] `docs/deployment.md` (install, upgrade, backup / restore)
 - [ ] End-to-end smoke test: compose up → setup → enroll agent → metrics visible
 
 ## Phase 13 — Errors & anomalies
