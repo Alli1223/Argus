@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Argus.Server.Data;
+using Argus.Server.Features.Agents;
 using Argus.Server.Features.Auth;
+using Argus.Server.Features.Metrics;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -173,7 +175,13 @@ public static class UserEndpoints
     }
 
     private static async Task<Results<NoContent, NotFound, ProblemHttpResult>> DeleteAsync(
-        Guid id, ClaimsPrincipal principal, ArgusDbContext db, UserManager<ArgusUser> users, CancellationToken cancellationToken)
+        Guid id,
+        ClaimsPrincipal principal,
+        ArgusDbContext db,
+        UserManager<ArgusUser> users,
+        TimeSeriesQueries series,
+        AgentKeyValidator agentKeys,
+        CancellationToken cancellationToken)
     {
         if (IsSelf(principal, users, id))
         {
@@ -192,8 +200,22 @@ public static class UserEndpoints
             return LastAdminProblem();
         }
 
+        // Their hosts, rules, tokens and alerts go with the account (cascading deletes). Samples live in
+        // hypertables without foreign keys, so they, and the agents' cached keys, are cleared here.
+        var hosts = await db.Hosts
+            .Where(host => host.OwnerId == user.Id)
+            .Select(host => new { host.Id, host.AgentKeyHash })
+            .ToListAsync(cancellationToken);
+
         await users.DeleteAsync(user);
         await transaction.CommitAsync(cancellationToken);
+
+        foreach (var host in hosts)
+        {
+            agentKeys.Invalidate(host.AgentKeyHash);
+            await series.DeleteHostDataAsync(host.Id, cancellationToken);
+        }
+
         return TypedResults.NoContent();
     }
 
