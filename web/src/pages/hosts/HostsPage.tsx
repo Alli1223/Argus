@@ -215,14 +215,15 @@ function HostRow({ host, now }: { host: HostSummary; now: number }) {
 
   return (
     <Table.Tr style={stale ? { opacity: 0.62 } : undefined}>
-      <Table.Td>
+      <Table.Td miw={240}>
         <Group gap={10} wrap="nowrap">
           <PlatformIcon platform={host.platform} />
           <div style={{ minWidth: 0 }}>
             <Anchor component={Link} to={`/hosts/${host.id}`} fw={600} fz="sm">
               {host.displayName}
             </Anchor>
-            <Group gap={6} wrap="nowrap">
+            {/* Tags wrap under the system name rather than being squeezed into ellipses. */}
+            <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
               <Text fz="xs" c="dimmed" truncate="end">
                 {host.hostname !== host.displayName ? host.hostname : (host.osName ?? host.platform)}
               </Text>
