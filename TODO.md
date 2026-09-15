@@ -152,8 +152,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Alert rules page: list, create / edit, enable / disable
 - [x] Live updates via SignalR
 - [x] Account page (change password) and admin users page
-- [ ] Loading skeletons, empty states, error boundary, 404
-- [ ] Route-level code splitting (the main bundle is over 500 kB)
+- [x] Loading skeletons, empty states, error boundary, 404
+- [x] Route-level code splitting (the main bundle is over 500 kB)
 - [ ] Server hosts the built SPA (static files, fallback routing, cache headers)
 
 ## Phase 11 — Agent packaging & installation

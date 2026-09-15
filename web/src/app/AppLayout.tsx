@@ -27,12 +27,13 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Outlet, useLocation, useNavigate, useNavigation } from "react-router";
 import { useAlertCounts } from "../api/alerts";
 import { useCurrentUser, useLogout } from "../api/auth";
 import { useLiveUpdates } from "../api/live";
 import { LiveIndicator } from "../components/LiveIndicator";
 import { Wordmark } from "../components/Wordmark";
+import classes from "./AppLayout.module.css";
 
 interface NavItem {
   to: string;
@@ -59,6 +60,7 @@ export function AppLayout() {
   const { pathname } = useLocation();
   const me = useCurrentUser();
   const live = useLiveUpdates();
+  const navigation = useNavigation();
 
   return (
     <AppShell
@@ -105,6 +107,9 @@ export function AppLayout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
+        {navigation.state === "loading" && (
+          <div className={classes.loading} role="progressbar" aria-label="Loading the page" />
+        )}
         <Outlet />
       </AppShell.Main>
     </AppShell>

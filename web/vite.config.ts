@@ -20,6 +20,18 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rolldownOptions: {
+      output: {
+        // React and the UI toolkit change far less often than Argus itself, so they get chunks of
+        // their own that browsers keep cached across upgrades. Pages still load when first opened.
+        codeSplitting: {
+          groups: [
+            { name: "react", test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/ },
+            { name: "mantine", test: /node_modules[\\/]@mantine[\\/]/ },
+          ],
+        },
+      },
+    },
   },
   test: {
     environment: "jsdom",
