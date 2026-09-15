@@ -137,9 +137,9 @@ committed when it is done. New tasks discovered along the way are added in the r
 ## Phase 10 — Web UI (`web/`)
 
 - [x] Vite + React + TypeScript scaffold, ESLint, Prettier, dev proxy to the API
-- [ ] Theme and app shell (sidebar navigation, header, light / dark)
-- [ ] API client (fetch wrapper, CSRF header, error handling) + TanStack Query
-- [ ] Auth screens: login, first-run setup, registration; route guards and session handling
+- [x] Theme and app shell (sidebar navigation, header, light / dark)
+- [x] API client (fetch wrapper, CSRF header, error handling) + TanStack Query
+- [x] Auth screens: login, first-run setup, registration; route guards and session handling
 - [ ] Dashboard: fleet summary, host tiles with live status, active alerts
 - [ ] Hosts list: search, status / tag filters, sorting
 - [ ] Time-series chart component (range picker, tooltips, units)
