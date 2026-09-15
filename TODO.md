@@ -151,7 +151,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Alerts page: active & history, filters, acknowledge
 - [x] Alert rules page: list, create / edit, enable / disable
 - [x] Live updates via SignalR
-- [ ] Account page (change password) and admin users page
+- [x] Account page (change password) and admin users page
 - [ ] Loading skeletons, empty states, error boundary, 404
 - [ ] Route-level code splitting (the main bundle is over 500 kB)
 - [ ] Server hosts the built SPA (static files, fallback routing, cache headers)
