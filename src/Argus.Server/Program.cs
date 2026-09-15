@@ -3,8 +3,10 @@ using Argus.Server.Data;
 using Argus.Server.Features.Account;
 using Argus.Server.Features.Agents;
 using Argus.Server.Features.Auth;
+using Argus.Server.Features.Dashboard;
 using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Health;
+using Argus.Server.Features.Hosts;
 using Argus.Server.Features.Info;
 using Argus.Server.Features.Metrics;
 using Argus.Server.Features.Users;
@@ -68,6 +70,8 @@ api.MapAuthEndpoints();
 api.MapAccountEndpoints();
 api.MapUserEndpoints();
 api.MapEnrollmentEndpoints();
+api.MapHostEndpoints();
+api.MapDashboardEndpoints();
 
 app.MapAgentEndpoints();
 

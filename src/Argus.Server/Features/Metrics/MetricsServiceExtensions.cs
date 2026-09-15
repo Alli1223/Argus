@@ -9,6 +9,7 @@ public static class MetricsServiceExtensions
         services.AddValidatedOptions<IngestOptions>(IngestOptions.SectionName);
         services.AddValidatedOptions<RetentionOptions>(RetentionOptions.SectionName);
         services.AddSingleton<MetricsIngestor>();
+        services.AddSingleton<TimeSeriesQueries>();
         return services;
     }
 }

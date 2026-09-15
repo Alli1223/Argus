@@ -106,14 +106,14 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 7 — Query API
 
-- [ ] `GET /api/hosts` — hosts with online/offline status and latest metric snapshot
-- [ ] `GET /api/hosts/{id}`, `PATCH /api/hosts/{id}` (name, tags, notes), `DELETE /api/hosts/{id}`
-- [ ] Metrics query service: picks raw / 5m / 1h source by range, `time_bucket` downsampling to a target point count
-- [ ] `GET /api/hosts/{id}/metrics` — host time series
-- [ ] `GET /api/hosts/{id}/filesystems` (latest + history) and `GET /api/hosts/{id}/network` (per-interface history)
-- [ ] `GET /api/hosts/{id}/processes` — latest top processes
-- [ ] `GET /api/dashboard/summary` — fleet overview (counts, active alerts, busiest hosts)
-- [ ] Owner-scoped authorization (admins see everything) + tests
+- [x] `GET /api/hosts` — hosts with online/offline status and latest metric snapshot
+- [x] `GET /api/hosts/{id}`, `PATCH /api/hosts/{id}` (name, tags, notes), `DELETE /api/hosts/{id}`
+- [x] Metrics query service: picks raw / 5m / 1h source by range, `time_bucket` downsampling to a target point count
+- [x] `GET /api/hosts/{id}/metrics` — host time series
+- [x] `GET /api/hosts/{id}/filesystems` (latest + history) and `GET /api/hosts/{id}/network` (per-interface history)
+- [x] `GET /api/hosts/{id}/processes` — latest top processes
+- [x] `GET /api/dashboard/summary` — fleet overview (counts, busiest hosts, fullest disks; alert counts come with Phase 8)
+- [x] Owner-scoped authorization (admins see everything) + tests
 
 ## Phase 8 — Alerting engine
 
