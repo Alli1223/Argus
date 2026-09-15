@@ -2,10 +2,6 @@ import { PageHeader } from "../components/PageHeader";
 
 // Sections that are built out in the following steps of the TODO list.
 
-export function RulesPage() {
-  return <PageHeader title="Alert rules" description="When Argus should raise an alert." />;
-}
-
 export function UsersPage() {
   return <PageHeader title="Users" description="People who can sign in to this server." />;
 }
