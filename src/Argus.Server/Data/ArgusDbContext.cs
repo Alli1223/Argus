@@ -1,3 +1,4 @@
+using Argus.Server.Features.Alerts;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Hosts;
@@ -17,6 +18,10 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options)
     public DbSet<MonitoredHost> Hosts => Set<MonitoredHost>();
 
     public DbSet<EnrollmentToken> EnrollmentTokens => Set<EnrollmentToken>();
+
+    public DbSet<AlertRule> AlertRules => Set<AlertRule>();
+
+    public DbSet<Alert> Alerts => Set<Alert>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

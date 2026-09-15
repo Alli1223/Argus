@@ -53,7 +53,7 @@ public static class AuthEndpoints
                 detail: "An administrator account already exists. Sign in instead.");
         }
 
-        var (user, result) = await UserAccounts.CreateAsync(users, request, Roles.Admin, time);
+        var (user, result) = await UserAccounts.CreateAsync(db, users, request,Roles.Admin, time);
         if (user is null)
         {
             return UserAccounts.IdentityValidationProblem(result);
@@ -91,7 +91,7 @@ public static class AuthEndpoints
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        var (user, result) = await UserAccounts.CreateAsync(users, request, Roles.User, time);
+        var (user, result) = await UserAccounts.CreateAsync(db, users, request,Roles.User, time);
         if (user is null)
         {
             return UserAccounts.IdentityValidationProblem(result);

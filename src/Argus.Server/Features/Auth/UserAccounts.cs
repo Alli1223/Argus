@@ -1,3 +1,5 @@
+using Argus.Server.Data;
+using Argus.Server.Features.Alerts;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 
@@ -6,9 +8,12 @@ namespace Argus.Server.Features.Auth;
 /// <summary>Account helpers shared by setup, self-registration and user administration.</summary>
 internal static class UserAccounts
 {
-    /// <summary>Creates a user with a role. Callers wrap this in a transaction so both steps succeed or neither does.</summary>
+    /// <summary>
+    /// Creates a user with a role and the default alert rules. Callers wrap this in a transaction so
+    /// every step succeeds or none does.
+    /// </summary>
     public static async Task<(ArgusUser? User, IdentityResult Result)> CreateAsync(
-        UserManager<ArgusUser> users, NewAccountRequest request, string role, TimeProvider time)
+        ArgusDbContext db, UserManager<ArgusUser> users, NewAccountRequest request, string role, TimeProvider time)
     {
         var email = request.Email.Trim();
         var user = new ArgusUser
@@ -25,7 +30,14 @@ internal static class UserAccounts
             result = await users.AddToRoleAsync(user, role);
         }
 
-        return (result.Succeeded ? user : null, result);
+        if (!result.Succeeded)
+        {
+            return (null, result);
+        }
+
+        db.AlertRules.AddRange(DefaultAlertRules.For(user.Id, time.GetUtcNow()));
+        await db.SaveChangesAsync();
+        return (user, result);
     }
 
     public static async Task<CurrentUserResponse> ToResponseAsync(ArgusUser user, UserManager<ArgusUser> users)

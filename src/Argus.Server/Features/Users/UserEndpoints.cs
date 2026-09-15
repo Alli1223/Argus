@@ -53,7 +53,7 @@ public static class UserEndpoints
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var account = new NewAccountRequest { Email = request.Email, DisplayName = request.DisplayName, Password = request.Password };
-        var (user, result) = await UserAccounts.CreateAsync(users, account, request.Role, time);
+        var (user, result) = await UserAccounts.CreateAsync(db, users, account, request.Role, time);
         if (user is null)
         {
             return UserAccounts.IdentityValidationProblem(result);
