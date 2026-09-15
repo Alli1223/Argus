@@ -13,7 +13,8 @@ export type AlertMetric =
   | "NetworkTransmit"
   | "DiskUsage"
   | "InodeUsage"
-  | "HostOffline";
+  | "HostOffline"
+  | "ServiceFailed";
 export type AlertOperator = "Above" | "Below";
 export type AlertSeverity = "Info" | "Warning" | "Critical";
 export type AlertStatus = "Firing" | "Resolved";
