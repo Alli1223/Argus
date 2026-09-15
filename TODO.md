@@ -148,7 +148,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Host settings: rename, tags, notes, delete
 - [x] "Add system" flow: create enrollment token, show Linux / Windows install commands
 - [x] Enrollment tokens page
-- [ ] Alerts page: active & history, filters, acknowledge
+- [x] Alerts page: active & history, filters, acknowledge
 - [ ] Alert rules page: list, create / edit, enable / disable
 - [ ] Live updates via SignalR
 - [ ] Account page (change password) and admin users page

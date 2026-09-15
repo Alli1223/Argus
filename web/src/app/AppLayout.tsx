@@ -124,12 +124,12 @@ function AlertChips() {
   return (
     <Group gap={6} wrap="nowrap">
       {critical > 0 && (
-        <Badge color="crimson" variant="filled" component={Link} to="/alerts">
+        <Badge color="crimson" variant="filled" component={Link} to="/alerts?severity=Critical">
           {critical} critical
         </Badge>
       )}
       {warning > 0 && (
-        <Badge color="bronze" component={Link} to="/alerts">
+        <Badge color="bronze" component={Link} to="/alerts?severity=Warning">
           {warning} warning
         </Badge>
       )}
