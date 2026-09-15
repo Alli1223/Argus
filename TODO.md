@@ -145,7 +145,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Time-series chart component (range picker, tooltips, units)
 - [x] Host detail: overview (system info, current values) + metric charts
 - [x] Host detail: filesystems, network interfaces, top processes
-- [ ] Host settings: rename, tags, notes, delete
+- [x] Host settings: rename, tags, notes, delete
 - [ ] "Add system" flow: create enrollment token, show Linux / Windows install commands
 - [ ] Enrollment tokens page
 - [ ] Alerts page: active & history, filters, acknowledge
