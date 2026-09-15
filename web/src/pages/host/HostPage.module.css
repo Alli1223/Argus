@@ -1,0 +1,25 @@
+.column {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+/* Label and reading pairs, labels in a narrow column of their own. */
+.readings {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 16px;
+  align-items: center;
+  margin: 0;
+}
+
+.readings dt {
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+}
+
+.readings dd {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--mantine-font-size-sm);
+  overflow-wrap: anywhere;
+}

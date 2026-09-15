@@ -2,10 +2,6 @@ import { PageHeader } from "../components/PageHeader";
 
 // Sections that are built out in the following steps of the TODO list.
 
-export function HostPage() {
-  return <PageHeader title="Host" />;
-}
-
 export function AlertsPage() {
   return <PageHeader title="Alerts" description="What needs attention now, and what happened before." />;
 }

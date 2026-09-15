@@ -1,0 +1,79 @@
+.plot {
+  position: relative;
+  margin-top: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+  transition: opacity 150ms ease;
+}
+
+.plot:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 4px;
+}
+
+/* A different range is loading: keep the current render, quietly. */
+.refreshing {
+  opacity: 0.55;
+}
+
+/* uPlot's crosshair and drag selection, in the chart chrome. */
+.plot :global(.u-cursor-x) {
+  border-right: 1px solid var(--chart-cursor);
+}
+
+.plot :global(.u-select) {
+  background: color-mix(in srgb, var(--mantine-primary-color-filled) 14%, transparent);
+}
+
+.empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 2;
+  min-width: 132px;
+  padding: 8px 10px;
+  border: 1px solid var(--argus-border);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--argus-surface);
+  box-shadow: 0 6px 18px rgb(15 19 43 / 16%);
+  font-size: var(--mantine-font-size-xs);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.time {
+  margin-bottom: 4px;
+  color: var(--mantine-color-dimmed);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.6;
+}
+
+/* In the readout the number leads and the series name follows. */
+.value {
+  font-weight: 700;
+  font-stretch: 88%;
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  color: var(--mantine-color-dimmed);
+}
+
+/* Line keys, not boxes: the series is a line, so its key is a short stroke. */
+.key {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
