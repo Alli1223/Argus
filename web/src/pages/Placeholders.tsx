@@ -2,10 +2,6 @@ import { PageHeader } from "../components/PageHeader";
 
 // Sections that are built out in the following steps of the TODO list.
 
-export function AlertsPage() {
-  return <PageHeader title="Alerts" description="What needs attention now, and what happened before." />;
-}
-
 export function RulesPage() {
   return <PageHeader title="Alert rules" description="When Argus should raise an alert." />;
 }

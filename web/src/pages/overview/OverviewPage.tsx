@@ -1,12 +1,13 @@
 import { Anchor, Button, Group, Paper, SimpleGrid, Skeleton, Table, Text, Title } from "@mantine/core";
-import { IconAlertTriangle, IconCircleCheck, IconPlus, IconUrgent } from "@tabler/icons-react";
+import { IconCircleCheck, IconPlus } from "@tabler/icons-react";
 import { Link } from "react-router";
 import { useAlerts } from "../../api/alerts";
 import { useDashboardSummary, useHosts } from "../../api/hosts";
-import type { Alert, AlertSeverity } from "../../api/types";
+import type { Alert } from "../../api/types";
 import { PageHeader } from "../../components/PageHeader";
 import { ErrorScreen, MessageScreen } from "../../components/Screens";
 import { Section } from "../../components/Section";
+import { SeverityLabel } from "../../components/SeverityLabel";
 import { UsageMeter } from "../../components/UsageMeter";
 import { Watch, WatchLegend } from "../../components/watch/Watch";
 import { formatAgo } from "../../lib/format";
@@ -102,32 +103,6 @@ export function OverviewPage() {
 function fleetSentence(online: number, total: number) {
   if (total === online) return total === 1 ? "Your system is online." : `All ${total} systems are online.`;
   return `${online} of ${total} systems online.`;
-}
-
-const severityIcon: Record<AlertSeverity, typeof IconUrgent> = {
-  Critical: IconUrgent,
-  Warning: IconAlertTriangle,
-  Info: IconCircleCheck,
-};
-
-const severityColorName: Record<AlertSeverity, string> = {
-  Critical: "crimson",
-  Warning: "bronze",
-  Info: "iris",
-};
-
-/** Severity as an icon and a word in the severity's colour, never colour alone. */
-export function SeverityLabel({ severity }: { severity: AlertSeverity }) {
-  const Icon = severityIcon[severity];
-  const color = `var(--mantine-color-${severityColorName[severity]}-text)`;
-  return (
-    <Group gap={4} wrap="nowrap" c={color}>
-      <Icon size={15} aria-hidden />
-      <Text fz="sm" fw={600} c={color}>
-        {severity}
-      </Text>
-    </Group>
-  );
 }
 
 function FiringAlerts({ now }: { now: number }) {
