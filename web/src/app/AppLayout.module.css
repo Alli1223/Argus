@@ -1,0 +1,29 @@
+/* A thin bar under the header while the next page's code loads; the current page stays in place. */
+.loading {
+  position: fixed;
+  top: var(--app-shell-header-height, 52px);
+  right: 0;
+  left: 0;
+  z-index: 200;
+  height: 2px;
+  overflow: hidden;
+}
+
+.loading::after {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: var(--mantine-primary-color-filled);
+  content: "";
+  animation: argus-loading 1.1s ease-in-out infinite;
+}
+
+@keyframes argus-loading {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
