@@ -72,8 +72,10 @@ public sealed class AlertEvaluator(
             try
             {
                 var inScope = hostsByOwner[rule.OwnerId].Where(host => InScope(rule, host)).ToList();
+                var observed = new HashSet<(Guid HostId, string ResourceKey)>();
                 foreach (var (host, resourceKey, verdict) in await ObserveAsync(rule, inScope, now, tolerance, cancellationToken))
                 {
+                    observed.Add((host.Id, resourceKey));
                     openByKey.TryGetValue((rule.Id, host.Id, resourceKey), out var alert);
                     if (alert is null && verdict.Fire)
                     {
@@ -96,6 +98,18 @@ public sealed class AlertEvaluator(
                 foreach (var alert in open.Where(alert => alert.RuleId == rule.Id && !scopeIds.Contains(alert.HostId)))
                 {
                     Resolve(alert, now, events);
+                }
+
+                // A recovered service simply stops being reported as failed, so its alert ends here. (For
+                // measured metrics a missing observation only means no data, which keeps the state.)
+                if (rule.Metric == AlertMetric.ServiceFailed)
+                {
+                    foreach (var alert in open.Where(alert => alert.RuleId == rule.Id
+                                 && scopeIds.Contains(alert.HostId)
+                                 && !observed.Contains((alert.HostId, alert.ResourceKey))))
+                    {
+                        Resolve(alert, now, events);
+                    }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -171,6 +185,11 @@ public sealed class AlertEvaluator(
             return hosts.Select(host => new Observation(host, "", AlertDecision.EvaluateOffline(host.LastSeenAt, duration, now))).ToList();
         }
 
+        if (rule.Metric == AlertMetric.ServiceFailed)
+        {
+            return await ObserveServicesAsync(rule, hosts, duration, now, cancellationToken);
+        }
+
         var byId = hosts.ToDictionary(host => host.Id);
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         var rows = await connection.QueryAsync<StatsRow>(new CommandDefinition(
@@ -191,6 +210,32 @@ public sealed class AlertEvaluator(
                 byId[row.HostId],
                 row.ResourceKey,
                 AlertDecision.Evaluate(rule.Operator, rule.Threshold, duration, row.ToStats(), now, tolerance)))
+            .ToList();
+    }
+
+    /// <summary>Services failing in each host's newest check, each with the time it was first seen failing.</summary>
+    private async Task<List<Observation>> ObserveServicesAsync(
+        AlertRule rule, List<HostInfo> hosts, TimeSpan duration, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var byId = hosts.ToDictionary(host => host.Id);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<ServiceFailureRow>(new CommandDefinition("""
+            SELECT f.host_id, f.service, f.since
+            FROM host_service_failures f
+            JOIN host_service_checks c ON c.host_id = f.host_id AND c.checked_at = f.last_seen
+            WHERE f.host_id = ANY(@host_ids) AND (@resource::text IS NULL OR f.service = @resource)
+            """,
+            new
+            {
+                host_ids = byId.Keys.ToArray(),
+                resource = string.IsNullOrWhiteSpace(rule.ResourceFilter) ? null : rule.ResourceFilter,
+            },
+            cancellationToken: cancellationToken));
+
+        return rows
+            .Where(row => byId.ContainsKey(row.HostId))
+            .Select(row => new Observation(
+                byId[row.HostId], row.Service, AlertDecision.EvaluateServiceFailure(row.SinceUtc, duration, now)))
             .ToList();
     }
 
@@ -280,5 +325,14 @@ public sealed class AlertEvaluator(
 
         private static DateTimeOffset? Utc(DateTime? value) =>
             value is { } utc ? new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc)) : null;
+    }
+
+    private sealed class ServiceFailureRow
+    {
+        public Guid HostId { get; set; }
+        public string Service { get; set; } = "";
+        public DateTime Since { get; set; }
+
+        public DateTimeOffset SinceUtc => new(DateTime.SpecifyKind(Since, DateTimeKind.Utc));
     }
 }

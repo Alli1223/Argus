@@ -132,7 +132,7 @@ public static class AlertRuleEndpoints
         {
             errors["threshold"] = ["Percentages must be between 0 and 100."];
         }
-        else if (metric != AlertMetric.HostOffline && request.Threshold < 0)
+        else if (!metric.IsState() && request.Threshold < 0)
         {
             errors["threshold"] = ["The threshold cannot be negative."];
         }
@@ -142,9 +142,9 @@ public static class AlertRuleEndpoints
             errors["durationSeconds"] = ["Allow at least 60 seconds, so brief network hiccups do not count as outages."];
         }
 
-        if (!metric.IsPerFilesystem() && !string.IsNullOrWhiteSpace(request.ResourceFilter))
+        if (!metric.IsPerResource() && !string.IsNullOrWhiteSpace(request.ResourceFilter))
         {
-            errors["resourceFilter"] = ["Only disk and inode rules can target a mount point."];
+            errors["resourceFilter"] = ["Only disk, inode and service rules can be narrowed to one mount point or service."];
         }
 
         string? tag = null;
@@ -178,9 +178,9 @@ public static class AlertRuleEndpoints
         rule.Name = request.Name.Trim();
         rule.Metric = metric;
 
-        // "Offline" has no threshold of its own: it fires once the host is silent for the duration.
-        rule.Operator = metric == AlertMetric.HostOffline ? AlertOperator.Above : request.Operator;
-        rule.Threshold = metric == AlertMetric.HostOffline ? 0 : request.Threshold;
+        // States (offline, a failed service) have no threshold of their own: they fire once they last the duration.
+        rule.Operator = metric.IsState() ? AlertOperator.Above : request.Operator;
+        rule.Threshold = metric.IsState() ? 0 : request.Threshold;
         rule.DurationSeconds = request.DurationSeconds;
         rule.Severity = request.Severity;
         rule.HostId = request.HostId;

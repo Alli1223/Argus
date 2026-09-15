@@ -11,17 +11,26 @@ public static class DefaultAlertRules
         Rule(ownerId, now, "High memory usage", AlertMetric.MemoryUsage, 90, AlertSeverity.Warning),
         Rule(ownerId, now, "Disk almost full", AlertMetric.DiskUsage, 90, AlertSeverity.Critical),
         Rule(ownerId, now, "Host offline", AlertMetric.HostOffline, 0, AlertSeverity.Critical),
+
+        // A failed service is already a settled state rather than a noisy reading, so it alerts at once.
+        Rule(ownerId, now, "Service failed", AlertMetric.ServiceFailed, 0, AlertSeverity.Warning, TimeSpan.Zero),
     ];
 
     private static AlertRule Rule(
-        Guid ownerId, DateTimeOffset now, string name, AlertMetric metric, double threshold, AlertSeverity severity) => new()
+        Guid ownerId,
+        DateTimeOffset now,
+        string name,
+        AlertMetric metric,
+        double threshold,
+        AlertSeverity severity,
+        TimeSpan? duration = null) => new()
     {
         OwnerId = ownerId,
         Name = name,
         Metric = metric,
         Operator = AlertOperator.Above,
         Threshold = threshold,
-        DurationSeconds = (int)Sustained.TotalSeconds,
+        DurationSeconds = (int)(duration ?? Sustained).TotalSeconds,
         Severity = severity,
         Enabled = true,
         CreatedAt = now,

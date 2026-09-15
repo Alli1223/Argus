@@ -32,6 +32,9 @@ public enum AlertMetric
 
     /// <summary>The host has not reported for the rule's duration.</summary>
     HostOffline,
+
+    /// <summary>A service that should be running has failed; evaluated per service.</summary>
+    ServiceFailed,
 }
 
 public enum AlertOperator
@@ -58,6 +61,12 @@ public static class AlertMetrics
     /// <summary>Metrics evaluated once per filesystem rather than once per host.</summary>
     public static bool IsPerFilesystem(this AlertMetric metric) => metric is AlertMetric.DiskUsage or AlertMetric.InodeUsage;
 
+    /// <summary>Metrics evaluated per resource (a mount point or a service), which a rule may narrow to one.</summary>
+    public static bool IsPerResource(this AlertMetric metric) => metric.IsPerFilesystem() || metric == AlertMetric.ServiceFailed;
+
+    /// <summary>States rather than measurements: no threshold or direction, only how long they last.</summary>
+    public static bool IsState(this AlertMetric metric) => metric is AlertMetric.HostOffline or AlertMetric.ServiceFailed;
+
     public static bool IsPercentage(this AlertMetric metric) =>
         metric is AlertMetric.CpuUsage or AlertMetric.MemoryUsage or AlertMetric.SwapUsage
             or AlertMetric.DiskIoUtilization or AlertMetric.DiskUsage or AlertMetric.InodeUsage;
@@ -73,6 +82,8 @@ public static class AlertMetrics
         AlertMetric.NetworkTransmit => "Network transmit",
         AlertMetric.DiskUsage => "Disk usage",
         AlertMetric.InodeUsage => "Inode usage",
-        _ => "Host offline",
+        AlertMetric.HostOffline => "Host offline",
+        AlertMetric.ServiceFailed => "Service failed",
+        _ => metric.ToString(),
     };
 }
