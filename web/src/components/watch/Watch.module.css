@@ -1,0 +1,50 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: var(--mantine-spacing-sm);
+}
+
+.eye {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 6px 8px;
+  border-radius: var(--mantine-radius-md);
+  text-align: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.eye:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.eye:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
+.glyph {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* The eyes open once, when the page first shows data; later readings glide to their new value. */
+.arc {
+  transition: stroke-dashoffset 400ms ease;
+  animation: argus-open 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes argus-open {
+  from {
+    stroke-dashoffset: var(--argus-arc-length);
+  }
+}
+
+.legend {
+  margin-top: var(--mantine-spacing-md);
+  padding-top: var(--mantine-spacing-sm);
+  border-top: 1px solid var(--argus-border);
+}

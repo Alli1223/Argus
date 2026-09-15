@@ -2,16 +2,9 @@ import { createBrowserRouter } from "react-router";
 import { LoginPage } from "../pages/auth/LoginPage";
 import { RegisterPage } from "../pages/auth/RegisterPage";
 import { SetupPage } from "../pages/auth/SetupPage";
-import {
-  AccountPage,
-  AlertsPage,
-  HostPage,
-  HostsPage,
-  OverviewPage,
-  RulesPage,
-  SystemsPage,
-  UsersPage,
-} from "../pages/Placeholders";
+import { HostsPage } from "../pages/hosts/HostsPage";
+import { OverviewPage } from "../pages/overview/OverviewPage";
+import { AccountPage, AlertsPage, HostPage, RulesPage, SystemsPage, UsersPage } from "../pages/Placeholders";
 import { AppLayout } from "./AppLayout";
 import { AuthLayout } from "./AuthLayout";
 import { RequireAdmin, RequireAuth } from "./RequireAuth";

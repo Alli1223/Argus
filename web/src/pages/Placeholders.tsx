@@ -2,14 +2,6 @@ import { PageHeader } from "../components/PageHeader";
 
 // Sections that are built out in the following steps of the TODO list.
 
-export function OverviewPage() {
-  return <PageHeader title="Overview" description="Every system you watch, worst first." />;
-}
-
-export function HostsPage() {
-  return <PageHeader title="Hosts" description="All machines reporting to this server." />;
-}
-
 export function HostPage() {
   return <PageHeader title="Host" />;
 }

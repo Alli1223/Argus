@@ -27,6 +27,18 @@ export function formatPercent(value: number | null | undefined, digits = 0): str
   return isNumber(value) ? `${value.toFixed(digits)}%` : MISSING;
 }
 
+/** How long ago something happened: "12s ago", "5m ago", "3h ago", "2d ago". */
+export function formatAgo(iso: string | null | undefined, now: number): string {
+  if (!iso) return MISSING;
+  const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 /** Coarse durations for uptimes and ages: "3d 4h", "5h 12m", "42m", "30s". */
 export function formatDuration(seconds: number | null | undefined): string {
   if (!isNumber(seconds)) return MISSING;
