@@ -170,12 +170,13 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 12 — Docker & deployment
 
-- [ ] Multi-stage `Dockerfile` (web build → server publish → agent builds → non-root runtime image)
-- [ ] Production `deploy/docker-compose.yml` + `.env.example` (server, TimescaleDB, volumes, health checks)
-- [ ] Optional Caddy reverse proxy with automatic HTTPS (compose profile)
+- [x] Multi-stage `Dockerfile` (web build → server publish → agent builds → non-root runtime image)
+- [x] Production `deploy/docker-compose.yml` + `.env.example` (server, TimescaleDB, volumes, health checks)
+- [x] Optional Caddy reverse proxy with automatic HTTPS (compose profile)
+- [ ] Try the Caddy profile with a real domain (the compose configuration is validated, HTTPS itself untested)
 - [x] Forwarded headers and public URL configuration
 - [x] `docs/deployment.md` (install, upgrade, backup / restore)
-- [ ] End-to-end smoke test: compose up → setup → enroll agent → metrics visible
+- [x] End-to-end smoke test: compose up → setup → enroll agent → metrics visible
 
 ## Phase 13 — Errors & anomalies
 
@@ -196,7 +197,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 ## Phase 15 — CI & polish
 
 - [x] GitHub Actions: build & test .NET, lint / test / build web, agent packages
-- [ ] CI builds the Docker image (once Phase 12 adds it)
+- [x] CI builds the Docker image (once Phase 12 adds it)
 - [ ] Frontend unit tests (Vitest)
 - [ ] Configuration reference and API docs
 - [ ] Final README pass
