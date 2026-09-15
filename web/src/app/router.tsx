@@ -1,20 +1,16 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Outlet } from "react-router";
 import { LoginPage } from "../pages/auth/LoginPage";
 import { RegisterPage } from "../pages/auth/RegisterPage";
 import { SetupPage } from "../pages/auth/SetupPage";
-import { HostPage } from "../pages/host/HostPage";
 import { HostsPage } from "../pages/hosts/HostsPage";
 import { OverviewPage } from "../pages/overview/OverviewPage";
-import { AlertsPage } from "../pages/alerts/AlertsPage";
-import { AccountPage } from "../pages/account/AccountPage";
-import { UsersPage } from "../pages/users/UsersPage";
-import { RulesPage } from "../pages/rules/RulesPage";
-import { SystemsPage } from "../pages/systems/SystemsPage";
 import { AppLayout } from "./AppLayout";
 import { AuthLayout } from "./AuthLayout";
 import { RequireAdmin, RequireAuth } from "./RequireAuth";
 import { NotFoundPage, RouteError } from "./RouteError";
 
+// The overview and the hosts list are where people land, so they ship with the app. Every other
+// page, with what it brings (the charting library for the host page), loads when first opened.
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
@@ -34,22 +30,49 @@ export const router = createBrowserRouter([
     ),
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <OverviewPage /> },
-      { path: "hosts", element: <HostsPage /> },
-      { path: "hosts/:hostId", element: <HostPage /> },
-      { path: "alerts", element: <AlertsPage /> },
-      { path: "rules", element: <RulesPage /> },
-      { path: "systems", element: <SystemsPage /> },
       {
-        path: "users",
-        element: (
-          <RequireAdmin>
-            <UsersPage />
-          </RequireAdmin>
-        ),
+        // A page that fails shows its error inside the app shell, so the navigation stays usable.
+        errorElement: <RouteError />,
+        children: [
+          { index: true, element: <OverviewPage /> },
+          { path: "hosts", element: <HostsPage /> },
+          {
+            path: "hosts/:hostId",
+            lazy: async () => ({ Component: (await import("../pages/host/HostPage")).HostPage }),
+          },
+          {
+            path: "alerts",
+            lazy: async () => ({ Component: (await import("../pages/alerts/AlertsPage")).AlertsPage }),
+          },
+          {
+            path: "rules",
+            lazy: async () => ({ Component: (await import("../pages/rules/RulesPage")).RulesPage }),
+          },
+          {
+            path: "systems",
+            lazy: async () => ({ Component: (await import("../pages/systems/SystemsPage")).SystemsPage }),
+          },
+          {
+            path: "users",
+            element: (
+              <RequireAdmin>
+                <Outlet />
+              </RequireAdmin>
+            ),
+            children: [
+              {
+                index: true,
+                lazy: async () => ({ Component: (await import("../pages/users/UsersPage")).UsersPage }),
+              },
+            ],
+          },
+          {
+            path: "account",
+            lazy: async () => ({ Component: (await import("../pages/account/AccountPage")).AccountPage }),
+          },
+          { path: "*", element: <NotFoundPage /> },
+        ],
       },
-      { path: "account", element: <AccountPage /> },
-      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);
