@@ -1,0 +1,40 @@
+[Unit]
+Description=Argus monitoring agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/opt/argus-agent/argus-agent run
+User=argus-agent
+Group=argus-agent
+Restart=always
+RestartSec=10
+
+# The agent's identity lives here; systemd creates it owned by the service user.
+StateDirectory=argus-agent
+StateDirectoryMode=0700
+
+# Sandboxing. The agent only reads /proc, /sys and filesystem sizes, and writes its state directory.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
