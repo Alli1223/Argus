@@ -117,15 +117,16 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 8 — Alerting engine
 
-- [ ] `AlertRule` entity: metric, operator, threshold, duration, severity, scope (all hosts / host / tag), resource filter, enabled
-- [ ] `Alert` entity: firing → resolved lifecycle, observed value, acknowledgement; one open alert per rule/host/resource
+- [x] `AlertRule` entity: metric, operator, threshold, duration, severity, scope (all hosts / host / tag), resource filter, enabled
+- [x] `Alert` entity: firing → resolved lifecycle, observed value, acknowledgement; one open alert per rule/host/resource
 - [ ] Alert rule CRUD endpoints + validation
-- [ ] Default rules created for new users (CPU, memory, disk, host offline)
+- [x] Default rules created for new users (CPU, memory, disk, host offline)
 - [ ] Evaluator: sustained-threshold evaluation over a time window for host metrics
 - [ ] Per-filesystem disk rules and host-offline rules
 - [ ] Background evaluation service (interval, per-rule error isolation)
 - [ ] Alert endpoints: list / filter / paginate, acknowledge
 - [ ] Evaluator unit tests + firing / resolving integration test
+- [ ] Dashboard summary: active alert counts by severity
 
 ## Phase 9 — Real-time updates
 
@@ -135,7 +136,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 10 — Web UI (`web/`)
 
-- [ ] Vite + React + TypeScript scaffold, ESLint, Prettier, dev proxy to the API
+- [x] Vite + React + TypeScript scaffold, ESLint, Prettier, dev proxy to the API
 - [ ] Theme and app shell (sidebar navigation, header, light / dark)
 - [ ] API client (fetch wrapper, CSRF header, error handling) + TanStack Query
 - [ ] Auth screens: login, first-run setup, registration; route guards and session handling
