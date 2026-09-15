@@ -184,7 +184,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Server: store service status and expose it via the API
 - [x] "Service failed" alert rule type
 - [ ] Anomaly detection rule type (deviation from a rolling baseline)
-- [ ] UI: services panel and the new rule types
+- [x] UI: services panel and the new rule types
 
 ## Phase 14 — Notifications, email & reports
 

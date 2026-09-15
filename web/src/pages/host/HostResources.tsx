@@ -1,9 +1,11 @@
-import { Box, SimpleGrid, Skeleton, Table, Text, Title, useComputedColorScheme } from "@mantine/core";
+import { Box, Group, SimpleGrid, Skeleton, Table, Text, Title, useComputedColorScheme } from "@mantine/core";
+import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 import { useMemo } from "react";
 import {
   useFilesystemHistory,
   useHostFilesystems,
   useHostProcesses,
+  useHostServices,
   useNetworkHistory,
 } from "../../api/metrics";
 import { SERIES_COLORS } from "../../components/charts/chartPalette";
@@ -11,9 +13,10 @@ import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
 import { Section } from "../../components/Section";
 import { Sparkline } from "../../components/Sparkline";
 import { UsageMeter } from "../../components/UsageMeter";
-import { formatAgo, formatBytes, formatPercent } from "../../lib/format";
+import { formatAgo, formatBytes, formatDuration, formatPercent } from "../../lib/format";
 import type { TimeRange } from "../../lib/timeRange";
 import { describeTrend, interfaceCharts } from "./hostResources";
+import { describeServices } from "./hostServices";
 
 /** The processes using the most CPU when the host last reported. */
 export function ProcessesSection({ hostId, now }: { hostId: string; now: number }) {
@@ -198,5 +201,81 @@ export function InterfacesSection({
         ))}
       </SimpleGrid>
     </Box>
+  );
+}
+
+const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+/** Services that should be running but are not, from the host's newest service check. */
+export function ServicesSection({ hostId, now }: { hostId: string; now: number }) {
+  const services = useHostServices(hostId);
+  const status = services.data;
+  const failures = status?.failures ?? [];
+
+  return (
+    <Section
+      title="Services"
+      mt="xl"
+      action={
+        status && (
+          <Text fz="xs" c="dimmed">
+            {describeServices(status, now)}
+          </Text>
+        )
+      }
+    >
+      {services.isPending ? (
+        <Skeleton h={56} />
+      ) : failures.length === 0 ? (
+        <Group gap="xs" p="md" wrap="nowrap">
+          {status?.checkedAt ? (
+            <>
+              <IconCircleCheck size={18} color="var(--mantine-color-healthy-filled)" aria-hidden />
+              <Text fz="sm">Every service the agent watches is running.</Text>
+            </>
+          ) : (
+            <Text fz="sm" c="dimmed">
+              Agents check services about once a minute on machines run by systemd or Windows. No check has
+              arrived from this one yet.
+            </Text>
+          )}
+        </Group>
+      ) : (
+        <Table miw={560}>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Service</Table.Th>
+              <Table.Th>State</Table.Th>
+              <Table.Th>Failing for</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {failures.map((failure) => (
+              <Table.Tr key={failure.service}>
+                <Table.Td>
+                  <Text fz="sm" fw={600}>
+                    {failure.service}
+                  </Text>
+                  {failure.description && (
+                    <Text fz="xs" c="dimmed">
+                      {failure.description}
+                    </Text>
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  <Group gap={6} wrap="nowrap">
+                    <IconAlertTriangle size={15} color="var(--mantine-color-crimson-text)" aria-hidden />
+                    {failure.state}
+                  </Group>
+                </Table.Td>
+                <Table.Td title={`Since ${dateTime.format(new Date(failure.since))}`}>
+                  {formatDuration((now - Date.parse(failure.since)) / 1000)}
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      )}
+    </Section>
   );
 }

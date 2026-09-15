@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { refreshInterval, resolveRange, type TimeRange } from "../lib/timeRange";
 import { api, query } from "./client";
-import type { FilesystemSnapshot, MetricSeries, ProcessSnapshot } from "./types";
+import type { FilesystemSnapshot, MetricSeries, ProcessSnapshot, ServiceStatus } from "./types";
 
 type SeriesKey = readonly [scope: "hosts", kind: string, id: string, range: TimeRange];
 
@@ -11,6 +11,7 @@ export const metricKeys = {
   network: (id: string, range: TimeRange): SeriesKey => ["hosts", "network", id, range],
   filesystems: (id: string) => ["hosts", "filesystems", id] as const,
   processes: (id: string) => ["hosts", "processes", id] as const,
+  services: (id: string) => ["hosts", "services", id] as const,
 };
 
 const iso = (seconds: number) => new Date(seconds * 1000).toISOString();
@@ -52,6 +53,15 @@ export function useHostFilesystems(id: string) {
   return useQuery({
     queryKey: metricKeys.filesystems(id),
     queryFn: () => api.get<FilesystemSnapshot[]>(`/api/hosts/${id}/filesystems`),
+    refetchInterval: 60_000,
+  });
+}
+
+/** Services failing in the host's newest service check. Agents check about once a minute. */
+export function useHostServices(id: string) {
+  return useQuery({
+    queryKey: metricKeys.services(id),
+    queryFn: () => api.get<ServiceStatus>(`/api/hosts/${id}/services`),
     refetchInterval: 60_000,
   });
 }

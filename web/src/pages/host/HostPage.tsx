@@ -29,7 +29,7 @@ import { useNow } from "../../lib/useNow";
 import classes from "./HostPage.module.css";
 import { hostCharts } from "./hostCharts";
 import { HostHeader } from "./HostHeader";
-import { FilesystemsSection, InterfacesSection, ProcessesSection } from "./HostResources";
+import { FilesystemsSection, InterfacesSection, ProcessesSection, ServicesSection } from "./HostResources";
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
@@ -82,6 +82,7 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
     <>
       <HostHeader host={host} />
       <NowPanel host={host} now={now} />
+      <ServicesSection hostId={host.id} now={now} />
       <ProcessesSection hostId={host.id} now={now} />
 
       <Title order={2} fz={17} mt="xl" mb="sm">
