@@ -1,6 +1,7 @@
 import { Group, Text } from "@mantine/core";
 import { IconAlertTriangle, IconInfoCircle, IconUrgent } from "@tabler/icons-react";
 import type { AlertSeverity } from "../api/types";
+import { SEVERITY_COLORS } from "../lib/alertMetrics";
 
 const icons: Record<AlertSeverity, typeof IconUrgent> = {
   Critical: IconUrgent,
@@ -8,16 +9,10 @@ const icons: Record<AlertSeverity, typeof IconUrgent> = {
   Info: IconInfoCircle,
 };
 
-const colors: Record<AlertSeverity, string> = {
-  Critical: "crimson",
-  Warning: "bronze",
-  Info: "iris",
-};
-
 /** Severity as an icon and a word in the severity's colour, never colour alone. */
 export function SeverityLabel({ severity }: { severity: AlertSeverity }) {
   const Icon = icons[severity];
-  const color = `var(--mantine-color-${colors[severity]}-text)`;
+  const color = `var(--mantine-color-${SEVERITY_COLORS[severity]}-text)`;
   return (
     <Group gap={4} wrap="nowrap" c={color}>
       <Icon size={15} aria-hidden />
