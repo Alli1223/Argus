@@ -1,6 +1,4 @@
 import {
-  Anchor,
-  Badge,
   Box,
   Button,
   Group,
@@ -13,7 +11,7 @@ import {
   VisuallyHidden,
   useComputedColorScheme,
 } from "@mantine/core";
-import { IconArrowDown, IconArrowLeft, IconArrowUp } from "@tabler/icons-react";
+import { IconArrowDown, IconArrowUp } from "@tabler/icons-react";
 import { useMemo, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { ApiError } from "../../api/client";
@@ -22,7 +20,6 @@ import { useHostMetrics } from "../../api/metrics";
 import type { HostDetail, MetricSeries } from "../../api/types";
 import { RangePicker } from "../../components/charts/RangePicker";
 import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
-import { HostStatusBadge, PlatformIcon } from "../../components/HostBits";
 import { ErrorScreen, MessageScreen } from "../../components/Screens";
 import { UsageMeter } from "../../components/UsageMeter";
 import { EyeGlyph } from "../../components/watch/Watch";
@@ -31,6 +28,7 @@ import { describeBucket, rangeFromParams, rangeToParams, type TimeRange } from "
 import { useNow } from "../../lib/useNow";
 import classes from "./HostPage.module.css";
 import { hostCharts } from "./hostCharts";
+import { HostHeader } from "./HostHeader";
 import { FilesystemsSection, InterfacesSection, ProcessesSection } from "./HostResources";
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -110,45 +108,6 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
       <FilesystemsSection hostId={host.id} range={range} />
       <InterfacesSection hostId={host.id} range={range} onZoom={zoom} />
     </>
-  );
-}
-
-function HostHeader({ host }: { host: HostDetail }) {
-  const system = [
-    host.hostname !== host.displayName ? host.hostname : null,
-    host.osName ?? host.platform,
-    host.kernelVersion ? `kernel ${host.kernelVersion}` : null,
-    host.architecture,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  return (
-    <Stack gap={6} mb="lg">
-      <Anchor component={Link} to="/hosts" fz="sm" w="fit-content">
-        <Group gap={4} wrap="nowrap">
-          <IconArrowLeft size={14} aria-hidden />
-          All hosts
-        </Group>
-      </Anchor>
-      <Group gap="sm" wrap="wrap" align="center">
-        <PlatformIcon platform={host.platform} size={24} />
-        <Title order={1} fz={26}>
-          {host.displayName}
-        </Title>
-        <HostStatusBadge status={host.status} />
-      </Group>
-      <Group gap={6} wrap="wrap">
-        <Text c="dimmed" fz="sm">
-          {system}
-        </Text>
-        {host.tags.map((tag) => (
-          <Badge key={tag} size="sm" variant="outline" color="gray">
-            {tag}
-          </Badge>
-        ))}
-      </Group>
-    </Stack>
   );
 }
 
