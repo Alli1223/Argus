@@ -1,5 +1,12 @@
-import type { AlertMetric } from "../api/types";
+import type { AlertMetric, AlertSeverity } from "../api/types";
 import { formatPercent, formatRate } from "./format";
+
+/** The status colour of each severity. It always comes with an icon or the severity's name. */
+export const SEVERITY_COLORS: Record<AlertSeverity, string> = {
+  Critical: "crimson",
+  Warning: "bronze",
+  Info: "iris",
+};
 
 /** What each rule metric measures, in words. */
 export const METRIC_LABELS: Record<AlertMetric, string> = {
