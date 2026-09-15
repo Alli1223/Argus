@@ -5,12 +5,12 @@ function isNumber(value: number | null | undefined): value is number {
   return value != null && Number.isFinite(value);
 }
 
-/** Byte counts with binary multiples: 1536 → "1.5 KB". */
+/** Byte counts with binary multiples: 1536 → "1.5 KB". At most three integer digits: 1000 KB → "1.0 MB". */
 export function formatBytes(bytes: number | null | undefined, digits = 1): string {
   if (!isNumber(bytes)) return MISSING;
   let value = Math.abs(bytes);
   let unit = 0;
-  while (value >= 1024 && unit < BYTE_UNITS.length - 1) {
+  while (value >= 1000 && unit < BYTE_UNITS.length - 1) {
     value /= 1024;
     unit++;
   }

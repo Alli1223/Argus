@@ -24,6 +24,12 @@ describe("formatBytes", () => {
     expect(formatBytes(5 * 1024 ** 3)).toBe("5.0 GB");
   });
 
+  it("never shows four integer digits", () => {
+    expect(formatBytes(999)).toBe("999 B");
+    expect(formatBytes(1000)).toBe("1.0 KB");
+    expect(formatBytes(1023.3 * 1024)).toBe("1.0 MB");
+  });
+
   it("shows a dash for missing values", () => {
     expect(formatBytes(null)).toBe("–");
     expect(formatBytes(undefined)).toBe("–");
