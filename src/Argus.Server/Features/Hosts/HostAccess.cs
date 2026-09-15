@@ -19,7 +19,10 @@ internal static class HostAccess
     }
 
     public static HostStatus StatusAt(this MonitoredHost host, DateTimeOffset now, AgentOptions options) =>
-        host.LastSeenAt is { } lastSeen && now - lastSeen <= TimeSpan.FromSeconds(options.OfflineAfterSeconds)
+        StatusOf(host.LastSeenAt, now, options);
+
+    public static HostStatus StatusOf(DateTimeOffset? lastSeen, DateTimeOffset now, AgentOptions options) =>
+        lastSeen is { } seen && now - seen <= TimeSpan.FromSeconds(options.OfflineAfterSeconds)
             ? HostStatus.Online
             : HostStatus.Offline;
 

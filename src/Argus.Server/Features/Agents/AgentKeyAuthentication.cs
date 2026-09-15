@@ -19,6 +19,9 @@ public static class AgentKeyDefaults
 
     public static Guid GetHostId(this ClaimsPrincipal principal) =>
         Guid.Parse(principal.FindFirstValue(HostIdClaim) ?? throw new InvalidOperationException("Not an agent principal."));
+
+    public static Guid GetOwnerId(this ClaimsPrincipal principal) =>
+        Guid.Parse(principal.FindFirstValue(OwnerIdClaim) ?? throw new InvalidOperationException("Not an agent principal."));
 }
 
 public sealed record AgentIdentity(Guid HostId, Guid OwnerId);

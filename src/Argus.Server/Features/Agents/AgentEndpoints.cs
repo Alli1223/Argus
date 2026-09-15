@@ -149,6 +149,7 @@ public static class AgentEndpoints
         IOptions<AgentOptions> agentOptions,
         TimeProvider time,
         ILoggerFactory loggers,
+        Live.LiveUpdates live,
         CancellationToken cancellationToken)
     {
         if (MetricsBatchValidator.ValidateShape(batch) is { } problem)
@@ -173,6 +174,12 @@ public static class AgentEndpoints
         }
 
         var accepted = await ingestor.IngestAsync(hostId, samples, now, cancellationToken);
+        if (samples.Count > 0)
+        {
+            var newest = samples.MaxBy(sample => sample.Timestamp)!;
+            await live.HostMetricsAsync(principal.GetOwnerId(), new Live.LiveHostMetrics(hostId, LatestMetrics.FromSample(newest)));
+        }
+
         return TypedResults.Ok(new MetricsBatchResponse { Accepted = accepted, Settings = agentOptions.Value.ToAgentSettings() });
     }
 

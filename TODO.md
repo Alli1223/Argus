@@ -130,9 +130,9 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 9 — Real-time updates
 
-- [ ] SignalR hub (`/hubs/live`) with cookie auth and per-user groups
-- [ ] Broadcast latest metric snapshots on ingest
-- [ ] Broadcast alert fired / resolved and host online / offline events
+- [x] SignalR hub (`/hubs/live`) with cookie auth and per-user groups
+- [x] Broadcast latest metric snapshots on ingest
+- [x] Broadcast alert fired / resolved and host online / offline events
 
 ## Phase 10 — Web UI (`web/`)
 

@@ -9,6 +9,7 @@ using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Health;
 using Argus.Server.Features.Hosts;
 using Argus.Server.Features.Info;
+using Argus.Server.Features.Live;
 using Argus.Server.Features.Metrics;
 using Argus.Server.Features.Users;
 using Argus.Server.Infrastructure;
@@ -34,6 +35,7 @@ builder.Services.AddArgusAuth();
 builder.Services.AddArgusAgents();
 builder.Services.AddArgusMetrics();
 builder.Services.AddArgusAlerts();
+builder.Services.AddArgusLive();
 builder.Services.AddArgusRateLimiting();
 
 builder.Services.AddArgusHealthChecks()
@@ -78,6 +80,7 @@ api.MapAlertRuleEndpoints();
 api.MapAlertEndpoints();
 
 app.MapAgentEndpoints();
+app.MapArgusLive();
 
 await app.InitializeDatabaseAsync();
 

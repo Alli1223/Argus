@@ -21,7 +21,25 @@ public sealed record LatestMetrics(
     double? DiskUsedPercent,
     double? NetRxBytesPerSec,
     double? NetTxBytesPerSec,
-    long UptimeSeconds);
+    long UptimeSeconds)
+{
+    /// <summary>The same summary built straight from a sample as it arrives, for live updates.</summary>
+    public static LatestMetrics FromSample(MetricSample sample) => new(
+        sample.Timestamp,
+        sample.Cpu.UsagePercent,
+        sample.Memory.TotalBytes > 0 ? 100.0 * sample.Memory.UsedBytes / sample.Memory.TotalBytes : 0,
+        sample.Memory.UsedBytes,
+        sample.Memory.TotalBytes,
+        sample.Memory.SwapTotalBytes > 0 ? 100.0 * sample.Memory.SwapUsedBytes / sample.Memory.SwapTotalBytes : null,
+        sample.Load?.Load1,
+        sample.Filesystems
+            .Where(fs => fs.UsedBytes + fs.AvailableBytes > 0)
+            .Select(fs => (double?)(100.0 * fs.UsedBytes / (fs.UsedBytes + fs.AvailableBytes)))
+            .Max(),
+        sample.Network?.RxBytesPerSec,
+        sample.Network?.TxBytesPerSec,
+        sample.UptimeSeconds);
+}
 
 public sealed record HostSummary(
     Guid Id,
