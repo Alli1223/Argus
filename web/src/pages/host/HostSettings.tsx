@@ -14,12 +14,11 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useUpdateHost } from "../../api/hosts";
 import type { HostDetail } from "../../api/types";
+import { MAX_TAGS, normalizeTags, tagsError } from "../../lib/tags";
 
 // The server's limits, checked here first so mistakes show beside the field.
 const MAX_NAME = 256;
-const MAX_TAGS = 20;
 const MAX_NOTES = 4000;
-const TAG = /^[^\s,]{1,50}$/;
 
 interface SettingsValues {
   displayName: string;
@@ -44,11 +43,6 @@ export function HostSettings({ host, opened, onClose, onDelete }: HostSettingsPr
   );
 }
 
-/** Tags are stored lowercase and once each. */
-function normalizeTags(tags: string[]): string[] {
-  return [...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))];
-}
-
 // Mounted each time the dialog opens, so it always starts from the host as it is now.
 function SettingsForm({ host, onClose, onDelete }: Omit<HostSettingsProps, "opened">) {
   const update = useUpdateHost(host.id);
@@ -59,12 +53,7 @@ function SettingsForm({ host, onClose, onDelete }: Omit<HostSettingsProps, "open
         if (value.trim() === "") return "Give the host a name.";
         return value.trim().length > MAX_NAME ? `Names can be up to ${MAX_NAME} characters.` : null;
       },
-      tags: (value) => {
-        if (value.length > MAX_TAGS) return `A host can have up to ${MAX_TAGS} tags.`;
-        return value.every((tag) => TAG.test(tag))
-          ? null
-          : "Tags are up to 50 characters, without spaces or commas.";
-      },
+      tags: tagsError,
       notes: (value) => (value.length > MAX_NOTES ? "Notes can be up to 4,000 characters." : null),
     },
   });
