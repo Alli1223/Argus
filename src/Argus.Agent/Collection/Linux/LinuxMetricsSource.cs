@@ -71,7 +71,7 @@ internal sealed class LinuxMetricsSource(ILogger<LinuxMetricsSource> logger) : I
 
         foreach (var nic in current)
         {
-            if (nic.Name == "lo" || nic.Name.StartsWith("veth", StringComparison.Ordinal) || !IsUp(nic.Name)
+            if (nic.Name == "lo" || NetworkAddresses.IsContainerInterface(nic.Name) || !IsUp(nic.Name)
                 || !before.TryGetValue(nic.Name, out var then))
             {
                 continue;

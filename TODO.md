@@ -88,21 +88,21 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 6 — Agent core (`Argus.Agent`)
 
-- [ ] Worker host with systemd and Windows Service integration, console logging
-- [ ] Configuration: JSON file + environment variables + CLI, per-OS default paths, validation
-- [ ] State store for host id / agent key with restrictive file permissions
-- [ ] CLI commands: `run`, `register`, `collect` (print one sample), `version`
-- [ ] Collector abstractions and sample assembly pipeline
-- [ ] Linux: CPU (`/proc/stat`), memory & swap (`/proc/meminfo`), load (`/proc/loadavg`), uptime
-- [ ] Linux: filesystems (`/proc/mounts` + `statvfs`), disk IO (`/proc/diskstats`), network (`/proc/net/dev`)
-- [ ] Windows: CPU (`GetSystemTimes`), memory (`GlobalMemoryStatusEx`), filesystems, disk IO, network, uptime
-- [ ] Cross-platform process collector (count + top N by CPU and memory)
-- [ ] System info collector (OS, kernel, CPU model, cores, memory, IPs, machine id) for Linux & Windows
-- [ ] Registration flow using the enrollment token, persisted state
-- [ ] Bounded sample buffer with retry & exponential backoff
-- [ ] HTTP transport (timeouts, gzip, user agent) and applying server-pushed settings
-- [ ] Unit tests with `/proc` fixtures, delta calculations and buffer behaviour
-- [ ] Manual end-to-end check: agent → local server → rows in TimescaleDB
+- [x] Worker host with systemd and Windows Service integration, console logging
+- [x] Configuration: JSON file + environment variables + CLI, per-OS default paths, validation
+- [x] State store for host id / agent key with restrictive file permissions
+- [x] CLI commands: `run`, `register`, `collect` (print one sample), `version`
+- [x] Collector abstractions and sample assembly pipeline
+- [x] Linux: CPU (`/proc/stat`), memory & swap (`/proc/meminfo`), load (`/proc/loadavg`), uptime
+- [x] Linux: filesystems (`/proc/mounts` + `statvfs`), disk IO (`/proc/diskstats`), network (`/proc/net/dev`)
+- [x] Windows: CPU (`GetSystemTimes`), memory (`GlobalMemoryStatusEx`), filesystems, disk IO, network, uptime
+- [x] Cross-platform process collector (count + top N by CPU and memory)
+- [x] System info collector (OS, kernel, CPU model, cores, memory, IPs, machine id) for Linux & Windows
+- [x] Registration flow using the enrollment token, persisted state
+- [x] Bounded sample buffer with retry & exponential backoff
+- [x] HTTP transport (timeouts, gzip, user agent) and applying server-pushed settings
+- [x] Unit tests with `/proc` fixtures, delta calculations and buffer behaviour
+- [x] Manual end-to-end check: agent → local server → rows in TimescaleDB
 
 ## Phase 7 — Query API
 
