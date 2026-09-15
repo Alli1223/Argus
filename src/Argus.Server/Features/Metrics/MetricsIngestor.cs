@@ -41,6 +41,11 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
             batch.BatchCommands.Add(ProcessSnapshot(hostId, latest));
         }
 
+        if (samples.Where(sample => sample.FailedServices is not null).MaxBy(sample => sample.Timestamp) is { } serviceCheck)
+        {
+            batch.BatchCommands.Add(ServiceCheck(hostId, serviceCheck));
+        }
+
         batch.BatchCommands.Add(new NpgsqlBatchCommand("UPDATE hosts SET last_seen_at = @now WHERE id = @host_id")
         {
             Parameters = { Param("now", now), Param("host_id", hostId) },
@@ -174,6 +179,41 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
             },
         },
     };
+
+    /// <summary>
+    /// Applies the newest service check. A failure keeps the time it was first seen for as long as it
+    /// lasts, recovered services are removed, and a check older than the stored one changes nothing.
+    /// </summary>
+    private static NpgsqlBatchCommand ServiceCheck(Guid hostId, MetricSample sample)
+    {
+        var failures = sample.FailedServices!;
+        return new NpgsqlBatchCommand("""
+            WITH checked AS (
+                INSERT INTO host_service_checks (host_id, checked_at) VALUES (@host_id, @checked_at)
+                ON CONFLICT (host_id) DO UPDATE SET checked_at = excluded.checked_at
+                    WHERE host_service_checks.checked_at < excluded.checked_at
+                RETURNING checked_at),
+            recovered AS (
+                DELETE FROM host_service_failures
+                WHERE host_id = @host_id AND EXISTS (SELECT 1 FROM checked) AND NOT (service = ANY(@services)))
+            INSERT INTO host_service_failures (host_id, service, description, state, since, last_seen)
+            SELECT @host_id, f.service, f.description, f.state, c.checked_at, c.checked_at
+            FROM checked c
+            CROSS JOIN unnest(@services::text[], @descriptions::text[], @states::text[]) AS f(service, description, state)
+            ON CONFLICT (host_id, service) DO UPDATE
+                SET description = excluded.description, state = excluded.state, last_seen = excluded.last_seen
+            """)
+        {
+            Parameters =
+            {
+                Param("host_id", hostId),
+                Param("checked_at", sample.Timestamp),
+                Param("services", failures.Select(failure => failure.Name).ToArray()),
+                Param("descriptions", failures.Select(failure => failure.Description).ToArray()),
+                Param("states", failures.Select(failure => failure.State).ToArray()),
+            },
+        };
+    }
 
     private static NpgsqlParameter<T> Param<T>(string name, T value) => new(name, value);
 

@@ -29,6 +29,12 @@ public sealed record FilesystemSnapshot(
 
 public sealed record ProcessSnapshot(DateTimeOffset CapturedAt, IReadOnlyList<ProcessMetrics> Processes);
 
+/// <summary>A host's services: when the agent last checked (null if never) and what was failing then.</summary>
+public sealed record ServiceStatus(DateTimeOffset? CheckedAt, IReadOnlyList<ServiceFailure> Failures);
+
+/// <param name="Since">When the failure was first seen; it keeps this time until the service recovers.</param>
+public sealed record ServiceFailure(string Service, string? Description, string State, DateTimeOffset Since);
+
 /// <summary>
 /// Reads time series from TimescaleDB with raw SQL (Dapper). Callers check that the user may see
 /// the host before asking; these queries only filter by host id.
@@ -226,6 +232,21 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
                 JsonSerializer.Deserialize<List<ProcessMetrics>>(row.Processes, JsonSerializerOptions.Web) ?? []);
     }
 
+    public async Task<ServiceStatus> GetServicesAsync(Guid hostId, CancellationToken cancellationToken)
+    {
+        var parameters = new { host_id = hostId };
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var checkedAt = await connection.QuerySingleOrDefaultAsync<DateTime?>(new CommandDefinition(
+            "SELECT checked_at FROM host_service_checks WHERE host_id = @host_id", parameters, cancellationToken: cancellationToken));
+        var failures = await connection.QueryAsync<ServiceFailureRow>(new CommandDefinition(
+            "SELECT service, description, state, since FROM host_service_failures WHERE host_id = @host_id ORDER BY since, service",
+            parameters, cancellationToken: cancellationToken));
+
+        return new ServiceStatus(
+            checkedAt is { } at ? Utc(at) : null,
+            failures.Select(row => new ServiceFailure(row.Service, row.Description, row.State, Utc(row.Since))).ToList());
+    }
+
     /// <summary>Removes a deleted host's samples (its rollup buckets simply age out).</summary>
     public async Task DeleteHostDataAsync(Guid hostId, CancellationToken cancellationToken)
     {
@@ -333,5 +354,13 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
     {
         public DateTime CapturedAt { get; set; }
         public string Processes { get; set; } = "[]";
+    }
+
+    private sealed class ServiceFailureRow
+    {
+        public string Service { get; set; } = "";
+        public string? Description { get; set; }
+        public string State { get; set; } = "";
+        public DateTime Since { get; set; }
     }
 }

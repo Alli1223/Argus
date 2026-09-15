@@ -7,6 +7,7 @@ public static class MetricsBatchValidator
 {
     private const int NameLength = 256;
     private const int FsTypeLength = 64;
+    private const int StateLength = 32;
 
     /// <summary>Problems that make the whole batch unacceptable; the agent should not resend it.</summary>
     public static string? ValidateShape(MetricsBatch batch) => batch.Samples.Count switch
@@ -116,6 +117,18 @@ public static class MetricsBatchValidator
                 Name = Clip(process.Name, NameLength),
                 CpuPercent = Percent(process.CpuPercent),
                 MemoryBytes = Math.Max(0, process.MemoryBytes),
+            })
+            .ToList(),
+        // One entry per service: the database keys failures by host and service name.
+        FailedServices = sample.FailedServices?
+            .Where(service => !string.IsNullOrWhiteSpace(service.Name))
+            .DistinctBy(service => service.Name)
+            .Take(AgentLimits.MaxFailedServices)
+            .Select(service => new ServiceProblem
+            {
+                Name = Clip(service.Name, NameLength),
+                Description = ClipOptional(service.Description, NameLength),
+                State = Clip(string.IsNullOrWhiteSpace(service.State) ? "failed" : service.State, StateLength),
             })
             .ToList(),
     };
