@@ -146,6 +146,20 @@ export interface ProcessSnapshot {
   processes: ProcessMetrics[];
 }
 
+export interface ServiceFailure {
+  service: string;
+  description: string | null;
+  state: string;
+  /** When the failure was first seen; it keeps this time until the service recovers. */
+  since: string;
+}
+
+/** A host's services: when its agent last checked (null if never) and what was failing then. */
+export interface ServiceStatus {
+  checkedAt: string | null;
+  failures: ServiceFailure[];
+}
+
 export interface EnrollmentTokenSummary {
   id: string;
   name: string;
