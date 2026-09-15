@@ -82,6 +82,21 @@ public sealed class AlertApiTests(AlertsFixture app) : IClassFixture<AlertsFixtu
     }
 
     [Fact]
+    public async Task Service_rules_take_a_service_name_and_no_threshold()
+    {
+        var (_, _, owner) = await HostAsync("rules-s@example.com");
+
+        var response = await owner.PostAsJsonAsync("/api/alert-rules",
+            new { name = "Web server down", metric = "ServiceFailed", @operator = "Below", threshold = 42, resourceFilter = " nginx.service " }, Ct);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var rule = (await response.Content.ReadFromJsonAsync<AlertRuleResponse>(TestJson.Options, Ct))!;
+        Assert.Equal(AlertOperator.Above, rule.Operator);
+        Assert.Equal(0, rule.Threshold);
+        Assert.Equal("nginx.service", rule.ResourceFilter);
+    }
+
+    [Fact]
     public async Task New_accounts_start_with_the_default_rules()
     {
         var admin = await app.CreateOwnerAsync("rules-admin@example.com", Roles.Admin);
@@ -93,7 +108,7 @@ public sealed class AlertApiTests(AlertsFixture app) : IClassFixture<AlertsFixtu
         var rules = (await user.GetJsonAsync<List<AlertRuleResponse>>("/api/alert-rules"))!;
 
         Assert.Equal(
-            [AlertMetric.CpuUsage, AlertMetric.MemoryUsage, AlertMetric.DiskUsage, AlertMetric.HostOffline],
+            [AlertMetric.CpuUsage, AlertMetric.MemoryUsage, AlertMetric.DiskUsage, AlertMetric.HostOffline, AlertMetric.ServiceFailed],
             rules.Select(rule => rule.Metric).Order());
         Assert.All(rules, rule => Assert.True(rule.Enabled));
     }

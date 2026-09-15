@@ -64,11 +64,24 @@ public static class AlertDecision
         return new Verdict(Fire: offline, Clear: !offline, Value: silence?.TotalSeconds);
     }
 
+    /// <summary>
+    /// A failed service alerts once it has been failing for the rule's duration; with no duration, at
+    /// once (even if the agent's clock runs a little ahead). It clears when the service stops being
+    /// reported as failed, which the evaluator handles.
+    /// </summary>
+    public static Verdict EvaluateServiceFailure(DateTimeOffset since, TimeSpan duration, DateTimeOffset now) =>
+        new(Fire: duration <= TimeSpan.Zero || now - since >= duration, Clear: false, Value: null);
+
     public static string Title(AlertRule rule, string hostName, string resourceKey)
     {
         if (rule.Metric == AlertMetric.HostOffline)
         {
             return $"{hostName} is offline";
+        }
+
+        if (rule.Metric == AlertMetric.ServiceFailed)
+        {
+            return $"{resourceKey} failed on {hostName}";
         }
 
         var subject = rule.Metric.IsPerFilesystem() && resourceKey.Length > 0

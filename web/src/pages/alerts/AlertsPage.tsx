@@ -181,6 +181,7 @@ export function AlertsPage() {
 /** The reading that fired the alert against the rule's threshold: "93.2% over 90.0%". */
 function Reading({ alert }: { alert: Alert }) {
   if (alert.metric === "HostOffline") return <Text fz="sm">Not reporting</Text>;
+  if (alert.metric === "ServiceFailed") return <Text fz="sm">Failed</Text>;
   return (
     <Text fz="sm">
       {formatMetricValue(alert.metric, alert.value)}{" "}

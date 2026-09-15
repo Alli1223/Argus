@@ -25,6 +25,8 @@ import {
   inputToThreshold,
   isFilesystemMetric,
   isPercentMetric,
+  isServiceMetric,
+  isStateMetric,
   thresholdSuffix,
   thresholdToInput,
 } from "./ruleText";
@@ -89,18 +91,19 @@ function initialValues(rule: AlertRule | null): RuleValues {
 }
 
 function toRequest(values: RuleValues): AlertRuleRequest {
-  const offline = values.metric === "HostOffline";
+  const state = isStateMetric(values.metric);
   const filter = values.resourceFilter.trim();
+  const narrowable = isFilesystemMetric(values.metric) || isServiceMetric(values.metric);
   return {
     name: values.name.trim(),
     metric: values.metric,
-    operator: offline ? "Above" : values.operator,
-    threshold: offline ? 0 : inputToThreshold(values.metric, Number(values.threshold)),
+    operator: state ? "Above" : values.operator,
+    threshold: state ? 0 : inputToThreshold(values.metric, Number(values.threshold)),
     durationSeconds: Math.round(Number(values.durationMinutes) * 60),
     severity: values.severity,
     hostId: values.scope === "host" ? values.hostId : null,
     tag: values.scope === "tag" ? (normalizeTags([values.tag])[0] ?? null) : null,
-    resourceFilter: isFilesystemMetric(values.metric) && filter !== "" ? filter : null,
+    resourceFilter: narrowable && filter !== "" ? filter : null,
     enabled: values.enabled,
   };
 }
@@ -134,7 +137,7 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
         return value.trim().length > 100 ? "Names can be up to 100 characters." : null;
       },
       threshold: (value, values) => {
-        if (values.metric === "HostOffline") return null;
+        if (isStateMetric(values.metric)) return null;
         if (typeof value !== "number") return "Enter a number.";
         if (isPercentMetric(values.metric) && (value < 0 || value > 100))
           return "Choose a percentage from 0 to 100.";
@@ -158,6 +161,7 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
 
   const values = form.values;
   const offline = values.metric === "HostOffline";
+  const state = isStateMetric(values.metric);
   const hostOptions = (hosts.data ?? []).map((host) => ({ value: host.id, label: host.displayName }));
   const tagOptions = [...new Set((hosts.data ?? []).flatMap((host) => host.tags))].sort();
 
@@ -173,6 +177,8 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
           : defaultThreshold(metric),
       durationMinutes:
         metric === "HostOffline" && Number(values.durationMinutes) < 1 ? 5 : values.durationMinutes,
+      // A mount point makes no sense as a service name, and the other way round.
+      resourceFilter: isServiceMetric(metric) === isServiceMetric(values.metric) ? values.resourceFilter : "",
     });
   };
 
@@ -208,7 +214,7 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
           allowDeselect={false}
         />
 
-        {!offline && (
+        {!state && (
           <Group gap="sm" align="flex-end" wrap="wrap">
             <Stack gap={4}>
               <Text id={`${ids}-operator`} fz="sm" fw={500}>
@@ -240,7 +246,9 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
           description={
             offline
               ? "How long a host must go without reporting."
-              : "How long the condition must hold. 0 fires on the first reading."
+              : isServiceMetric(values.metric)
+                ? "How long a service must stay failed. 0 raises the alert at the next check."
+                : "How long the condition must hold. 0 fires on the first reading."
           }
           suffix=" min"
           min={offline ? 1 : 0}
@@ -255,6 +263,14 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
             label="Mount point"
             description="Leave empty to watch every filesystem."
             placeholder="/var"
+            {...form.getInputProps("resourceFilter")}
+          />
+        )}
+        {isServiceMetric(values.metric) && (
+          <TextInput
+            label="Service"
+            description="Leave empty to watch every service. Use the name systemd or Windows gives it."
+            placeholder="nginx.service"
             {...form.getInputProps("resourceFilter")}
           />
         )}

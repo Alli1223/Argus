@@ -20,6 +20,7 @@ export const METRIC_LABELS: Record<AlertMetric, string> = {
   DiskUsage: "Disk space used",
   InodeUsage: "Inodes used",
   HostOffline: "Host offline",
+  ServiceFailed: "Service failed",
 };
 
 type MetricUnit = "percent" | "bytesPerSecond" | "perCore" | "none";
@@ -35,6 +36,7 @@ export const METRIC_UNITS: Record<AlertMetric, MetricUnit> = {
   DiskUsage: "percent",
   InodeUsage: "percent",
   HostOffline: "none",
+  ServiceFailed: "none",
 };
 
 /** A reading or threshold of a metric: "93.2%", "12.0 MB/s", "1.50 per core". */

@@ -6,6 +6,10 @@ const MB = 1024 ** 2;
 
 export const isPercentMetric = (metric: AlertMetric) => METRIC_UNITS[metric] === "percent";
 export const isFilesystemMetric = (metric: AlertMetric) => metric === "DiskUsage" || metric === "InodeUsage";
+export const isServiceMetric = (metric: AlertMetric) => metric === "ServiceFailed";
+
+/** States rather than measurements: no threshold or direction, only how long they last. */
+export const isStateMetric = (metric: AlertMetric) => metric === "HostOffline" || metric === "ServiceFailed";
 
 /** A threshold without needless decimals: "90%", "50 MB/s", "1.50 per core". */
 export function formatThreshold(metric: AlertMetric, value: number): string {
@@ -21,6 +25,7 @@ type RuleCondition = Pick<
 export function describeRule(rule: RuleCondition): string {
   const lasting = rule.durationSeconds > 0 ? ` for ${describeBucket(rule.durationSeconds)}` : "";
   if (rule.metric === "HostOffline") return `Not reporting${lasting}`;
+  if (rule.metric === "ServiceFailed") return `${rule.resourceFilter ?? "Any service"} failed${lasting}`;
   const direction = rule.operator === "Above" ? "above" : "below";
   const where = rule.resourceFilter ? ` on ${rule.resourceFilter}` : "";
   return `${METRIC_LABELS[rule.metric]} ${direction} ${formatThreshold(rule.metric, rule.threshold)}${where}${lasting}`;
