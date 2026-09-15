@@ -173,7 +173,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [ ] Multi-stage `Dockerfile` (web build → server publish → agent builds → non-root runtime image)
 - [ ] Production `deploy/docker-compose.yml` + `.env.example` (server, TimescaleDB, volumes, health checks)
 - [ ] Optional Caddy reverse proxy with automatic HTTPS (compose profile)
-- [ ] Forwarded headers and public URL configuration
+- [x] Forwarded headers and public URL configuration
 - [ ] `docs/deployment.md` (install, upgrade, backup / restore)
 - [ ] End-to-end smoke test: compose up → setup → enroll agent → metrics visible
 

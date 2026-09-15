@@ -17,6 +17,12 @@ using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Scalar.AspNetCore;
 
+// `Argus.Server health-check` probes a running server, for container health checks.
+if (args is [HealthProbe.Command, ..])
+{
+    return await HealthProbe.RunAsync(args);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton(TimeProvider.System);
@@ -39,6 +45,7 @@ builder.Services.AddArgusAlerts();
 builder.Services.AddArgusLive();
 builder.Services.AddArgusDownloads();
 builder.Services.AddArgusRateLimiting();
+builder.Services.AddArgusForwardedHeaders();
 
 builder.Services.AddArgusHealthChecks()
     .AddDbContextCheck<ArgusDbContext>("database", tags: [HealthEndpoints.ReadyTag]);
@@ -46,6 +53,7 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+app.UseArgusForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseRequestDecompression();
@@ -90,5 +98,6 @@ app.MapArgusLive();
 await app.InitializeDatabaseAsync();
 
 await app.RunAsync();
+return 0;
 
 public partial class Program;
