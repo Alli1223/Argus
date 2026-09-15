@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Group, Paper, SimpleGrid, Skeleton, Table, Text, Title } from "@mantine/core";
+import { Anchor, Button, Group, Paper, SimpleGrid, Skeleton, Table, Text, Title } from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck, IconPlus, IconUrgent } from "@tabler/icons-react";
 import { Link } from "react-router";
 import { useAlerts } from "../../api/alerts";
@@ -6,6 +6,7 @@ import { useDashboardSummary, useHosts } from "../../api/hosts";
 import type { Alert, AlertSeverity } from "../../api/types";
 import { PageHeader } from "../../components/PageHeader";
 import { ErrorScreen, MessageScreen } from "../../components/Screens";
+import { Section } from "../../components/Section";
 import { UsageMeter } from "../../components/UsageMeter";
 import { Watch, WatchLegend } from "../../components/watch/Watch";
 import { formatAgo } from "../../lib/format";
@@ -101,30 +102,6 @@ export function OverviewPage() {
 function fleetSentence(online: number, total: number) {
   if (total === online) return total === 1 ? "Your system is online." : `All ${total} systems are online.`;
   return `${online} of ${total} systems online.`;
-}
-
-function Section({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Box>
-      <Group justify="space-between" mb="xs" align="baseline">
-        <Title order={2} fz={17}>
-          {title}
-        </Title>
-        {action}
-      </Group>
-      <Box className="argus-surface" style={{ borderRadius: "var(--mantine-radius-sm)", overflowX: "auto" }}>
-        {children}
-      </Box>
-    </Box>
-  );
 }
 
 const severityIcon: Record<AlertSeverity, typeof IconUrgent> = {

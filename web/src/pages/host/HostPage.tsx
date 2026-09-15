@@ -31,6 +31,7 @@ import { describeBucket, rangeFromParams, rangeToParams, type TimeRange } from "
 import { useNow } from "../../lib/useNow";
 import classes from "./HostPage.module.css";
 import { hostCharts } from "./hostCharts";
+import { FilesystemsSection, InterfacesSection, ProcessesSection } from "./HostResources";
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
@@ -83,6 +84,7 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
     <>
       <HostHeader host={host} />
       <NowPanel host={host} now={now} />
+      <ProcessesSection hostId={host.id} now={now} />
 
       <Title order={2} fz={17} mt="xl" mb="sm">
         History
@@ -105,6 +107,8 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
       ) : (
         <HostCharts host={host} metrics={metrics.data} refreshing={metrics.isPlaceholderData} onZoom={zoom} />
       )}
+      <FilesystemsSection hostId={host.id} range={range} />
+      <InterfacesSection hostId={host.id} range={range} onZoom={zoom} />
     </>
   );
 }
