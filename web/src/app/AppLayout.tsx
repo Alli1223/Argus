@@ -30,6 +30,8 @@ import type { ComponentType } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { useAlertCounts } from "../api/alerts";
 import { useCurrentUser, useLogout } from "../api/auth";
+import { useLiveUpdates } from "../api/live";
+import { LiveIndicator } from "../components/LiveIndicator";
 import { Wordmark } from "../components/Wordmark";
 
 interface NavItem {
@@ -56,6 +58,7 @@ export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
   const { pathname } = useLocation();
   const me = useCurrentUser();
+  const live = useLiveUpdates();
 
   return (
     <AppShell
@@ -78,6 +81,7 @@ export function AppLayout() {
             </Link>
           </Group>
           <Group gap="sm" wrap="nowrap">
+            <LiveIndicator state={live} />
             <AlertChips />
             <UserMenu />
           </Group>
