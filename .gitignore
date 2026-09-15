@@ -1,0 +1,41 @@
+# .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.rsuser
+.vs/
+TestResults/
+*.trx
+coverage*.xml
+*.coverage
+
+# Build outputs
+artifacts/
+publish/
+src/Argus.Server/wwwroot/
+src/Argus.Server/agent-dist/
+
+# Node / web
+node_modules/
+web/dist/
+web/coverage/
+*.tsbuildinfo
+.vite/
+
+# IDEs & OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local configuration & secrets
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+*.local.json

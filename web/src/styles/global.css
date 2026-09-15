@@ -1,0 +1,31 @@
+@import "@fontsource-variable/archivo/wdth.css";
+@import "@fontsource-variable/martian-mono/index.css";
+
+/* Wider cut for headings and the wordmark. */
+h1,
+h2,
+.argus-wide {
+  font-stretch: 112%;
+}
+
+/* Semi-condensed cut with tabular figures, so columns of numbers line up. */
+.argus-data,
+.mantine-Table-table {
+  font-stretch: 88%;
+  font-variant-numeric: tabular-nums;
+}
+
+.argus-surface {
+  background: var(--argus-surface);
+  border: 1px solid var(--argus-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
