@@ -5,6 +5,7 @@ using Argus.Server.Features.Agents;
 using Argus.Server.Features.Alerts;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Dashboard;
+using Argus.Server.Features.Downloads;
 using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Health;
 using Argus.Server.Features.Hosts;
@@ -36,6 +37,7 @@ builder.Services.AddArgusAgents();
 builder.Services.AddArgusMetrics();
 builder.Services.AddArgusAlerts();
 builder.Services.AddArgusLive();
+builder.Services.AddArgusDownloads();
 builder.Services.AddArgusRateLimiting();
 
 builder.Services.AddArgusHealthChecks()
@@ -54,6 +56,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseSecurityHeaders();
+app.UseArgusDownloads();
 app.UseCsrfProtection();
 
 app.UseAuthentication();
@@ -80,6 +83,7 @@ api.MapAlertRuleEndpoints();
 api.MapAlertEndpoints();
 
 app.MapAgentEndpoints();
+app.MapAgentDownloads();
 app.MapArgusLive();
 
 await app.InitializeDatabaseAsync();
