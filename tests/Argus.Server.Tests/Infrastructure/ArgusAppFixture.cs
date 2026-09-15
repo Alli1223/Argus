@@ -68,7 +68,7 @@ public class ArgusAppFixture(PostgresFixture postgres) : IAsyncLifetime
             return user;
         });
 
-    public async ValueTask DisposeAsync() => await Factory.DisposeAsync();
+    public virtual async ValueTask DisposeAsync() => await Factory.DisposeAsync();
 }
 
 /// <summary>A server with self-registration switched on.</summary>

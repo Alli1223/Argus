@@ -57,6 +57,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseSecurityHeaders();
 app.UseArgusDownloads();
+app.UseArgusWebApp();
 app.UseCsrfProtection();
 
 app.UseAuthentication();

@@ -154,7 +154,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Account page (change password) and admin users page
 - [x] Loading skeletons, empty states, error boundary, 404
 - [x] Route-level code splitting (the main bundle is over 500 kB)
-- [ ] Server hosts the built SPA (static files, fallback routing, cache headers)
+- [x] Server hosts the built SPA (static files, fallback routing, cache headers)
 
 ## Phase 11 — Agent packaging & installation
 
