@@ -1,4 +1,5 @@
 using Argus.Server.Infrastructure;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -16,6 +17,10 @@ public static class DatabaseExtensions
     public static IServiceCollection AddArgusDatabase(this IServiceCollection services)
     {
         services.AddValidatedOptions<DatabaseOptions>(DatabaseOptions.SectionName);
+
+        // Raw SQL reads snake_case columns (host_id) into PascalCase properties (HostId). This is global
+        // Dapper state, so it is set at startup: the alert evaluator may query before anything else does.
+        DefaultTypeMap.MatchNamesWithUnderscores = true;
 
         services.AddSingleton(sp =>
         {
