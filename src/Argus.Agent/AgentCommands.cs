@@ -2,6 +2,8 @@ using System.Text.Json;
 using Argus.Agent.Collection;
 using Argus.Agent.Configuration;
 using Argus.Agent.State;
+using Argus.Agent.Transport;
+using Argus.Agent.Updates;
 using Argus.Contracts.Agent;
 
 namespace Argus.Agent;
@@ -81,6 +83,52 @@ internal static class AgentCommands
         Console.WriteLine(JsonSerializer.Serialize(inventory, options.GetTypeInfo(typeof(InventoryReport))));
         Console.WriteLine(JsonSerializer.Serialize(sample, options.GetTypeInfo(typeof(MetricSample))));
         return 0;
+    }
+
+    /// <summary>
+    /// Installs the update the server offers this agent: run as root by the systemd updater on Linux, and
+    /// from a copy of the agent by the service itself on Windows.
+    /// </summary>
+    public static async Task<int> ApplyUpdateAsync(string? configFile, string? target, CancellationToken cancellationToken)
+    {
+        using var loggers = LoggerFactory.Create(logging => logging.AddSimpleConsole(options =>
+        {
+            options.SingleLine = true;
+            options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+        }));
+        var logger = loggers.CreateLogger("Argus.Agent.Update");
+
+        // Take the request first, so a failure below cannot make systemd run this again and again.
+        if (OperatingSystem.IsLinux() && File.Exists(AgentPaths.LinuxUpdateRequestFile))
+        {
+            File.Delete(AgentPaths.LinuxUpdateRequestFile);
+        }
+
+        AgentHost.CreateBuilder(configFile, out var config);
+        if (!Validate(config, configFile))
+        {
+            return InvalidConfiguration;
+        }
+
+        // The server address comes from the config file, which only an administrator can change.
+        var state = new StateStore(config.ResolvedStateDirectory).Load();
+        if (state is null || !string.Equals(state.ServerUrl.TrimEnd('/'), config.ServerUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogError("The agent is not registered with {Server}, so there is no update to fetch", config.ServerUrl);
+            return 1;
+        }
+
+        IServiceControl? service = OperatingSystem.IsWindows()
+            ? new WindowsServiceControl(AgentHost.WindowsServiceName)
+            : OperatingSystem.IsLinux() ? new SystemdServiceControl(SystemdServiceControl.AgentUnit) : null;
+        if (service is null || (target ?? Environment.ProcessPath) is not { } program)
+        {
+            logger.LogError("This platform has no service manager the updater knows");
+            return 1;
+        }
+
+        var applier = new UpdateApplier(ArgusClient.Create(config), service, logger, UpdateApplier.DefaultSettleTime);
+        return await applier.ApplyAsync(state.AgentKey, program, cancellationToken);
     }
 
     private static bool Validate(AgentConfig config, string? configFile)

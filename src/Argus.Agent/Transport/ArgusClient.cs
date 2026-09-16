@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Argus.Agent.Configuration;
+using Argus.Agent.Updates;
 using Argus.Contracts.Agent;
 
 namespace Argus.Agent.Transport;
@@ -43,7 +44,35 @@ internal sealed class ArgusClient(HttpClient http)
         SendAsync(HttpMethod.Put, AgentApi.Inventory, report, AgentJsonContext.Default.InventoryReport,
             AgentJsonContext.Default.AgentSettings, agentKey, cancellationToken);
 
-    private async Task<ApiResult<TResponse>> SendAsync<TRequest, TResponse>(
+    /// <summary>The update the server wants this agent to install, or null when there is none.</summary>
+    public Task<ApiResult<AgentUpdateOffer?>> GetUpdateOfferAsync(string agentKey, CancellationToken cancellationToken) =>
+        ExchangeAsync(Request(HttpMethod.Get, AgentApi.UpdateOffer, agentKey), HttpCompletionOption.ResponseContentRead,
+            async response => ApiResult<AgentUpdateOffer?>.Success(response.StatusCode == HttpStatusCode.NoContent
+                ? null
+                : await response.Content.ReadFromJsonAsync(AgentJsonContext.Default.AgentUpdateOffer, cancellationToken)),
+            cancellationToken);
+
+    /// <summary>Downloads the offered build to <paramref name="path"/>, keeping it only if its size and SHA-256 match the offer.</summary>
+    public Task<ApiResult<bool>> DownloadUpdateAsync(string agentKey, AgentUpdateOffer offer, string path, CancellationToken cancellationToken) =>
+        ExchangeAsync(Request(HttpMethod.Get, AgentApi.UpdateDownload, agentKey), HttpCompletionOption.ResponseHeadersRead,
+            async response =>
+            {
+                await using var body = await response.Content.ReadAsStreamAsync(cancellationToken);
+                return await UpdateFiles.SaveCheckedAsync(body, offer, path, cancellationToken) is { } problem
+                    ? ApiResult<bool>.Fail(FailureKind.Rejected, problem, (int)response.StatusCode)
+                    : ApiResult<bool>.Success(true);
+            },
+            cancellationToken);
+
+    public Task<ApiResult<bool>> ReportUpdateResultAsync(string agentKey, AgentUpdateResult result, CancellationToken cancellationToken)
+    {
+        var request = Request(HttpMethod.Post, AgentApi.UpdateResult, agentKey);
+        request.Content = CreateContent(result, AgentJsonContext.Default.AgentUpdateResult);
+        return ExchangeAsync(request, HttpCompletionOption.ResponseContentRead,
+            _ => Task.FromResult(ApiResult<bool>.Success(true)), cancellationToken);
+    }
+
+    private Task<ApiResult<TResponse>> SendAsync<TRequest, TResponse>(
         HttpMethod method,
         string path,
         TRequest body,
@@ -52,22 +81,43 @@ internal sealed class ArgusClient(HttpClient http)
         string? agentKey,
         CancellationToken cancellationToken)
     {
+        var request = Request(method, path, agentKey);
+        request.Content = CreateContent(body, requestType);
+        return ExchangeAsync(request, HttpCompletionOption.ResponseContentRead, async response =>
+        {
+            var value = await response.Content.ReadFromJsonAsync(responseType, cancellationToken);
+            return value is null
+                ? ApiResult<TResponse>.Fail(FailureKind.ServerError, "The server sent an empty response.", (int)response.StatusCode)
+                : ApiResult<TResponse>.Success(value);
+        }, cancellationToken);
+    }
+
+    private static HttpRequestMessage Request(HttpMethod method, string path, string? agentKey)
+    {
         // Relative to the base address, so a server hosted under a path prefix keeps working.
-        using var request = new HttpRequestMessage(method, path.TrimStart('/')) { Content = CreateContent(body, requestType) };
+        var request = new HttpRequestMessage(method, path.TrimStart('/'));
         if (agentKey is not null)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", agentKey);
         }
 
+        return request;
+    }
+
+    /// <summary>Sends the request (and disposes it), reads a successful response, and classifies failures.</summary>
+    private async Task<ApiResult<TResponse>> ExchangeAsync<TResponse>(
+        HttpRequestMessage request,
+        HttpCompletionOption completion,
+        Func<HttpResponseMessage, Task<ApiResult<TResponse>>> readSuccess,
+        CancellationToken cancellationToken)
+    {
+        using var disposeRequest = request;
         try
         {
-            using var response = await http.SendAsync(request, cancellationToken);
+            using var response = await http.SendAsync(request, completion, cancellationToken);
             if (response.IsSuccessStatusCode)
             {
-                var value = await response.Content.ReadFromJsonAsync(responseType, cancellationToken);
-                return value is null
-                    ? ApiResult<TResponse>.Fail(FailureKind.ServerError, "The server sent an empty response.", (int)response.StatusCode)
-                    : ApiResult<TResponse>.Success(value);
+                return await readSuccess(response);
             }
 
             var status = (int)response.StatusCode;
@@ -82,7 +132,7 @@ internal sealed class ArgusClient(HttpClient http)
 
             return ApiResult<TResponse>.Fail(failure, await ReadProblemAsync(response, cancellationToken), status, RetryAfter(response));
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
             return ApiResult<TResponse>.Fail(FailureKind.Unreachable, ex.Message);
         }

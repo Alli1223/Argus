@@ -80,13 +80,17 @@ if [ -z "$BINARY" ]; then
 fi
 [ -f "$BINARY" ] || fail "agent binary not found: $BINARY"
 
-# Use the unit file shipped next to this script (archive installs), else fetch it from the server.
-UNIT="$(dirname -- "${BASH_SOURCE[0]:-$0}")/argus-agent.service"
-if [ ! -f "$UNIT" ]; then
-  download "$SERVER/downloads/argus-agent.service" "$WORK/argus-agent.service" \
-    || fail "could not download the service definition from $SERVER"
-  UNIT="$WORK/argus-agent.service"
-fi
+# The agent's unit, and the updater's two, which install new agent versions when the web UI asks.
+# Use the unit files shipped next to this script (archive installs), else fetch them from the server.
+UNITS=(argus-agent.service argus-agent-update.service argus-agent-update.path)
+SCRIPT_DIR="$(dirname -- "${BASH_SOURCE[0]:-$0}")"
+for unit in "${UNITS[@]}"; do
+  if [ -f "$SCRIPT_DIR/$unit" ]; then
+    cp "$SCRIPT_DIR/$unit" "$WORK/$unit"
+  else
+    download "$SERVER/downloads/$unit" "$WORK/$unit" || fail "could not download $unit from $SERVER"
+  fi
+done
 
 if ! id "$SERVICE_USER" >/dev/null 2>&1; then
   step "Creating the $SERVICE_USER system user"
@@ -113,8 +117,11 @@ if [ -n "$TOKEN" ] || [ ! -f "$CONFIG" ]; then
   chmod 0640 "$CONFIG"
 fi
 
-install -m 0644 "$UNIT" "/etc/systemd/system/$SERVICE.service"
+for unit in "${UNITS[@]}"; do
+  install -m 0644 "$WORK/$unit" "/etc/systemd/system/$unit"
+done
 systemctl daemon-reload
+systemctl enable --now argus-agent-update.path >/dev/null
 systemctl enable --now "$SERVICE" >/dev/null
 
 step "Done. The agent reports to $SERVER and shows up in the web UI within a minute."

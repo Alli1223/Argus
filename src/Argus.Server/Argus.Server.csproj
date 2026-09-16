@@ -30,7 +30,7 @@
 
   <!-- Agent install scripts, served under /downloads. -->
   <ItemGroup>
-    <Content Include="..\..\deploy\agent\linux\*.sh;..\..\deploy\agent\linux\*.service;..\..\deploy\agent\windows\*.ps1"
+    <Content Include="..\..\deploy\agent\linux\*.sh;..\..\deploy\agent\linux\*.service;..\..\deploy\agent\linux\*.path;..\..\deploy\agent\windows\*.ps1"
              LinkBase="downloads"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />

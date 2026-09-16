@@ -2,6 +2,7 @@ using Argus.Agent.Collection;
 using Argus.Agent.Configuration;
 using Argus.Agent.State;
 using Argus.Agent.Transport;
+using Argus.Agent.Updates;
 
 namespace Argus.Agent;
 
@@ -56,6 +57,7 @@ internal static class AgentHost
         builder.Services.AddSingleton(new SampleBuffer(agentConfig.BufferCapacity));
         builder.Services.AddSingleton(_ => ArgusClient.Create(agentConfig));
         builder.Services.AddSingleton<Registrar>();
+        builder.Services.AddSingleton(_ => UpdateLaunchers.Create(agentConfig));
 
         return builder;
     }
