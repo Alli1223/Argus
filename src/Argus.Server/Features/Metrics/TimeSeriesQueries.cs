@@ -216,6 +216,47 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
         return await PivotAsync(sql, hostId, range, source, bucket, cancellationToken);
     }
 
+    /// <summary>
+    /// Every temperature sensor of each host over time, keyed <c>{device}/{sensor}</c>. Each point is the
+    /// highest reading in its bucket, so a brief spike still shows over a month. Hosts without readings in
+    /// the range get a series with no sensors.
+    /// </summary>
+    public async Task<Dictionary<Guid, MetricSeries>> GetTemperatureHistoryAsync(
+        IReadOnlyCollection<Guid> hostIds, SeriesRange range, TimeSpan collectionInterval, CancellationToken cancellationToken)
+    {
+        var (source, bucket) = SeriesResolution.ChooseRawOrHourly(range.To - range.From, range.Points, collectionInterval);
+        var sql = source == SeriesSource.Raw
+            ? """
+              SELECT time_bucket_gapfill(@bucket, time, @from, @to) AS bucket, host_id, device, sensor,
+                     max(celsius)::float8 AS value
+              FROM temperature_metrics
+              WHERE host_id = ANY(@host_ids) AND time >= @from AND time < @to
+              GROUP BY 1, 2, 3, 4 ORDER BY 1
+              """
+            : """
+              SELECT time_bucket_gapfill(@bucket, bucket, @from, @to) AS bucket, host_id, device, sensor,
+                     max(celsius_max) AS value
+              FROM temperature_metrics_1h
+              WHERE host_id = ANY(@host_ids) AND bucket >= @from AND bucket < @to
+              GROUP BY 1, 2, 3, 4 ORDER BY 1
+              """;
+
+        var rows = new List<TemperatureRow>();
+        if (hostIds.Count > 0)
+        {
+            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            rows = (await connection.QueryAsync<TemperatureRow>(new CommandDefinition(
+                sql,
+                new { host_ids = hostIds.ToArray(), bucket, from = range.From, to = range.To },
+                cancellationToken: cancellationToken))).AsList();
+        }
+
+        var byHost = rows.ToLookup(row => row.HostId);
+        return hostIds.Distinct().ToDictionary(id => id, id => Pivot(
+            byHost[id].Select(row => new KeyedRow { Bucket = row.Bucket, Key = $"{row.Device}/{row.Sensor}", Value = row.Value }),
+            range, source, bucket));
+    }
+
     public async Task<ProcessSnapshot?> GetProcessesAsync(Guid hostId, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -253,6 +294,7 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
             DELETE FROM host_metrics WHERE host_id = @host_id;
             DELETE FROM filesystem_metrics WHERE host_id = @host_id;
             DELETE FROM network_metrics WHERE host_id = @host_id;
+            DELETE FROM temperature_metrics WHERE host_id = @host_id;
             """, new { host_id = hostId }, cancellationToken: cancellationToken));
     }
 
@@ -260,9 +302,16 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
         string sql, Guid hostId, SeriesRange range, SeriesSource source, TimeSpan bucket, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        var rows = (await connection.QueryAsync<KeyedRow>(new CommandDefinition(
-            sql, Parameters(hostId, range, bucket), cancellationToken: cancellationToken))).ToList();
+        var rows = await connection.QueryAsync<KeyedRow>(new CommandDefinition(
+            sql, Parameters(hostId, range, bucket), cancellationToken: cancellationToken));
 
+        return Pivot(rows, range, source, bucket);
+    }
+
+    /// <summary>Turns (bucket, key, value) rows into one column per key.</summary>
+    private static MetricSeries Pivot(IEnumerable<KeyedRow> keyedRows, SeriesRange range, SeriesSource source, TimeSpan bucket)
+    {
+        var rows = keyedRows.ToList();
         var times = rows.Select(row => row.Bucket).Distinct().Order().ToList();
         var index = times.Select((time, position) => (time, position)).ToDictionary(pair => pair.time, pair => pair.position);
         var series = new Dictionary<string, double?[]>(StringComparer.Ordinal);
@@ -345,6 +394,15 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
     {
         public DateTime Bucket { get; set; }
         public string Key { get; set; } = "";
+        public double? Value { get; set; }
+    }
+
+    private sealed class TemperatureRow
+    {
+        public DateTime Bucket { get; set; }
+        public Guid HostId { get; set; }
+        public string Device { get; set; } = "";
+        public string Sensor { get; set; } = "";
         public double? Value { get; set; }
     }
 

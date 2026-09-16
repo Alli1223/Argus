@@ -47,6 +47,11 @@ public sealed class MetricsIngestionTests(ArgusAppFixture app) : IClassFixture<A
             new FilesystemMetrics { MountPoint = "/var", TotalBytes = 50, UsedBytes = 10, AvailableBytes = 38 },
         ],
         Interfaces = [new NetworkInterfaceMetrics { Name = "eth0", RxBytesPerSec = 300, TxBytesPerSec = 400, RxPacketsPerSec = 3 }],
+        Temperatures =
+        [
+            new TemperatureMetrics { Device = "coretemp", Sensor = "Package id 0", Celsius = 55.5 },
+            new TemperatureMetrics { Device = "nvme0", Sensor = "Composite", Celsius = 41 },
+        ],
         TopProcesses = [new ProcessMetrics { Pid = 1, Name = "systemd", CpuPercent = 0.5, MemoryBytes = 1024 }],
     };
 
@@ -86,6 +91,7 @@ public sealed class MetricsIngestionTests(ArgusAppFixture app) : IClassFixture<A
         Assert.Equal(3L, await ScalarAsync<long>("SELECT count(*) FROM host_metrics WHERE host_id = @host_id", hostId));
         Assert.Equal(6L, await ScalarAsync<long>("SELECT count(*) FROM filesystem_metrics WHERE host_id = @host_id", hostId));
         Assert.Equal(3L, await ScalarAsync<long>("SELECT count(*) FROM network_metrics WHERE host_id = @host_id", hostId));
+        Assert.Equal(6L, await ScalarAsync<long>("SELECT count(*) FROM temperature_metrics WHERE host_id = @host_id", hostId));
         Assert.Equal(42f, await ScalarAsync<float>("SELECT max(cpu_usage_pct) FROM host_metrics WHERE host_id = @host_id", hostId));
         Assert.Equal("systemd", await ScalarAsync<string>("SELECT processes->0->>'name' FROM host_processes WHERE host_id = @host_id", hostId));
 
@@ -138,11 +144,11 @@ public sealed class MetricsIngestionTests(ArgusAppFixture app) : IClassFixture<A
     {
         var hypertables = await ScalarAsync<string>(
             "SELECT string_agg(hypertable_name, ',' ORDER BY hypertable_name) FROM timescaledb_information.hypertables WHERE hypertable_schema = 'public'");
-        Assert.Equal("filesystem_metrics,host_metrics,network_metrics", hypertables);
+        Assert.Equal("filesystem_metrics,host_metrics,network_metrics,temperature_metrics", hypertables);
 
         var rollups = await ScalarAsync<string>(
             "SELECT string_agg(view_name, ',' ORDER BY view_name) FROM timescaledb_information.continuous_aggregates");
-        Assert.Equal("filesystem_metrics_1h,host_metrics_1h,host_metrics_5m,network_metrics_1h", rollups);
+        Assert.Equal("filesystem_metrics_1h,host_metrics_1h,host_metrics_5m,network_metrics_1h,temperature_metrics_1h", rollups);
 
         var rawRetention = await ScalarAsync<string>(
             "SELECT config->>'drop_after' FROM timescaledb_information.jobs WHERE proc_name = 'policy_retention' AND hypertable_name = 'host_metrics'");

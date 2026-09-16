@@ -8,6 +8,8 @@ public static class MetricsBatchValidator
     private const int NameLength = 256;
     private const int FsTypeLength = 64;
     private const int StateLength = 32;
+    private const double AbsoluteZero = -273.15;
+    private const double MaxCelsius = 1000;
 
     /// <summary>Problems that make the whole batch unacceptable; the agent should not resend it.</summary>
     public static string? ValidateShape(MetricsBatch batch) => batch.Samples.Count switch
@@ -108,6 +110,20 @@ public static class MetricsBatchValidator
                 RxErrorsPerSec = Rate(nic.RxErrorsPerSec),
                 TxErrorsPerSec = Rate(nic.TxErrorsPerSec),
             })
+            .ToList(),
+        Temperatures = sample.Temperatures
+            .Where(reading => !string.IsNullOrWhiteSpace(reading.Device) && !string.IsNullOrWhiteSpace(reading.Sensor)
+                && reading.Celsius is >= AbsoluteZero and <= MaxCelsius)
+            .Select(reading => new TemperatureMetrics
+            {
+                // Series are keyed "{device}/{sensor}", so a slash may only follow the device name.
+                Device = Clip(reading.Device.Trim().Replace('/', '-'), NameLength),
+                Sensor = Clip(reading.Sensor.Trim(), NameLength),
+                Celsius = reading.Celsius,
+            })
+            // One reading per sensor: the database keys readings by host, device, sensor and time.
+            .DistinctBy(reading => (reading.Device, reading.Sensor))
+            .Take(AgentLimits.MaxTemperaturesPerSample)
             .ToList(),
         TopProcesses = sample.TopProcesses?
             .Take(AgentLimits.MaxTopProcesses)

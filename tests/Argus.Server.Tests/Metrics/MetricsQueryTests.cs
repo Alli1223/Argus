@@ -1,5 +1,7 @@
 using System.Net;
 using Argus.Contracts.Agent;
+using Argus.Server.Features.Auth;
+using Argus.Server.Features.Hosts;
 using Argus.Server.Features.Metrics;
 using Argus.Server.Tests.Infrastructure;
 using static Argus.Server.Tests.Infrastructure.AgentTestHelpers;
@@ -76,6 +78,63 @@ public sealed class MetricsQueryTests(ArgusAppFixture app) : IClassFixture<Argus
 
         var processes = await owner.GetJsonAsync<ProcessSnapshot>($"/api/hosts/{hostId}/processes");
         Assert.Equal("systemd", Assert.Single(processes!.Processes).Name);
+    }
+
+    [Theory]
+    [InlineData(1, "raw")]
+    [InlineData(24 * 30, "1h")]
+    public async Task Temperatures_are_the_hottest_reading_of_each_sensor_per_point(int hours, string resolution)
+    {
+        var owner = await app.CreateOwnerAsync($"series-t-{hours}@example.com");
+        var (hostId, agent) = await app.RegisterHostAsync(owner, $"series-t-{hours}");
+        var now = DateTimeOffset.UtcNow;
+        MetricSample Hot(DateTimeOffset time, double package) => MetricsIngestionTests.FullSample(time) with
+        {
+            Temperatures =
+            [
+                new TemperatureMetrics { Device = "coretemp", Sensor = "Package id 0", Celsius = package },
+                new TemperatureMetrics { Device = "nvme0", Sensor = "Composite", Celsius = 41 },
+            ],
+        };
+        // Buckets here are two minutes or a whole day, both aligned to even minutes, so these share one.
+        var start = DateTimeOffset.FromUnixTimeSeconds(now.ToUnixTimeSeconds() / 120 * 120 - 240);
+        await agent.SendSamplesAsync(Hot(start.AddSeconds(10), 60), Hot(start.AddSeconds(25), 88));
+
+        var series = await owner.GetJsonAsync<MetricSeries>(
+            $"/api/hosts/{hostId}/temperatures?from={Iso(now.AddHours(-hours))}&to={Iso(now.AddMinutes(1))}&points=30");
+
+        Assert.Equal(resolution, series!.Resolution);
+        Assert.Equal(["coretemp/Package id 0", "nvme0/Composite"], series.Series.Keys.Order());
+        Assert.Contains(series.Series["coretemp/Package id 0"], value => value is > 87.9 and < 88.1);
+        Assert.DoesNotContain(series.Series["coretemp/Package id 0"], value => value is > 59 and < 61);
+        Assert.All(series.Series.Values, values => Assert.Equal(series.Time.Count, values.Length));
+    }
+
+    [Fact]
+    public async Task Fleet_temperatures_cover_the_visible_hosts_that_report_them()
+    {
+        var owner = await app.CreateOwnerAsync("series-f@example.com");
+        var (warmId, warm) = await app.RegisterHostAsync(owner, "series-f-1", "warm");
+        var (coldId, _) = await app.RegisterHostAsync(owner, "series-f-2", "cold");
+        var stranger = await app.CreateOwnerAsync("series-g@example.com");
+        var admin = await app.CreateOwnerAsync("series-admin@example.com", Roles.Admin);
+        var now = DateTimeOffset.UtcNow;
+        await warm.SendSamplesAsync(MetricsIngestionTests.FullSample(now));
+        var range = $"from={Iso(now.AddHours(-1))}&to={Iso(now.AddMinutes(1))}&points=20";
+
+        var fleet = (await owner.GetJsonAsync<List<HostTemperatures>>($"/api/hosts/temperatures?{range}"))!;
+        var host = Assert.Single(fleet);
+        Assert.Equal(warmId, host.HostId);
+        Assert.Equal("warm", host.DisplayName);
+        Assert.Equal(["coretemp/Package id 0", "nvme0/Composite"], host.History.Series.Keys.Order());
+
+        var quiet = await owner.GetJsonAsync<MetricSeries>($"/api/hosts/{coldId}/temperatures?{range}");
+        Assert.Empty(quiet!.Series);
+
+        Assert.Empty((await stranger.GetJsonAsync<List<HostTemperatures>>($"/api/hosts/temperatures?{range}"))!);
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/api/hosts/{warmId}/temperatures", Ct)).StatusCode);
+        Assert.Contains((await admin.GetJsonAsync<List<HostTemperatures>>($"/api/hosts/temperatures?{range}"))!, item => item.HostId == warmId);
+        Assert.Equal(HttpStatusCode.BadRequest, (await owner.GetAsync("/api/hosts/temperatures?points=5", Ct)).StatusCode);
     }
 
     [Fact]
