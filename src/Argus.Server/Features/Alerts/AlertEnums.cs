@@ -37,6 +37,16 @@ public enum AlertMetric
     ServiceFailed,
 }
 
+/// <summary>How a rule decides that a reading is a problem.</summary>
+public enum AlertCondition
+{
+    /// <summary>The reading passes a fixed threshold.</summary>
+    Threshold,
+
+    /// <summary>The reading strays from the host's usual level; the threshold counts standard deviations.</summary>
+    Anomaly,
+}
+
 public enum AlertOperator
 {
     Above,
@@ -66,6 +76,9 @@ public static class AlertMetrics
 
     /// <summary>States rather than measurements: no threshold or direction, only how long they last.</summary>
     public static bool IsState(this AlertMetric metric) => metric is AlertMetric.HostOffline or AlertMetric.ServiceFailed;
+
+    /// <summary>Host-wide measurements, which have the 5-minute rollup anomaly rules learn from.</summary>
+    public static bool SupportsAnomaly(this AlertMetric metric) => !metric.IsState() && !metric.IsPerFilesystem();
 
     public static bool IsPercentage(this AlertMetric metric) =>
         metric is AlertMetric.CpuUsage or AlertMetric.MemoryUsage or AlertMetric.SwapUsage

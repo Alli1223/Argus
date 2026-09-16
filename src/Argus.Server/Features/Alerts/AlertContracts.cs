@@ -7,6 +7,7 @@ public sealed record AlertRuleResponse(
     Guid Id,
     string Name,
     AlertMetric Metric,
+    AlertCondition Condition,
     AlertOperator Operator,
     double Threshold,
     int DurationSeconds,
@@ -28,6 +29,12 @@ public sealed record AlertRuleRequest
 
     [Required]
     public AlertMetric? Metric { get; init; }
+
+    /// <summary>
+    /// Threshold compares readings with <see cref="Threshold"/>. Anomaly compares them with the host's
+    /// usual level, and <see cref="Threshold"/> is then how many standard deviations count as unusual.
+    /// </summary>
+    public AlertCondition Condition { get; init; } = AlertCondition.Threshold;
 
     public AlertOperator Operator { get; init; } = AlertOperator.Above;
 
@@ -61,11 +68,13 @@ public sealed record AlertResponse(
     string ResourceKey,
     string Title,
     AlertMetric Metric,
+    AlertCondition Condition,
     AlertOperator Operator,
     double Threshold,
     AlertSeverity Severity,
     AlertStatus Status,
     double? Value,
+    double? Baseline,
     DateTimeOffset FiredAt,
     DateTimeOffset? ResolvedAt,
     DateTimeOffset? AcknowledgedAt,
