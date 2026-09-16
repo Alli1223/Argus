@@ -200,8 +200,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] GitHub Actions: build & test .NET, lint / test / build web, agent packages
 - [x] CI builds the Docker image (once Phase 12 adds it)
 - [x] Frontend unit tests (Vitest)
-- [ ] Configuration reference and API docs
-- [ ] Final README pass
+- [x] Configuration reference and API docs
+- [x] Final README pass
 
 ---
 

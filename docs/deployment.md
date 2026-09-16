@@ -74,12 +74,12 @@ services:
 
 The server reads its settings from environment variables named after its configuration keys, with
 `__` between the parts: `Argus:Retention:RawDays` becomes `Argus__Retention__RawDays`. Set them in
-`deploy/docker-compose.override.yml` as above. The defaults are in
-[`appsettings.json`](../src/Argus.Server/appsettings.json).
+`deploy/docker-compose.override.yml` as above. These are the ones you are most likely to change;
+[the configuration reference](configuration.md) lists them all, with the agent's settings.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `Argus:PublicUrl` | none | The address used in install commands. Without it, the page's own address is used. |
+| `Argus:PublicUrl` | none | The address used in install commands and in links from notifications. Without it, install commands use the page's own address. |
 | `Argus:Auth:AllowRegistration` | `false` | Lets anyone who can reach Argus create an account. |
 | `Argus:Agents:CollectionIntervalSeconds` | `15` | How often agents take a reading. |
 | `Argus:Agents:OfflineAfterSeconds` | `90` | How long a host can stay silent before it counts as offline. |
