@@ -84,6 +84,11 @@ The server reads its settings from environment variables named after its configu
 | `Argus:Agents:CollectionIntervalSeconds` | `15` | How often agents take a reading. |
 | `Argus:Agents:OfflineAfterSeconds` | `90` | How long a host can stay silent before it counts as offline. |
 | `Argus:Alerts:EvaluationIntervalSeconds` | `30` | How often alert rules are checked. |
+| `Argus:Smtp:Host`, `Argus:Smtp:Port` | none, `587` | The mail server for email notifications. Without a host, no emails are sent. |
+| `Argus:Smtp:Security` | `Auto` | `Auto` (TLS on port 465, otherwise STARTTLS when offered), `None`, `StartTls` or `SslOnConnect`. |
+| `Argus:Smtp:Username`, `Argus:Smtp:Password` | none | The mail server sign-in, if it needs one. |
+| `Argus:Smtp:From`, `Argus:Smtp:FromName` | none, `Argus` | Who emails come from. Required with a host. |
+| `Argus:Notifications:MaxAttempts` | `6` | How many times a notification is tried before Argus gives up. Retries wait 1, 5 and 15 minutes, then 1 and 4 hours. |
 | `Argus:Retention:RawDays` | `14` | How long individual readings are kept. |
 | `Argus:Retention:FiveMinuteDays` | `90` | How long five-minute averages are kept. |
 | `Argus:Retention:HourlyDays` | `730` | How long hourly averages are kept. |

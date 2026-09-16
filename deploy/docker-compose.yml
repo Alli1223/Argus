@@ -38,6 +38,12 @@ services:
       ConnectionStrings__Argus: Host=db;Database=argus;Username=argus;Password=${POSTGRES_PASSWORD}
       Argus__PublicUrl: ${ARGUS_PUBLIC_URL:-}
       Argus__Auth__AllowRegistration: ${ARGUS_ALLOW_REGISTRATION:-false}
+      Argus__Smtp__Host: ${ARGUS_SMTP_HOST:-}
+      Argus__Smtp__Port: ${ARGUS_SMTP_PORT:-587}
+      Argus__Smtp__Security: ${ARGUS_SMTP_SECURITY:-Auto}
+      Argus__Smtp__Username: ${ARGUS_SMTP_USERNAME:-}
+      Argus__Smtp__Password: ${ARGUS_SMTP_PASSWORD:-}
+      Argus__Smtp__From: ${ARGUS_SMTP_FROM:-}
       # X-Forwarded-* headers are believed from Caddy's fixed address, and from nobody else.
       Argus__Proxy__TrustedProxies__0: 172.30.0.10
     ports:
