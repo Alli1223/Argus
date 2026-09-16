@@ -12,6 +12,7 @@ const host: HostSummary = {
   status: "Offline",
   lastSeenAt: "2026-09-15T11:00:00Z",
   agentVersion: "0.1.0",
+  agentUpdate: null,
   ownerId: "u1",
   latest: null,
 };

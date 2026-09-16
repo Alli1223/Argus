@@ -79,6 +79,7 @@ export interface HostSummary {
   agentVersion: string;
   ownerId: string;
   latest: LatestMetrics | null;
+  agentUpdate: HostAgentUpdate | null;
 }
 
 export interface HostDetail {
@@ -105,6 +106,38 @@ export interface HostDetail {
   inventoryUpdatedAt: string | null;
   ownerId: string;
   latest: LatestMetrics | null;
+  agentUpdate: HostAgentUpdate | null;
+}
+
+/**
+ * A host's agent and updates: a newer release it could install, the version someone asked it to
+ * install and when, and why the last attempt failed.
+ */
+export interface HostAgentUpdate {
+  available: string | null;
+  requested: string | null;
+  requestedAt: string | null;
+  error: string | null;
+}
+
+export interface ReleaseSummary {
+  version: string;
+  tag: string;
+  name: string;
+  /** The release notes, in Markdown. */
+  notes: string;
+  url: string;
+  publishedAt: string;
+}
+
+/** This server's version against the latest release. */
+export interface ServerUpdateInfo {
+  currentVersion: string;
+  enabled: boolean;
+  latest: ReleaseSummary | null;
+  updateAvailable: boolean;
+  checkedAt: string | null;
+  error: string | null;
 }
 
 export interface UpdateHost {
