@@ -21,6 +21,9 @@ public enum NotificationKind
 {
     AlertFired,
     AlertResolved,
+
+    /// <summary>A message that checks a channel works. It is sent straight away, never queued.</summary>
+    Test,
 }
 
 public enum DeliveryStatus

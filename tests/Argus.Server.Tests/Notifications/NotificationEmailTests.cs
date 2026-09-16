@@ -3,7 +3,7 @@ using Argus.Server.Features.Notifications;
 
 namespace Argus.Server.Tests.Notifications;
 
-public sealed class AlertEmailTests
+public sealed class NotificationEmailTests
 {
     private static readonly Guid HostId = Guid.Parse("01a0aa6d-864f-7c6e-8840-23474b485dd1");
 
@@ -22,7 +22,7 @@ public sealed class AlertEmailTests
     [Fact]
     public void Fired_alerts_lead_with_their_severity()
     {
-        var email = AlertEmail.Render(Fired, "Ops", "https://argus.example.com/");
+        var email = NotificationEmail.ForAlert(Fired, "Ops", "https://argus.example.com/");
 
         Assert.Equal("[Warning] Memory usage on db <1> above 90%", email.Subject);
         Assert.Contains("Reading: 93.2%, threshold 90%", email.Text);
@@ -36,7 +36,7 @@ public sealed class AlertEmailTests
     [Fact]
     public void Resolved_alerts_say_how_long_they_lasted()
     {
-        var email = AlertEmail.Render(
+        var email = NotificationEmail.ForAlert(
             Fired with { Kind = AlertEventKind.Resolved, ResolvedAt = Fired.FiredAt.AddMinutes(90) }, "Ops", publicUrl: null);
 
         Assert.Equal("Resolved: Memory usage on db <1> above 90%", email.Subject);
@@ -63,4 +63,14 @@ public sealed class AlertEmailTests
     [Fact]
     public void Queued_payloads_read_back_unchanged() =>
         Assert.Equal(Fired, AlertNotification.FromJson(Fired.ToJson()));
+
+    [Fact]
+    public void Test_emails_name_the_channel()
+    {
+        var email = NotificationEmail.ForTest("Ops <team>");
+
+        Assert.Equal("Test from Argus", email.Subject);
+        Assert.Contains("The notification channel \"Ops <team>\" works", email.Text);
+        Assert.Contains("Ops &lt;team&gt;", email.Html);
+    }
 }

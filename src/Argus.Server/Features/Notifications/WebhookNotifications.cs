@@ -23,6 +23,7 @@ internal sealed class WebhookNotificationSender(NotificationChannelKind kind, IH
         {
             NotificationKind.AlertFired or NotificationKind.AlertResolved =>
                 WebhookPayloads.ForAlert(kind, AlertNotification.FromJson(delivery.Payload), argus.Value.PublicUrl),
+            NotificationKind.Test => WebhookPayloads.ForTest(kind, channel),
             _ => throw new NotSupportedException($"There is no webhook message for {delivery.Kind} notifications."),
         };
 
@@ -47,6 +48,32 @@ public static class WebhookPayloads
             NotificationChannelKind.Slack => Slack(alert, link),
             NotificationChannelKind.Discord => Discord(alert, link),
             _ => Generic(alert, link),
+        };
+    }
+
+    /// <summary>A message that shows the channel works.</summary>
+    public static JsonObject ForTest(NotificationChannelKind kind, NotificationChannel channel)
+    {
+        var message = $"The notification channel \"{channel.Name}\" works: alerts will arrive here.";
+        return kind switch
+        {
+            NotificationChannelKind.Slack => new JsonObject { ["text"] = $"*Test from Argus*\n{SlackEscape(message)}" },
+            NotificationChannelKind.Discord => new JsonObject
+            {
+                ["username"] = "Argus",
+                ["embeds"] = new JsonArray(new JsonObject
+                {
+                    ["title"] = "Test from Argus",
+                    ["description"] = message,
+                    ["color"] = 0x4f5be0,
+                }),
+            },
+            _ => new JsonObject
+            {
+                ["event"] = "test",
+                ["channel"] = new JsonObject { ["id"] = channel.Id, ["name"] = channel.Name },
+                ["message"] = message,
+            },
         };
     }
 

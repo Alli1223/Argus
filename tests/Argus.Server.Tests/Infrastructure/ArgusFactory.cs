@@ -21,6 +21,7 @@ public sealed class ArgusFactory(
         builder.UseSetting("Argus:RateLimits:AuthPermitsPerMinute", "100000");
         builder.UseSetting("Argus:RateLimits:AgentRegisterPermitsPerMinute", "100000");
         builder.UseSetting("Argus:RateLimits:AgentIngestPermitsPerMinute", "100000");
+        builder.UseSetting("Argus:RateLimits:NotificationTestPermitsPerMinute", "100000");
 
         // Tests evaluate alert rules and send notifications on demand, at the moments they choose.
         builder.UseSetting("Argus:Alerts:BackgroundEvaluation", "false");

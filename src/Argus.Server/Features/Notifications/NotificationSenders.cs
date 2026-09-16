@@ -24,6 +24,13 @@ public static class EmailAddresses
 {
     public static IReadOnlyList<string> Split(string target) =>
         target.Split([',', ';', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    /// <summary>Whether this is a plain address such as <c>ops@example.com</c> (no display name).</summary>
+    public static bool IsValid(string address) =>
+        MailboxAddress.TryParse(address, out var mailbox)
+        && mailbox.Address == address
+        && address.IndexOf('@') is > 0 and var at
+        && at < address.Length - 1;
 }
 
 internal sealed class EmailNotificationSender(IEmailTransport transport, IOptions<SmtpOptions> smtp, IOptions<ArgusOptions> argus)
@@ -42,7 +49,8 @@ internal sealed class EmailNotificationSender(IEmailTransport transport, IOption
         var content = delivery.Kind switch
         {
             NotificationKind.AlertFired or NotificationKind.AlertResolved =>
-                AlertEmail.Render(AlertNotification.FromJson(delivery.Payload), channel.Name, argus.Value.PublicUrl),
+                NotificationEmail.ForAlert(AlertNotification.FromJson(delivery.Payload), channel.Name, argus.Value.PublicUrl),
+            NotificationKind.Test => NotificationEmail.ForTest(channel.Name),
             _ => throw new NotSupportedException($"There is no email for {delivery.Kind} notifications."),
         };
 
