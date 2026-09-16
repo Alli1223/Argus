@@ -60,8 +60,6 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
         avg(process_count)::float8     AS processes
         """;
 
-    static TimeSeriesQueries() => DefaultTypeMap.MatchNamesWithUnderscores = true;
-
     /// <summary>The newest sample of each host from the last day, plus the fullest filesystem.</summary>
     public async Task<Dictionary<Guid, LatestMetrics>> GetLatestAsync(IReadOnlyCollection<Guid> hostIds, CancellationToken cancellationToken)
     {
