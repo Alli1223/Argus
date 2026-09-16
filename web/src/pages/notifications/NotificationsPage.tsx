@@ -29,6 +29,7 @@ import {
   channelToRequest,
   describeDelivery,
   describeFilter,
+  describeReports,
   describeTarget,
   type DeliveryTone,
 } from "./channelText";
@@ -217,6 +218,11 @@ function ChannelRow({
       </Table.Td>
       <Table.Td>
         <Text fz="sm">{describeFilter(channel)}</Text>
+        {describeReports(channel) && (
+          <Text fz="xs" c="dimmed">
+            {describeReports(channel)}
+          </Text>
+        )}
       </Table.Td>
       <Table.Td>
         <Group gap={6} wrap="nowrap" align="flex-start">

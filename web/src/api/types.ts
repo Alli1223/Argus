@@ -300,6 +300,8 @@ export interface NotificationChannel {
   minimumSeverity: AlertSeverity;
   notifyOnResolved: boolean;
   enabled: boolean;
+  dailyReport: boolean;
+  weeklyReport: boolean;
   lastDelivery: DeliverySummary | null;
   createdAt: string;
   updatedAt: string;
@@ -312,9 +314,13 @@ export interface NotificationChannelRequest {
   minimumSeverity: AlertSeverity;
   notifyOnResolved: boolean;
   enabled: boolean;
+  dailyReport: boolean;
+  weeklyReport: boolean;
 }
 
-/** What the server can send: email needs a mail server in its settings. */
+/** What the server can send (email needs a mail server in its settings), and when reports go out. */
 export interface NotificationSupport {
   email: boolean;
+  reportHourUtc: number;
+  weeklyReportDay: string;
 }

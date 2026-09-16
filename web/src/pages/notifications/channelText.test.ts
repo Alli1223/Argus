@@ -4,7 +4,9 @@ import {
   channelToRequest,
   describeDelivery,
   describeFilter,
+  describeReports,
   describeTarget,
+  reportTime,
   splitAddresses,
   targetError,
 } from "./channelText";
@@ -17,6 +19,8 @@ const channel: NotificationChannel = {
   minimumSeverity: "Warning",
   notifyOnResolved: true,
   enabled: true,
+  dailyReport: true,
+  weeklyReport: false,
   lastDelivery: null,
   createdAt: "2026-09-16T10:00:00Z",
   updatedAt: "2026-09-16T10:00:00Z",
@@ -61,6 +65,14 @@ describe("channel summaries", () => {
     );
   });
 
+  it("mention the reports a channel receives and when they go out", () => {
+    expect(describeReports(channel)).toBe("Daily report");
+    expect(describeReports({ dailyReport: true, weeklyReport: true })).toBe("Daily and weekly reports");
+    expect(describeReports({ dailyReport: false, weeklyReport: false })).toBeNull();
+    expect(reportTime({ reportHourUtc: 7, weeklyReportDay: "Monday" }, false)).toBe("07:00 UTC");
+    expect(reportTime({ reportHourUtc: 18, weeklyReportDay: "Friday" }, true)).toBe("Fridays at 18:00 UTC");
+  });
+
   it("say how the latest notification went", () => {
     expect(describeDelivery(null, now)).toEqual({ text: "Nothing sent yet", tone: "none" });
     expect(describeDelivery(delivery({ status: "Sent", sentAt: "2026-09-16T11:58:00Z" }), now)).toEqual({
@@ -85,6 +97,8 @@ describe("channel summaries", () => {
       minimumSeverity: "Warning",
       notifyOnResolved: true,
       enabled: true,
+      dailyReport: true,
+      weeklyReport: false,
     });
   });
 });
