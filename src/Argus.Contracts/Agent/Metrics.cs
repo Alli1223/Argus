@@ -12,6 +12,9 @@ public sealed record MetricsBatchResponse
     public int Accepted { get; init; }
 
     public AgentSettings? Settings { get; init; }
+
+    /// <summary>Set when someone asked this agent to update and the new build is ready to download.</summary>
+    public AgentUpdateOffer? Update { get; init; }
 }
 
 /// <summary>

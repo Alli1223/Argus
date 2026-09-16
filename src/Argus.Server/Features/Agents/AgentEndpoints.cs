@@ -4,6 +4,7 @@ using Argus.Server.Data;
 using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Hosts;
 using Argus.Server.Features.Metrics;
+using Argus.Server.Features.Updates;
 using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -150,6 +151,7 @@ public static class AgentEndpoints
         TimeProvider time,
         ILoggerFactory loggers,
         Live.LiveUpdates live,
+        AgentUpdates updates,
         CancellationToken cancellationToken)
     {
         if (MetricsBatchValidator.ValidateShape(batch) is { } problem)
@@ -180,7 +182,12 @@ public static class AgentEndpoints
             await live.HostMetricsAsync(principal.GetOwnerId(), new Live.LiveHostMetrics(hostId, LatestMetrics.FromSample(newest)));
         }
 
-        return TypedResults.Ok(new MetricsBatchResponse { Accepted = accepted, Settings = agentOptions.Value.ToAgentSettings() });
+        return TypedResults.Ok(new MetricsBatchResponse
+        {
+            Accepted = accepted,
+            Settings = agentOptions.Value.ToAgentSettings(),
+            Update = await updates.OfferAsync(hostId, cancellationToken),
+        });
     }
 
     private static Dictionary<string, string[]>? ValidateRegistration(RegisterAgentRequest request)

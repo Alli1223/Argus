@@ -28,6 +28,9 @@ public sealed class ArgusFactory(
         builder.UseSetting("Argus:Notifications:BackgroundDelivery", "false");
         builder.UseSetting("Argus:Reports:BackgroundScheduling", "false");
 
+        // Only the update tests talk to (a fake) GitHub, and only when they ask.
+        builder.UseSetting("Argus:Updates:BackgroundChecks", "false");
+
         foreach (var (key, value) in settings)
         {
             builder.UseSetting(key, value);

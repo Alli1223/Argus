@@ -74,7 +74,13 @@ All paths start with `/api`.
 | `GET /hosts/{id}/network` | Traffic per network interface over time. |
 | `GET /hosts/{id}/processes` | The busiest processes in the latest reading. |
 | `GET /hosts/{id}/services` | Services failing in the latest check, and when it was. |
+| `POST /hosts/{id}/agent-update` | Asks the host's agent to update to the latest release. `409` when there is nothing to update to. |
+| `DELETE /hosts/{id}/agent-update` | Withdraws the request, and forgets why the last attempt failed. |
+| `POST /hosts/agent-updates` | Asks every host you can see whose agent is out of date. Answers how many were asked. |
 | `GET /dashboard/summary` | Host counts, active alerts by severity, and the busiest hosts. |
+
+A host's `agentUpdate` is `null`, or says which newer version is `available`, which one was
+`requested` and when, and the `error` of the last failed attempt.
 
 #### History queries
 
@@ -118,6 +124,13 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
 - `condition` is `Threshold` (the default) or `Anomaly`. Anomaly rules work on the host-wide
   metrics, compare with each host's usual level over the past week, and take the threshold as a
   number of standard deviations (1–10) and a duration of at least 5 minutes.
+
+### Updates (administrators)
+
+| Method and path | What it does |
+| --- | --- |
+| `GET /updates` | This server's version, the latest release with its notes, whether it is newer, and when and how the last check went. |
+| `POST /updates/check` | Checks GitHub now. |
 
 ### Notification channels
 
@@ -186,5 +199,8 @@ they register (`Authorization: Bearer argus_ak_…`), not with a session.
 | `POST /api/agent/v1/register` | Exchanges an enrollment token (`argus_et_…`) and a description of the machine for a host id and key. |
 | `POST /api/agent/v1/metrics` | Sends a batch of up to 500 readings. The answer carries the settings the agent should use. |
 | `PUT /api/agent/v1/inventory` | Updates what the machine is. |
+| `GET /api/agent/v1/update/offer` | The update the agent was asked to install: its `version`, `sha256` and `size`. `204` when there is none. Metrics responses carry the same offer as `update`. |
+| `GET /api/agent/v1/update/download` | The offered build. |
+| `POST /api/agent/v1/update/result` | Reports a failed update, with the `error`. |
 
 Agent builds and install scripts are served, without a sign-in, under `/downloads`.

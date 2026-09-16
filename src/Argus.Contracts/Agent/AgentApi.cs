@@ -10,6 +10,15 @@ public static class AgentApi
     public const string Metrics = BasePath + "/metrics";
     public const string Inventory = BasePath + "/inventory";
 
+    /// <summary>The update the server wants this agent to install, if any (<see cref="AgentUpdateOffer"/>).</summary>
+    public const string UpdateOffer = BasePath + "/update/offer";
+
+    /// <summary>The offered agent build itself.</summary>
+    public const string UpdateDownload = BasePath + "/update/download";
+
+    /// <summary>Where an agent reports how an update went (<see cref="AgentUpdateResult"/>).</summary>
+    public const string UpdateResult = BasePath + "/update/result";
+
     /// <summary>Prefix of per-host agent keys (sent as <c>Authorization: Bearer …</c>).</summary>
     public const string AgentKeyPrefix = "argus_ak_";
 
