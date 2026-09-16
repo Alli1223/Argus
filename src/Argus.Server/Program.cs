@@ -92,6 +92,7 @@ api.MapHostEndpoints();
 api.MapDashboardEndpoints();
 api.MapAlertRuleEndpoints();
 api.MapAlertEndpoints();
+api.MapNotificationChannelEndpoints();
 
 app.MapAgentEndpoints();
 app.MapAgentDownloads();

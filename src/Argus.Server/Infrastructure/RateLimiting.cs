@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Options;
 
@@ -20,6 +21,10 @@ public sealed class RateLimitOptions
     /// <summary>Metric batches allowed per agent per minute (agents send one every collection interval).</summary>
     [Range(1, 100_000)]
     public int AgentIngestPermitsPerMinute { get; set; } = 120;
+
+    /// <summary>Test notifications each person may send per minute (they can reach any address).</summary>
+    [Range(1, 100_000)]
+    public int NotificationTestPermitsPerMinute { get; set; } = 5;
 }
 
 public static class RateLimiting
@@ -32,6 +37,9 @@ public static class RateLimiting
 
     /// <summary>Policy for agents posting metrics.</summary>
     public const string AgentIngestPolicy = "agent-ingest";
+
+    /// <summary>Policy for sending test notifications.</summary>
+    public const string NotificationTestPolicy = "notification-test";
 
     public static IServiceCollection AddArgusRateLimiting(this IServiceCollection services)
     {
@@ -60,6 +68,11 @@ public static class RateLimiting
             limiter.AddPolicy(AgentIngestPolicy, context =>
                 PerMinute(context, SecretTokens.Hash(context.Request.Headers.Authorization.ToString()),
                     options => options.AgentIngestPermitsPerMinute));
+
+            // Authentication runs before the rate limiter, so people are told apart by their user id.
+            limiter.AddPolicy(NotificationTestPolicy, context =>
+                PerMinute(context, context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ClientAddress(context),
+                    options => options.NotificationTestPermitsPerMinute));
         });
 
         return services;

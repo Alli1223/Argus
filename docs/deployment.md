@@ -93,6 +93,7 @@ The server reads its settings from environment variables named after its configu
 | `Argus:Retention:FiveMinuteDays` | `90` | How long five-minute averages are kept. |
 | `Argus:Retention:HourlyDays` | `730` | How long hourly averages are kept. |
 | `Argus:RateLimits:AuthPermitsPerMinute` | `10` | Sign-in attempts allowed per address per minute. |
+| `Argus:RateLimits:NotificationTestPermitsPerMinute` | `5` | Test notifications each person may send per minute. |
 | `Argus:Proxy:TrustedProxies`, `Argus:Proxy:TrustedNetworks` | none | Proxies whose forwarded headers are believed. |
 
 ### Keeping history
