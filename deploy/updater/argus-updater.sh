@@ -238,7 +238,7 @@ rollback() {
   step rolling-back "Going back to Argus $from: $reason"
 
   logs=$(compose logs --no-color --no-log-prefix --tail 40 "$SERVER_SERVICE" 2>&1 | tail -c 6000 || true)
-  status '.serverLog = $logs' --arg logs "$logs"
+  status '.serverLog = (if $logs == "" then null else $logs end)' --arg logs "$logs"
 
   cat "$ENV_BEFORE" > "$ENV_FILE"
 

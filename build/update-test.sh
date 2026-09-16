@@ -48,7 +48,7 @@ server_image() { docker inspect --format '{{.Config.Image}}' "$(compose ps --qui
 
 # Hands the updater a request the way the server writes one, and waits for the update to end.
 update_to() {
-  local id="test-$1-$RANDOM"
+  local id="test-${1//./-}-$RANDOM"
   jq -n --arg id "$id" --arg version "$1" '{id: $id, version: $version, requestedBy: "update-test", requestedAt: (now | todate)}' \
     | compose exec -T updater sh -c 'cat > /updates/request.json.tmp && mv /updates/request.json.tmp /updates/request.json'
 
@@ -76,7 +76,8 @@ docker build --quiet -t "$UPDATER:0.9.0" "$ROOT/deploy/updater" >/dev/null
 for version in 0.9.0 0.9.1 0.9.2 0.9.3; do
   broken=""
   if [ "$version" = 0.9.2 ] || [ "$version" = 0.9.3 ]; then
-    broken='HEALTHCHECK --interval=2s --timeout=2s --start-period=2s --retries=2 CMD ["dotnet", "/app/no-such-program.dll"]'
+    # Unhealthy once the server has had time to start and log something, as a broken release would be.
+    broken='HEALTHCHECK --interval=3s --timeout=2s --start-period=15s --retries=2 CMD ["dotnet", "/app/no-such-program.dll"]'
   fi
   printf 'FROM %s\nLABEL org.opencontainers.image.version=%s\n%s\n' "$SERVER:base" "$version" "$broken" \
     | docker build --quiet -t "$SERVER:$version" - >/dev/null
