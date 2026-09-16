@@ -17,6 +17,7 @@ public static class HostEndpoints
         var hosts = routes.MapGroup("/hosts").WithTags("Hosts");
 
         hosts.MapGet("/", ListAsync);
+        hosts.MapGet("/temperatures", GetFleetTemperaturesAsync);
         hosts.MapGet("/{id:guid}", GetAsync);
         hosts.MapPatch("/{id:guid}", UpdateAsync);
         hosts.MapDelete("/{id:guid}", DeleteAsync);
@@ -24,6 +25,7 @@ public static class HostEndpoints
         hosts.MapGet("/{id:guid}/filesystems", GetFilesystemsAsync);
         hosts.MapGet("/{id:guid}/filesystems/history", GetFilesystemHistoryAsync);
         hosts.MapGet("/{id:guid}/network", GetNetworkHistoryAsync);
+        hosts.MapGet("/{id:guid}/temperatures", GetTemperatureHistoryAsync);
         hosts.MapGet("/{id:guid}/processes", GetProcessesAsync);
         hosts.MapGet("/{id:guid}/services", GetServicesAsync);
 
@@ -221,6 +223,62 @@ public static class HostEndpoints
         }
 
         return TypedResults.Ok(await series.GetNetworkHistoryAsync(id, range, CollectionInterval(agents), cancellationToken));
+    }
+
+    private static async Task<Results<Ok<MetricSeries>, NotFound, ValidationProblem>> GetTemperatureHistoryAsync(
+        Guid id,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        int? points,
+        ClaimsPrincipal user,
+        ArgusDbContext db,
+        TimeSeriesQueries series,
+        IOptions<AgentOptions> agents,
+        TimeProvider time,
+        CancellationToken cancellationToken)
+    {
+        if (!await db.Hosts.VisibleTo(user).AnyAsync(host => host.Id == id, cancellationToken))
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (SeriesRange.TryCreate(from, to, points, time.GetUtcNow(), out var range) is { } errors)
+        {
+            return TypedResults.ValidationProblem(errors);
+        }
+
+        var histories = await series.GetTemperatureHistoryAsync([id], range, CollectionInterval(agents), cancellationToken);
+        return TypedResults.Ok(histories[id]);
+    }
+
+    /// <summary>The temperature history of every visible host that reported temperatures in the range, by name.</summary>
+    private static async Task<Results<Ok<List<HostTemperatures>>, ValidationProblem>> GetFleetTemperaturesAsync(
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        int? points,
+        ClaimsPrincipal user,
+        ArgusDbContext db,
+        TimeSeriesQueries series,
+        IOptions<AgentOptions> agents,
+        TimeProvider time,
+        CancellationToken cancellationToken)
+    {
+        if (SeriesRange.TryCreate(from, to, points, time.GetUtcNow(), out var range) is { } errors)
+        {
+            return TypedResults.ValidationProblem(errors);
+        }
+
+        var hosts = await db.Hosts.AsNoTracking().VisibleTo(user)
+            .OrderBy(host => host.DisplayName)
+            .Select(host => new { host.Id, host.DisplayName })
+            .ToListAsync(cancellationToken);
+        var histories = await series.GetTemperatureHistoryAsync(
+            hosts.Select(host => host.Id).ToList(), range, CollectionInterval(agents), cancellationToken);
+
+        return TypedResults.Ok(hosts
+            .Where(host => histories[host.Id].Series.Count > 0)
+            .Select(host => new HostTemperatures(host.Id, host.DisplayName, histories[host.Id]))
+            .ToList());
     }
 
     private static async Task<Results<Ok<ProcessSnapshot>, NoContent, NotFound>> GetProcessesAsync(

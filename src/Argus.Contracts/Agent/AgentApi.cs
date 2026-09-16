@@ -32,6 +32,7 @@ public static class AgentLimits
     public const int MaxSamplesPerBatch = 500;
     public const int MaxFilesystemsPerSample = 64;
     public const int MaxInterfacesPerSample = 64;
+    public const int MaxTemperaturesPerSample = 256;
     public const int MaxTopProcesses = 50;
     public const int MaxFailedServices = 100;
     public const int MaxIpAddresses = 32;

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Argus.Contracts.Agent;
+using Argus.Server.Features.Metrics;
 
 namespace Argus.Server.Features.Hosts;
 
@@ -86,6 +87,9 @@ public sealed record HostDetail(
 /// install, and why the latest attempt failed. Null when none of these apply.
 /// </summary>
 public sealed record HostAgentUpdate(string? Available, string? Requested, DateTimeOffset? RequestedAt, string? Error);
+
+/// <summary>One host's temperature sensors over time, series keyed <c>{device}/{sensor}</c>.</summary>
+public sealed record HostTemperatures(Guid HostId, string DisplayName, MetricSeries History);
 
 /// <summary>Partial update: only the properties that are present change.</summary>
 public sealed record UpdateHostRequest

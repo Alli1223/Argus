@@ -16,6 +16,7 @@ import {
   formatPointTime,
   formatTick,
   formatValue,
+  temperatureAxis,
   type ChartSeries,
   type ChartUnit,
 } from "./chartData";
@@ -204,7 +205,12 @@ function Plot({
         },
         scales: {
           x: { time: true, range: () => [latest.current.from, latest.current.to] },
-          y: { range: (_self, _min, dataMax) => [0, config.max ?? (dataMax > 0 ? dataMax * 1.12 : 1)] },
+          y: {
+            range: (_self, dataMin, dataMax) =>
+              config.unit === "celsius"
+                ? temperatureAxis(dataMin, dataMax)
+                : [0, config.max ?? (dataMax > 0 ? dataMax * 1.12 : 1)],
+          },
         },
         axes: [
           {

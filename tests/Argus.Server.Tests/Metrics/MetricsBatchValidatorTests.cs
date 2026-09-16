@@ -70,6 +70,31 @@ public class MetricsBatchValidatorTests
     }
 
     [Fact]
+    public void Temperatures_keep_one_believable_reading_per_named_sensor()
+    {
+        var sample = Sample(Now) with
+        {
+            Temperatures =
+            [
+                new TemperatureMetrics { Device = "coretemp", Sensor = "Package id 0", Celsius = 61.5 },
+                new TemperatureMetrics { Device = "coretemp", Sensor = "Package id 0", Celsius = 99 },
+                new TemperatureMetrics { Device = " ", Sensor = "Core 0", Celsius = 50 },
+                new TemperatureMetrics { Device = "acpitz", Sensor = "", Celsius = 50 },
+                new TemperatureMetrics { Device = "acpitz", Sensor = "temp1", Celsius = double.NaN },
+                new TemperatureMetrics { Device = "acpitz", Sensor = "temp2", Celsius = -300 },
+                new TemperatureMetrics { Device = "ACPI/zone", Sensor = new string('x', 300), Celsius = 27.8 },
+            ],
+        };
+
+        var cleaned = Assert.Single(MetricsBatchValidator.Sanitize([sample], Now, MaxAge, MaxSkew, out _));
+
+        Assert.Equal(2, cleaned.Temperatures.Count);
+        Assert.Equal(61.5, cleaned.Temperatures[0].Celsius);
+        Assert.Equal("ACPI-zone", cleaned.Temperatures[1].Device);
+        Assert.Equal(256, cleaned.Temperatures[1].Sensor.Length);
+    }
+
+    [Fact]
     public void Oversized_lists_are_truncated()
     {
         var sample = Sample(Now) with
@@ -77,10 +102,14 @@ public class MetricsBatchValidatorTests
             Interfaces = Enumerable.Range(0, AgentLimits.MaxInterfacesPerSample + 10)
                 .Select(i => new NetworkInterfaceMetrics { Name = $"eth{i}" })
                 .ToList(),
+            Temperatures = Enumerable.Range(0, AgentLimits.MaxTemperaturesPerSample + 10)
+                .Select(i => new TemperatureMetrics { Device = "coretemp", Sensor = $"Core {i}", Celsius = 40 })
+                .ToList(),
         };
 
         var cleaned = Assert.Single(MetricsBatchValidator.Sanitize([sample], Now, MaxAge, MaxSkew, out _));
 
         Assert.Equal(AgentLimits.MaxInterfacesPerSample, cleaned.Interfaces.Count);
+        Assert.Equal(AgentLimits.MaxTemperaturesPerSample, cleaned.Temperatures.Count);
     }
 }

@@ -30,7 +30,13 @@ import { useNow } from "../../lib/useNow";
 import classes from "./HostPage.module.css";
 import { hostCharts } from "./hostCharts";
 import { HostHeader } from "./HostHeader";
-import { FilesystemsSection, InterfacesSection, ProcessesSection, ServicesSection } from "./HostResources";
+import {
+  FilesystemsSection,
+  InterfacesSection,
+  ProcessesSection,
+  ServicesSection,
+  TemperaturesSection,
+} from "./HostResources";
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
@@ -107,6 +113,7 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
       ) : (
         <HostCharts host={host} metrics={metrics.data} refreshing={metrics.isPlaceholderData} onZoom={zoom} />
       )}
+      <TemperaturesSection hostId={host.id} range={range} onZoom={zoom} />
       <FilesystemsSection hostId={host.id} range={range} />
       <InterfacesSection hostId={host.id} range={range} onZoom={zoom} />
     </>

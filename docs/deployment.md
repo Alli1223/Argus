@@ -19,7 +19,7 @@ and TimescaleDB. An optional third, Caddy, puts HTTPS in front of them. Everythi
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
-git checkout v0.2.0    # the latest release, from https://github.com/Alli1223/Argus/releases
+git checkout v0.3.0    # the latest release, from https://github.com/Alli1223/Argus/releases
 cp deploy/.env.example deploy/.env
 ```
 

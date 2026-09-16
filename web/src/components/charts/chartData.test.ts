@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BYTE_INCREMENTS, formatTick, formatValue } from "./chartData";
+import { BYTE_INCREMENTS, formatTick, formatValue, temperatureAxis } from "./chartData";
 
 describe("formatTick", () => {
   it("drops needless decimals", () => {
@@ -10,6 +10,7 @@ describe("formatTick", () => {
     expect(formatTick(1.5 * 1024 ** 2, "bytesPerSecond")).toBe("1.5 MB/s");
     expect(formatTick(0.5, "load")).toBe("0.5");
     expect(formatTick(2, "load")).toBe("2");
+    expect(formatTick(65, "celsius")).toBe("65 °C");
   });
 });
 
@@ -19,6 +20,23 @@ describe("formatValue", () => {
     expect(formatValue(2048, "bytesPerSecond")).toBe("2.0 KB/s");
     expect(formatValue(0.734, "load")).toBe("0.73");
     expect(formatValue(null, "load")).toBe("–");
+    expect(formatValue(61.85, "celsius")).toBe("61.9 °C");
+  });
+});
+
+describe("temperatureAxis", () => {
+  it("spans whole tens around the readings", () => {
+    expect(temperatureAxis(58.8, 74.85)).toEqual([50, 80]);
+    expect(temperatureAxis(-12, 3)).toEqual([-20, 10]);
+  });
+
+  it("stays at least 20 degrees tall so small changes look small", () => {
+    expect(temperatureAxis(69, 73)).toEqual([60, 80]);
+    expect(temperatureAxis(25, 25)).toEqual([20, 40]);
+  });
+
+  it("falls back to a room-to-hot range without readings", () => {
+    expect(temperatureAxis(null, null)).toEqual([0, 100]);
   });
 });
 

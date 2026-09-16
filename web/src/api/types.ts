@@ -156,6 +156,13 @@ export interface MetricSeries {
   series: Record<string, (number | null)[]>;
 }
 
+/** One host's temperature sensors over time; series are keyed `{device}/{sensor}`. */
+export interface HostTemperatures {
+  hostId: string;
+  displayName: string;
+  history: MetricSeries;
+}
+
 export interface FilesystemSnapshot {
   mountPoint: string;
   device: string | null;

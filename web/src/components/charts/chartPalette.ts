@@ -3,10 +3,16 @@
 
 export type ChartScheme = "light" | "dark";
 
-/** Categorical slots in fixed order: slot 1 is always a chart's main series. */
-export const SERIES_COLORS: Record<ChartScheme, readonly [string, string, string]> = {
-  light: ["#4f5be0", "#d55181", "#0a8fb0"],
-  dark: ["#7582ee", "#d55181", "#1f9fc4"],
+type Slots = readonly [string, string, string, string, string, string, string, string];
+
+/**
+ * Categorical slots in fixed order: slot 1 is always a chart's main series. The order keeps neighbours
+ * apart for colour-blind readers, so slots are taken in sequence and never skipped or reordered. Eight
+ * is the most a chart gets; more series are split across charts.
+ */
+export const SERIES_COLORS: Record<ChartScheme, Slots> = {
+  light: ["#4f5be0", "#d55181", "#0a8fb0", "#eb6834", "#c0569b", "#008300", "#4a3aa7", "#c98500"],
+  dark: ["#7582ee", "#d55181", "#1f9fc4", "#d95926", "#c86aa8", "#3d9c3d", "#9085e9", "#c98500"],
 };
 
 /** Load averages are ordered, so they are steps of one hue with the 1-minute average strongest. */

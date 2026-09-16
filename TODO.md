@@ -211,13 +211,22 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Update notices and buttons in the web app
 - [ ] Update an agent end to end on a real systemd install and on Windows
 
+## Phase 17 — Temperatures
+
+- [x] Agent: temperature sensors from hwmon on Linux (thermal zones where there are none; SATA drives only when `DriveTemperatures` is on, since reading them can keep drives awake) and ACPI thermal zones on Windows
+- [x] Server: `temperature_metrics` hypertable with compression, an hourly rollup and retention; validation and ingestion
+- [x] `GET /api/hosts/{id}/temperatures` and `GET /api/hosts/temperatures` (every visible host)
+- [x] Web: temperature charts on the host page and a Temperatures page for all hosts, with the chart palette extended to eight validated slots
+- [ ] Check the Windows thermal zone counters on a real Windows machine
+
 ---
 
 ## Future ideas (not scheduled)
 
 - Organizations / teams with shared systems
 - Single sign-on (OIDC) and two-factor authentication
-- Per-core CPU, temperatures, GPU and container (Docker) metrics
+- Per-core CPU, GPU and container (Docker) metrics
+- Temperature alert rules
 - Synthetic checks (HTTP, ping, TCP port)
 - Log collection and search
 - macOS agent

@@ -36,6 +36,11 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
             batch.BatchCommands.Add(NetworkMetrics(hostId, samples));
         }
 
+        if (samples.Any(sample => sample.Temperatures.Count > 0))
+        {
+            batch.BatchCommands.Add(TemperatureMetrics(hostId, samples));
+        }
+
         if (samples.Where(sample => sample.TopProcesses is not null).MaxBy(sample => sample.Timestamp) is { } latest)
         {
             batch.BatchCommands.Add(ProcessSnapshot(hostId, latest));
@@ -156,6 +161,26 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
                 Param("tx_pps", rows.Select(r => (float)r.Nic.TxPacketsPerSec).ToArray()),
                 Param("rx_errors", rows.Select(r => (float)r.Nic.RxErrorsPerSec).ToArray()),
                 Param("tx_errors", rows.Select(r => (float)r.Nic.TxErrorsPerSec).ToArray()),
+            },
+        };
+    }
+
+    private static NpgsqlBatchCommand TemperatureMetrics(Guid hostId, IReadOnlyList<MetricSample> samples)
+    {
+        var rows = samples.SelectMany(s => s.Temperatures, (s, reading) => (s.Timestamp, Reading: reading)).ToList();
+        return new NpgsqlBatchCommand("""
+            INSERT INTO temperature_metrics (host_id, time, device, sensor, celsius)
+            SELECT @host_id, * FROM unnest(@time::timestamptz[], @device::text[], @sensor::text[], @celsius::real[])
+            ON CONFLICT DO NOTHING
+            """)
+        {
+            Parameters =
+            {
+                Param("host_id", hostId),
+                Param("time", rows.Select(r => r.Timestamp).ToArray()),
+                Param("device", rows.Select(r => r.Reading.Device).ToArray()),
+                Param("sensor", rows.Select(r => r.Reading.Sensor).ToArray()),
+                Param("celsius", rows.Select(r => (float)r.Reading.Celsius).ToArray()),
             },
         };
     }

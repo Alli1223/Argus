@@ -5,7 +5,8 @@ Windows report what each machine is doing; a server stores the history, raises a
 sends notifications; and a web app shows it all.
 
 - **Hosts at a glance:** CPU, memory, swap, load, disk and network, live and over time, with
-  filesystems, network interfaces, the busiest processes and failed services for each machine.
+  filesystems, network interfaces, temperatures, the busiest processes and failed services for each
+  machine, and every machine's temperature sensors on one page.
 - **Alert rules** on fixed thresholds, on readings that stray from a host's usual level, on hosts
   that stop reporting and on services that fail. Rules can cover every host, one host or a tag.
 - **Notifications** by email, Slack, Discord or webhook, with retries, plus daily and weekly
@@ -21,7 +22,7 @@ On a Linux machine with Docker:
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
-git checkout v0.2.0                   # the latest release
+git checkout v0.3.0                   # the latest release
 cp deploy/.env.example deploy/.env    # then set POSTGRES_PASSWORD and ARGUS_PUBLIC_URL
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
