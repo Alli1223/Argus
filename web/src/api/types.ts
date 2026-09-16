@@ -16,6 +16,8 @@ export type AlertMetric =
   | "HostOffline"
   | "ServiceFailed";
 export type AlertOperator = "Above" | "Below";
+/** A fixed threshold, or the host's usual level (the threshold then counts standard deviations). */
+export type AlertCondition = "Threshold" | "Anomaly";
 export type AlertSeverity = "Info" | "Warning" | "Critical";
 export type AlertStatus = "Firing" | "Resolved";
 
@@ -201,6 +203,7 @@ export interface AlertRule {
   id: string;
   name: string;
   metric: AlertMetric;
+  condition: AlertCondition;
   operator: AlertOperator;
   threshold: number;
   durationSeconds: number;
@@ -218,6 +221,7 @@ export interface AlertRule {
 export interface AlertRuleRequest {
   name: string;
   metric: AlertMetric;
+  condition: AlertCondition;
   operator: AlertOperator;
   threshold: number;
   durationSeconds: number;
@@ -237,11 +241,14 @@ export interface Alert {
   resourceKey: string;
   title: string;
   metric: AlertMetric;
+  condition: AlertCondition;
   operator: AlertOperator;
   threshold: number;
   severity: AlertSeverity;
   status: AlertStatus;
   value: number | null;
+  /** For anomaly alerts: the host's usual level, which the value strayed from. */
+  baseline: number | null;
   firedAt: string;
   resolvedAt: string | null;
   acknowledgedAt: string | null;

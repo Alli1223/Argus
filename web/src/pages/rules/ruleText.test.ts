@@ -13,6 +13,7 @@ const rule: AlertRule = {
   id: "r1",
   name: "High CPU usage",
   metric: "CpuUsage",
+  condition: "Threshold",
   operator: "Above",
   threshold: 90,
   durationSeconds: 300,
@@ -76,6 +77,7 @@ describe("ruleToRequest", () => {
     expect(ruleToRequest(rule)).toEqual({
       name: "High CPU usage",
       metric: "CpuUsage",
+      condition: "Threshold",
       operator: "Above",
       threshold: 90,
       durationSeconds: 300,

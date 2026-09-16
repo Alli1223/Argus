@@ -4,9 +4,10 @@ import { describeRule, isStateMetric } from "./ruleText";
 
 const serviceRule: Pick<
   AlertRule,
-  "metric" | "operator" | "threshold" | "durationSeconds" | "resourceFilter"
+  "metric" | "condition" | "operator" | "threshold" | "durationSeconds" | "resourceFilter"
 > = {
   metric: "ServiceFailed",
+  condition: "Threshold",
   operator: "Above",
   threshold: 0,
   durationSeconds: 0,
