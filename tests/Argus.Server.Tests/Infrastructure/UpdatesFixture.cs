@@ -14,11 +14,16 @@ public sealed class UpdatesFixture(PostgresFixture postgres) : ArgusAppFixture(p
 
     private readonly string _cache = Path.Combine(Path.GetTempPath(), $"argus-update-tests-{Guid.NewGuid():N}");
 
+    /// <summary>The directory the server shares with the updater service.</summary>
+    public string ServerUpdatesDirectory { get; } = Directory.CreateDirectory(
+        Path.Combine(Path.GetTempPath(), $"argus-server-updates-{Guid.NewGuid():N}")).FullName;
+
     protected override IReadOnlyDictionary<string, string?> Settings => new Dictionary<string, string?>
     {
         ["Argus:Updates:ApiUrl"] = FakeGitHub.ApiUrl,
         ["Argus:Updates:Repository"] = FakeGitHub.Repository,
         ["Argus:Updates:CacheDirectory"] = _cache,
+        ["Argus:Updates:ServerUpdatesDirectory"] = ServerUpdatesDirectory,
     };
 
     protected override void ConfigureServices(IServiceCollection services) =>
@@ -35,9 +40,9 @@ public sealed class UpdatesFixture(PostgresFixture postgres) : ArgusAppFixture(p
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        if (Directory.Exists(_cache))
+        foreach (var directory in new[] { _cache, ServerUpdatesDirectory }.Where(Directory.Exists))
         {
-            Directory.Delete(_cache, recursive: true);
+            Directory.Delete(directory, recursive: true);
         }
     }
 }
