@@ -22,7 +22,7 @@ On a Linux machine with Docker:
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
-git checkout v0.2.0                   # the latest release
+git checkout v0.3.0                   # the latest release
 cp deploy/.env.example deploy/.env    # then set POSTGRES_PASSWORD and ARGUS_PUBLIC_URL
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
