@@ -219,6 +219,17 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Web: temperature charts on the host page and a Temperatures page for all hosts, with the chart palette extended to eight validated slots
 - [ ] Check the Windows thermal zone counters on a real Windows machine
 
+## Phase 18 — Server updates from the web app
+
+- [x] Release workflow publishes the server and updater images (x86-64 and ARM64) to GitHub's container registry before the release
+- [x] Compose file runs the released images, with an `updater` service: Docker socket, no network, a volume shared with the server
+- [x] Updater: download the image, back up the database, restart the server as the new version, wait for it to stay healthy; otherwise restore `.env`, restore the backup if the schema changed, and start the previous version
+- [x] Server: `GET` / `POST /api/updates/server`, admin only, latest newer release only
+- [x] Web: Settings page with release notes, **Update**, step-by-step progress through the restart, and how an update ended
+- [x] CI: end-to-end update test with a good release, two that roll back (one restoring the backup) and refused ones
+- [ ] Make the GHCR packages public after the first release that publishes them
+- [ ] Install a real release through the updater on a production install
+
 ---
 
 ## Future ideas (not scheduled)

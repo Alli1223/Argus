@@ -137,6 +137,8 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
 | --- | --- |
 | `GET /updates` | This server's version, the latest release with its notes, whether it is newer, and when and how the last check went. |
 | `POST /updates/check` | Checks GitHub now. |
+| `GET /updates/server` | Whether Argus can install releases itself (`available`, or why not in `unavailable`), a `pendingVersion` the updater has not started on yet, and its latest update in `lastRun`: `from`, `to`, `state`, `error`, `backup`, the new version's `serverLog` when it was rolled back, and a `log` of steps. |
+| `POST /updates/server` | Asks the updater to install the latest release: `version`. Answers `202`, or `409` with the reason when it cannot, such as when an update is already running. |
 
 ### Notification channels
 

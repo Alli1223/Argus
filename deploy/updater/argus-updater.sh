@@ -37,6 +37,9 @@ BACKUPS="$DEPLOY_MOUNT/backups"
 # .env holds secrets, so its copy stays with the backups rather than on the volume the server can read.
 ENV_BEFORE="$BACKUPS/env-before-update"
 
+# Image, status, health and restart count of a container, as wait_for_server compares them.
+SERVER_STATE='{{.Config.Image}}|{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}|{{.RestartCount}}'
+
 problem=""
 project=""
 workdir=""
@@ -168,7 +171,8 @@ migrations() {
   in_db 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT migration_id FROM __ef_migrations_history ORDER BY 1"'
 }
 
-# Waits for the server container to be running and healthy, then checks it stays that way.
+# Waits for the server container to run the expected image and be healthy, then checks it stays that
+# way. A new server that reports itself unhealthy, or has crashed and been restarted, fails straight away.
 wait_for_server() {
   expected_image=$1
   state=""
@@ -177,14 +181,23 @@ wait_for_server() {
     heartbeat
     container=$(server_container)
     if [ -n "$container" ]; then
-      state=$(docker inspect --format '{{.Config.Image}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}} {{.RestartCount}}' "$container")
-      if [ "$state" = "$expected_image running healthy 0" ]; then
-        sleep "$SETTLE_SECONDS"
-        again=$(docker inspect --format '{{.Config.Image}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}} {{.RestartCount}}' "$container" 2>/dev/null || true)
-        [ "$again" = "$state" ] && return 0
-        note "The server stopped being healthy after starting ($again)."
-        return 1
-      fi
+      state=$(docker inspect --format "$SERVER_STATE" "$container" 2>/dev/null || true)
+      case "$state" in
+        "$expected_image|running|healthy|0")
+          sleep "$SETTLE_SECONDS"
+          [ "$(docker inspect --format "$SERVER_STATE" "$container" 2>/dev/null || true)" = "$state" ] && return 0
+          note "The server stopped being healthy right after starting."
+          return 1
+          ;;
+        "$expected_image|"*"|unhealthy|"*)
+          note "The server reported itself unhealthy."
+          return 1
+          ;;
+        "$expected_image|"*"|"[1-9]*)
+          note "The server stopped and had to be restarted."
+          return 1
+          ;;
+      esac
     fi
     sleep 3
   done

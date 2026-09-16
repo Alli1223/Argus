@@ -1,8 +1,9 @@
 name: Release
 
-# Pushing a tag such as v0.3.0 publishes a GitHub release with the agents for every platform. The tag
-# must match VersionPrefix in Directory.Build.props, so builds from the tagged source carry the same
-# version. See docs/releasing.md.
+# Pushing a tag such as v0.3.0 publishes the server and updater images to GitHub's container registry,
+# then a GitHub release with the agents for every platform. Servers offer a release as soon as it is
+# published, so the images come first. The tag must match VersionPrefix in Directory.Build.props, so
+# builds from the tagged source carry the same version. See docs/releasing.md.
 
 on:
   push:
@@ -16,20 +17,70 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
 
 jobs:
-  release:
-    name: Build and publish
+  images:
+    name: Server images
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
 
       - name: Check the tag matches the version
+        id: version
         run: |
           version="$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' Directory.Build.props)"
           if [ "$GITHUB_REF_NAME" != "v$version" ]; then
             echo "::error::The tag $GITHUB_REF_NAME does not match VersionPrefix $version in Directory.Build.props."
             exit 1
           fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "registry=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      # The updater's image runs a package install for each platform; the server's builds on this one.
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Server
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.version.outputs.registry }}/argus:${{ steps.version.outputs.version }}
+            ${{ steps.version.outputs.registry }}/argus:latest
+          # The updater reads the version from this label.
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Updater
+        uses: docker/build-push-action@v7
+        with:
+          context: deploy/updater
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ steps.version.outputs.version }}
+          tags: |
+            ${{ steps.version.outputs.registry }}/argus-updater:${{ steps.version.outputs.version }}
+            ${{ steps.version.outputs.registry }}/argus-updater:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+  release:
+    name: Build and publish
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -43,7 +94,7 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           cat > notes.md <<EOF
-          To upgrade a server, see [Upgrade](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/deployment.md#upgrade). Once the server runs $version, agents can be updated from the Hosts page.
+          Administrators can install this release from **Settings** in Argus, or by hand: see [Upgrade](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/deployment.md#upgrade). Once the server runs $version, agents can be updated from the Hosts page.
           EOF
           cd artifacts/agent
           gh release create "$GITHUB_REF_NAME" --verify-tag --title "Argus $version" \

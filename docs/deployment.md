@@ -1,16 +1,19 @@
 # Deploying Argus
 
-Argus runs as two containers: the server, which also serves the web app and the agent downloads,
-and TimescaleDB. An optional third, Caddy, puts HTTPS in front of them. Everything is described in
-[`deploy/docker-compose.yml`](../deploy/docker-compose.yml).
+Argus runs as three containers: the server, which also serves the web app and the agent downloads;
+TimescaleDB; and the updater, which installs new releases when an administrator asks for one in the
+web app. An optional fourth, Caddy, puts HTTPS in front of them. Everything is described in
+[`deploy/docker-compose.yml`](../deploy/docker-compose.yml), which runs the images each release
+publishes on GitHub's container registry.
 
 ## What you need
 
 - A Linux machine, x86-64 or ARM64, that your other machines can reach. One or two CPU cores and
   2 GB of memory are plenty for a few dozen hosts; disk use depends on how many hosts you watch
   and how long you keep their history (see [Keeping history](#keeping-history)).
-- Docker Engine with the Compose and Buildx plugins. Docker's own packages include both; some
-  distributions ship Buildx separately (on Arch Linux it is `docker-buildx`).
+- Docker Engine with the Compose plugin, which Docker's own packages include. To build the images
+  yourself you also need Buildx; some distributions ship it separately (on Arch Linux it is
+  `docker-buildx`).
 - For HTTPS with the bundled Caddy: a domain name whose DNS points at the machine, and ports 80
   and 443 open to the internet so Let's Encrypt can issue a certificate.
 
@@ -26,15 +29,15 @@ cp deploy/.env.example deploy/.env
 Staying on `main` instead gets changes that have not been released yet.
 
 Edit `deploy/.env`. At least set a long `POSTGRES_PASSWORD` and `ARGUS_PUBLIC_URL`, the address
-people and agents will use (it appears in the agents' install commands). Then build and start:
+people and agents will use (it appears in the agents' install commands), and set `ARGUS_VERSION` to
+the release you checked out. Then start Argus:
 
 ```sh
-docker compose -f deploy/docker-compose.yml up -d --build
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
-The first build takes a few minutes; it compiles the web app, the server and the agents for Linux
-and Windows. When `docker compose -f deploy/docker-compose.yml ps` shows the server as healthy,
-open Argus in a browser. The first visit asks you to create the administrator account.
+When `docker compose -f deploy/docker-compose.yml ps` shows the server as healthy, open Argus in a
+browser. The first visit asks you to create the administrator account.
 
 To watch your first machine, open **Add a system**: create an enrollment token and run the
 install command it shows on that machine.
@@ -109,21 +112,74 @@ the next time the server starts.
 
 ## Upgrade
 
-Administrators see a notice in Argus when a new release is out. To install it (here 0.3.0):
+Administrators see a notice in Argus when a new release is out. Open **Settings**, read what the
+release brings, and choose **Update**. The updater then:
+
+1. downloads the release's server image,
+2. backs up the database into `deploy/backups/`, readable only by the owner of the `deploy`
+   directory (it keeps the latest five),
+3. sets `ARGUS_VERSION` in `deploy/.env` and restarts the server as the new version,
+4. waits for the new server to report healthy, and for it to stay that way.
+
+The page follows each step. Argus is unavailable for a minute or two while the server restarts;
+agents keep their readings and send them once it is back. When the update is done, reload the page to
+use the new web app.
+
+If the new version does not become healthy, the updater puts `deploy/.env` back and starts the
+previous version again, and the page says why, with the new version's last log lines. If the new
+version had already changed the database, the backup is restored first, so anything recorded in the
+few minutes between the backup and the rollback is lost. If going back fails too, Argus stays stopped
+and the page names the backup to [restore](#restore) by hand.
+
+The updater only replaces the server. When a release changes `deploy/docker-compose.yml` itself, its
+notes say so; upgrade that release by hand.
+
+Once the server runs the new version, update the agents from the **Hosts** page.
+
+### The updater and Docker
+
+To start and stop containers the updater needs the Docker socket, which is as good as root on the
+machine. It is kept small: it has no network and no ports, it reads nothing from the server but a
+version number, it only installs images from the repository named in the Compose file, and never an
+older version than the one running. If you would rather no container had that access, delete the
+`updater` service from the Compose file; **Settings** then shows the commands to upgrade by hand.
+
+### By hand
+
+Take a [backup](#back-up) first: a schema update cannot be undone except by restoring one. Then,
+here for 0.4.0:
 
 ```sh
 git fetch --tags
-git checkout v0.3.0
-docker compose -f deploy/docker-compose.yml up -d --build
+git checkout v0.4.0
+sed -i 's/^ARGUS_VERSION=.*/ARGUS_VERSION=0.4.0/' deploy/.env    # add the line if it is not there
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
-The server updates the database schema when it starts. Agents keep their readings while the
-server restarts and send them once it is back. A browser tab left open from before the upgrade
-asks to be reloaded when it opens a page that has changed.
+### From 0.3.0 or earlier
 
-Take a backup first. A schema update cannot be undone except by restoring one.
+Until 0.4.0 the Compose file built Argus from source and had no updater. Upgrade to 0.4.0 or later
+by hand once, as above, making sure `deploy/.env` has an `ARGUS_VERSION` line. Docker downloads the
+released images, starts the updater, and later releases can be installed from **Settings**. The
+image built before (`argus:latest`) is no longer used; `docker image rm argus:latest` removes it.
 
-Once the server runs the new version, update the agents from the **Hosts** page.
+### Building the images yourself
+
+To run your own build, give it a name and version of your own in `deploy/.env`:
+
+```sh
+docker build -t argus-local/server:dev .
+docker build -t argus-local/updater:dev deploy/updater
+```
+
+```sh
+ARGUS_IMAGE=argus-local/server
+ARGUS_UPDATER_IMAGE=argus-local/updater
+ARGUS_VERSION=dev
+```
+
+Updating from **Settings** then downloads released images from `argus-local/server`, which do not
+exist, so upgrade by hand.
 
 ## Updating agents
 

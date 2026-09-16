@@ -67,6 +67,15 @@ A React + TypeScript single-page app built with Vite. It talks to the server's `
 using the auth cookie and receives live updates over SignalR (`/hubs/live`). In development the
 Vite dev server proxies `/api` and `/hubs` to the ASP.NET Core server.
 
+### Updater (`deploy/updater`)
+
+A small shell program in a container next to the server, with the Docker socket and no network. The
+server and the updater share a volume: when an administrator chooses a release in **Settings**, the
+server writes a request naming its version there, and the updater writes back its progress and a
+heartbeat. The updater downloads the release's image, backs up the database, restarts the server as
+the new version through Docker Compose and waits for it to report healthy; when it does not, it goes
+back to the previous version, restoring the backup if the database had changed.
+
 ### Shared contracts (`src/Argus.Contracts`)
 
 DTOs for the agent ↔ server protocol plus a source-generated `JsonSerializerContext`, referenced
@@ -131,9 +140,10 @@ are kept longer.
 
 ## Deployment
 
-`docker compose` runs two containers — `argus` (server + UI + agent downloads) and `db`
-(TimescaleDB) — plus an optional `caddy` reverse proxy for automatic HTTPS. The server applies
-database migrations on startup. See [deployment.md](deployment.md).
+`docker compose` runs three containers — `server` (server + UI + agent downloads), `db`
+(TimescaleDB) and `updater` — plus an optional `caddy` reverse proxy for automatic HTTPS. The server
+and updater images come from GitHub's container registry, published with each release. The server
+applies database migrations on startup. See [deployment.md](deployment.md).
 
 ## Repository layout
 
