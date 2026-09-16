@@ -164,7 +164,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Windows `install.ps1` / `uninstall.ps1` (service, recovery actions, ACLs)
 - [x] `build/package-agent.sh` producing release archives
 - [x] Server serves agent binaries and install scripts at `/downloads/*` (the UI's install commands are part of the "Add system" flow)
-- [ ] Trimmed agent builds (a trimmed linux-x64 build is 14 MB instead of 39 MB; needs a full run against a server first)
+- [x] Trimmed agent builds (linux-x64 40 MB → 15 MB, win-x64 13 MB; the Windows build is untested, like the rest of the Windows agent)
 - [ ] Test `install.sh` and the sandboxed systemd unit end to end on a clean Linux VM
 - [ ] Verify the Windows agent (collectors, service install) on a real Windows machine
 
