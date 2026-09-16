@@ -27,7 +27,7 @@ LINUX_SCRIPTS="$ROOT/deploy/agent/linux"
 for runtime in linux-x64 linux-arm64; do
   tar -czf "$OUT/argus-agent-$VERSION-$runtime.tar.gz" \
     -C "$OUT/$runtime" argus-agent \
-    -C "$LINUX_SCRIPTS" install.sh uninstall.sh argus-agent.service
+    -C "$LINUX_SCRIPTS" install.sh uninstall.sh argus-agent.service argus-agent-update.service argus-agent-update.path
 done
 
 python3 - "$OUT" "$VERSION" "$ROOT/deploy/agent/windows" <<'PY'

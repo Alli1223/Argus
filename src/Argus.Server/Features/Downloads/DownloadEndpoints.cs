@@ -45,6 +45,7 @@ public static class DownloadEndpoints
         types.Mappings[".sh"] = "text/x-shellscript";
         types.Mappings[".ps1"] = "text/plain";
         types.Mappings[".service"] = "text/plain";
+        types.Mappings[".path"] = "text/plain";
 
         return app.UseStaticFiles(new StaticFileOptions
         {

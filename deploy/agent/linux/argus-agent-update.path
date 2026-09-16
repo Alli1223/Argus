@@ -1,0 +1,10 @@
+[Unit]
+Description=Watches for Argus agent update requests
+
+[Path]
+# The agent creates this file when the server offers it an update.
+PathExists=/var/lib/argus-agent/update-requested
+Unit=argus-agent-update.service
+
+[Install]
+WantedBy=multi-user.target

@@ -123,8 +123,23 @@ asks to be reloaded when it opens a page that has changed.
 
 Take a backup first. A schema update cannot be undone except by restoring one.
 
-Once the server runs the new version, update the agents from the **Hosts** page. Agents installed
-from a release before 0.2.0 cannot update themselves; run their install command once more.
+Once the server runs the new version, update the agents from the **Hosts** page.
+
+## Updating agents
+
+When a release has a newer agent, hosts running an older one say so, and you can update one host or
+all of them from the web app. The server downloads the agent for each platform from the GitHub
+release and keeps it only if it matches the release's `SHA256SUMS`; agents then fetch it from the
+server with their key, check it again, and replace themselves:
+
+- **Linux:** the agent runs sandboxed as an unprivileged user and cannot replace its own program. It
+  asks the `argus-agent-update` systemd unit, which runs as root, fetches the offered update from the
+  server named in `/etc/argus-agent/agent.json`, checks it, installs it and restarts the agent.
+- **Windows:** the service starts a copy of itself that stops the service, swaps the program and
+  starts it again.
+
+If the new agent does not keep running, the previous one goes back and the host shows why. Agents
+installed from a release before 0.2.0 have no updater: run their install command once more.
 
 ## Back up
 

@@ -1,0 +1,22 @@
+[Unit]
+Description=Updates the Argus agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Runs as root: it replaces /opt/argus-agent/argus-agent and restarts the agent. It downloads the update
+# from the server in /etc/argus-agent/agent.json and checks it itself; the request file only says "now".
+ExecStart=/opt/argus-agent/argus-agent apply-update
+TimeoutStartSec=15min
+
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
