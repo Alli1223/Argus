@@ -19,8 +19,11 @@ and TimescaleDB. An optional third, Caddy, puts HTTPS in front of them. Everythi
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
+git checkout v0.2.0    # the latest release, from https://github.com/Alli1223/Argus/releases
 cp deploy/.env.example deploy/.env
 ```
+
+Staying on `main` instead gets changes that have not been released yet.
 
 Edit `deploy/.env`. At least set a long `POSTGRES_PASSWORD` and `ARGUS_PUBLIC_URL`, the address
 people and agents will use (it appears in the agents' install commands). Then build and start:
@@ -106,8 +109,11 @@ the next time the server starts.
 
 ## Upgrade
 
+Administrators see a notice in Argus when a new release is out. To install it (here 0.3.0):
+
 ```sh
-git pull
+git fetch --tags
+git checkout v0.3.0
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
@@ -116,6 +122,9 @@ server restarts and send them once it is back. A browser tab left open from befo
 asks to be reloaded when it opens a page that has changed.
 
 Take a backup first. A schema update cannot be undone except by restoring one.
+
+Once the server runs the new version, update the agents from the **Hosts** page. Agents installed
+from a release before 0.2.0 cannot update themselves; run their install command once more.
 
 ## Back up
 
