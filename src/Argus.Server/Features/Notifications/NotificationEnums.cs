@@ -24,6 +24,9 @@ public enum NotificationKind
 
     /// <summary>A message that checks a channel works. It is sent straight away, never queued.</summary>
     Test,
+
+    DailyReport,
+    WeeklyReport,
 }
 
 public enum DeliveryStatus

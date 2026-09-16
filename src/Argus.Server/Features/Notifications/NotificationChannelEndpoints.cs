@@ -18,6 +18,8 @@ public sealed record NotificationChannelResponse(
     AlertSeverity MinimumSeverity,
     bool NotifyOnResolved,
     bool Enabled,
+    bool DailyReport,
+    bool WeeklyReport,
     DeliverySummary? LastDelivery,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
@@ -43,10 +45,16 @@ public sealed record NotificationChannelRequest
     public bool NotifyOnResolved { get; init; } = true;
 
     public bool Enabled { get; init; } = true;
+
+    /// <summary>Also send a summary of the past day. The first one comes at the next report time.</summary>
+    public bool DailyReport { get; init; }
+
+    /// <summary>Also send a summary of the past week.</summary>
+    public bool WeeklyReport { get; init; }
 }
 
-/// <summary>What this server can send: email needs an SMTP server in its settings.</summary>
-public sealed record NotificationSupport(bool Email);
+/// <summary>What this server can send (email needs an SMTP server in its settings), and when reports go out.</summary>
+public sealed record NotificationSupport(bool Email, int ReportHourUtc, DayOfWeek WeeklyReportDay);
 
 /// <summary>Notification channels are personal: each user decides where their own alerts go.</summary>
 public static class NotificationChannelEndpoints
@@ -60,7 +68,8 @@ public static class NotificationChannelEndpoints
         var channels = routes.MapGroup("/notification-channels").WithTags("Notification channels");
 
         channels.MapGet("/", ListAsync);
-        channels.MapGet("/support", (IOptions<SmtpOptions> smtp) => new NotificationSupport(Email: smtp.Value.IsConfigured));
+        channels.MapGet("/support", (IOptions<SmtpOptions> smtp, IOptions<ReportOptions> reports) =>
+            new NotificationSupport(smtp.Value.IsConfigured, reports.Value.SendHourUtc, reports.Value.WeeklyDay));
         channels.MapGet("/{id:guid}", GetAsync);
         channels.MapPost("/", CreateAsync);
         channels.MapPut("/{id:guid}", UpdateAsync);
@@ -87,7 +96,12 @@ public static class NotificationChannelEndpoints
     }
 
     private static async Task<Results<Created<NotificationChannelResponse>, ValidationProblem>> CreateAsync(
-        NotificationChannelRequest request, ClaimsPrincipal user, ArgusDbContext db, TimeProvider time, CancellationToken cancellationToken)
+        NotificationChannelRequest request,
+        ClaimsPrincipal user,
+        ArgusDbContext db,
+        IOptions<ReportOptions> reports,
+        TimeProvider time,
+        CancellationToken cancellationToken)
     {
         var (errors, target) = Validate(request);
         if (errors is not null)
@@ -97,7 +111,7 @@ public static class NotificationChannelEndpoints
 
         var now = time.GetUtcNow();
         var channel = new NotificationChannel { OwnerId = user.GetUserId(), CreatedAt = now };
-        Apply(channel, request, target, now);
+        Apply(channel, request, target, now, reports.Value);
         db.NotificationChannels.Add(channel);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -106,7 +120,13 @@ public static class NotificationChannelEndpoints
     }
 
     private static async Task<Results<Ok<NotificationChannelResponse>, NotFound, ValidationProblem>> UpdateAsync(
-        Guid id, NotificationChannelRequest request, ClaimsPrincipal user, ArgusDbContext db, TimeProvider time, CancellationToken cancellationToken)
+        Guid id,
+        NotificationChannelRequest request,
+        ClaimsPrincipal user,
+        ArgusDbContext db,
+        IOptions<ReportOptions> reports,
+        TimeProvider time,
+        CancellationToken cancellationToken)
     {
         var ownerId = user.GetUserId();
         var channel = await db.NotificationChannels.SingleOrDefaultAsync(c => c.Id == id && c.OwnerId == ownerId, cancellationToken);
@@ -122,7 +142,7 @@ public static class NotificationChannelEndpoints
         }
 
         // Queued notifications are sent to the channel as it is when their turn comes.
-        Apply(channel, request, target, time.GetUtcNow());
+        Apply(channel, request, target, time.GetUtcNow(), reports.Value);
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(await Project(db, db.NotificationChannels.Where(c => c.Id == id)).SingleAsync(cancellationToken));
@@ -191,6 +211,8 @@ public static class NotificationChannelEndpoints
             channel.MinimumSeverity,
             channel.NotifyOnResolved,
             channel.Enabled,
+            channel.DailyReport,
+            channel.WeeklyReport,
             db.NotificationDeliveries
                 .Where(delivery => delivery.ChannelId == channel.Id)
                 .OrderByDescending(delivery => delivery.CreatedAt)
@@ -237,8 +259,22 @@ public static class NotificationChannelEndpoints
         return (errors.Count == 0 ? null : errors, target);
     }
 
-    private static void Apply(NotificationChannel channel, NotificationChannelRequest request, string target, DateTimeOffset now)
+    private static void Apply(
+        NotificationChannel channel, NotificationChannelRequest request, string target, DateTimeOffset now, ReportOptions reports)
     {
+        // A report switched on starts with the next period, rather than straight away with the one just gone.
+        if (request.DailyReport && !channel.DailyReport)
+        {
+            channel.DailyReportSentFor = ReportSchedule.LatestDue(ReportKind.Daily, now, reports);
+        }
+
+        if (request.WeeklyReport && !channel.WeeklyReport)
+        {
+            channel.WeeklyReportSentFor = ReportSchedule.LatestDue(ReportKind.Weekly, now, reports);
+        }
+
+        channel.DailyReport = request.DailyReport;
+        channel.WeeklyReport = request.WeeklyReport;
         channel.Name = request.Name.Trim();
         channel.Kind = request.Kind!.Value;
         channel.Target = target;

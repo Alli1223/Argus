@@ -9,6 +9,7 @@ public static class NotificationServiceExtensions
     {
         services.AddValidatedOptions<NotificationOptions>(NotificationOptions.SectionName);
         services.AddValidatedOptions<SmtpOptions>(SmtpOptions.SectionName);
+        services.AddValidatedOptions<ReportOptions>(ReportOptions.SectionName);
 
         services.AddSingleton<NotificationSignal>();
         services.AddScoped<IAlertEventSink, NotificationAlertSink>();
@@ -27,6 +28,10 @@ public static class NotificationServiceExtensions
         }
 
         services.AddHostedService<NotificationDispatchService>();
+
+        services.AddScoped<ReportBuilder>();
+        services.AddScoped<ReportScheduler>();
+        services.AddHostedService<ReportSchedulingService>();
         return services;
     }
 }

@@ -34,6 +34,9 @@ public sealed class NotificationsFixture(PostgresFixture postgres) : AlertsFixtu
     public Task<DispatchResult> DispatchAsync() =>
         WithScopeAsync(services => services.GetRequiredService<NotificationDispatcher>().DispatchDueAsync(TestContext.Current.CancellationToken));
 
+    public Task<int> QueueReportsAsync() =>
+        WithScopeAsync(services => services.GetRequiredService<ReportScheduler>().QueueDueAsync(TestContext.Current.CancellationToken));
+
     public Task<NotificationChannel> AddEmailChannelAsync(Guid ownerId, string addresses, Action<NotificationChannel>? configure = null) =>
         AddChannelAsync(ownerId, NotificationChannelKind.Email, addresses, configure);
 
