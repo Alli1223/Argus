@@ -5,7 +5,8 @@ Windows report what each machine is doing; a server stores the history, raises a
 sends notifications; and a web app shows it all.
 
 - **Hosts at a glance:** CPU, memory, swap, load, disk and network, live and over time, with
-  filesystems, network interfaces, the busiest processes and failed services for each machine.
+  filesystems, network interfaces, temperatures, the busiest processes and failed services for each
+  machine, and every machine's temperature sensors on one page.
 - **Alert rules** on fixed thresholds, on readings that stray from a host's usual level, on hosts
   that stop reporting and on services that fail. Rules can cover every host, one host or a tag.
 - **Notifications** by email, Slack, Discord or webhook, with retries, plus daily and weekly

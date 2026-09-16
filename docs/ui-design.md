@@ -40,13 +40,25 @@ steps above, so text on filled buttons and badges is dark (`#151a37`) there, not
 
 Chart series colours were checked with the dataviz palette validator (lightness band, chroma,
 colour-blind separation, normal-vision separation, contrast) against the light panel surface
-`#ffffff` and the dark panel surface `#262c50`. All checks pass.
+`#ffffff` and the dark panel surface `#262c50`. All checks pass for all eight slots in both modes:
+the worst neighbouring pair is 9.8 apart for colour-blind readers (target 8) and at least 15 for
+everyone else.
 
 | Slot | Light | Dark | Used for |
 | --- | --- | --- | --- |
 | 1 | `#4f5be0` iris | `#7582ee` | The main series: CPU, received, read |
 | 2 | `#d55181` magenta | `#d55181` | The second series: sent, write |
 | 3 | `#0a8fb0` cyan | `#1f9fc4` | A third series |
+| 4 | `#eb6834` orange | `#d95926` | Temperature sensors 4–8 |
+| 5 | `#c0569b` rose | `#c86aa8` | |
+| 6 | `#008300` green | `#3d9c3d` | |
+| 7 | `#4a3aa7` violet | `#9085e9` | |
+| 8 | `#c98500` gold | `#c98500` | |
+
+Slots 4 to 8 came from trying every order of five extra hues after the first three and keeping the
+orders that pass in both modes; among those, this one keeps the first five slots furthest apart,
+since most charts have few series. Green and gold sit near the healthy and bronze status colours, so
+they come last, and status in Argus always has a word or an icon beside it.
 
 Load averages are ordered (1, 5 and 15 minutes), so they use steps of one hue instead of three
 colours: light `#2c349c` / `#5f6de9` / `#95a0f5`, dark `#dde1ff` / `#95a0f5` / `#5f6de9`, with the
@@ -56,6 +68,8 @@ Rules the charts follow:
 
 - Status colours (healthy, bronze, crimson) are never used for chart series.
 - One y-axis per chart; values with different units get separate charts.
+- At most eight series per chart, taking the slots in order. Temperature sensors beyond eight are
+  split evenly across several charts for the same device rather than given more colours.
 - 2 px lines, solid hairline gridlines, and a crosshair tooltip that lists every series at the
   hovered time, values first.
 - A legend whenever a chart has two or more series; a single series is named by the chart title.

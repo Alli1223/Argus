@@ -72,6 +72,8 @@ All paths start with `/api`.
 | `GET /hosts/{id}/filesystems` | Every filesystem in the latest reading. |
 | `GET /hosts/{id}/filesystems/history` | Space used per filesystem over time. |
 | `GET /hosts/{id}/network` | Traffic per network interface over time. |
+| `GET /hosts/{id}/temperatures` | Each temperature sensor over time, in degrees Celsius. |
+| `GET /hosts/temperatures` | The temperature history of every host that reported temperatures in the range, by name: `hostId`, `displayName` and `history`. |
 | `GET /hosts/{id}/processes` | The busiest processes in the latest reading. |
 | `GET /hosts/{id}/services` | Services failing in the latest check, and when it was. |
 | `POST /hosts/{id}/agent-update` | Asks the host's agent to update to the latest release. `409` when there is nothing to update to. |
@@ -88,6 +90,10 @@ The history endpoints take `from` and `to` (ISO 8601, defaulting to the last hou
 roughly how many points to return (10–2000, default 300). A range may cover up to two years. The
 answer is columnar: `time` holds Unix seconds and `series` holds one array per measure, with `null`
 where there was no reading. `resolution` and `bucketSeconds` say how the readings were averaged.
+
+Temperature series are keyed `{device}/{sensor}`, such as `coretemp/Package id 0` or
+`nvme0/Composite`, split at the first slash. Their points are the highest reading in each bucket
+rather than the average, so short spikes still show over long ranges.
 
 ### Adding systems
 
