@@ -17,4 +17,6 @@ namespace Argus.Contracts.Agent;
 [JsonSerializable(typeof(AgentSettings))]
 [JsonSerializable(typeof(MetricsBatch))]
 [JsonSerializable(typeof(MetricsBatchResponse))]
+[JsonSerializable(typeof(AgentUpdateOffer))]
+[JsonSerializable(typeof(AgentUpdateResult))]
 public sealed partial class AgentJsonContext : JsonSerializerContext;

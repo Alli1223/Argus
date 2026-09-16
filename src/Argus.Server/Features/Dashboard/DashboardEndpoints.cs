@@ -4,6 +4,7 @@ using Argus.Server.Features.Agents;
 using Argus.Server.Features.Alerts;
 using Argus.Server.Features.Hosts;
 using Argus.Server.Features.Metrics;
+using Argus.Server.Features.Updates;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -33,13 +34,14 @@ public static class DashboardEndpoints
         ArgusDbContext db,
         TimeSeriesQueries series,
         IOptions<AgentOptions> agents,
+        UpdateStatus updates,
         TimeProvider time,
         CancellationToken cancellationToken)
     {
         var hosts = await db.Hosts.AsNoTracking().VisibleTo(user).ToListAsync(cancellationToken);
         var latest = await series.GetLatestAsync(hosts.Select(host => host.Id).ToList(), cancellationToken);
         var now = time.GetUtcNow();
-        var summaries = hosts.Select(host => host.ToSummary(latest.GetValueOrDefault(host.Id), agents.Value, now)).ToList();
+        var summaries = hosts.Select(host => host.ToSummary(latest.GetValueOrDefault(host.Id), agents.Value, now, updates.Current.Latest)).ToList();
         var online = summaries.Where(host => host.Status == HostStatus.Online).ToList();
 
         return new DashboardSummary(

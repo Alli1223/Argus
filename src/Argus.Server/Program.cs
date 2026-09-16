@@ -13,6 +13,7 @@ using Argus.Server.Features.Info;
 using Argus.Server.Features.Live;
 using Argus.Server.Features.Metrics;
 using Argus.Server.Features.Notifications;
+using Argus.Server.Features.Updates;
 using Argus.Server.Features.Users;
 using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
@@ -44,6 +45,7 @@ builder.Services.AddArgusAgents();
 builder.Services.AddArgusMetrics();
 builder.Services.AddArgusAlerts();
 builder.Services.AddArgusNotifications();
+builder.Services.AddArgusUpdates();
 builder.Services.AddArgusLive();
 builder.Services.AddArgusDownloads();
 builder.Services.AddArgusRateLimiting();
@@ -93,8 +95,10 @@ api.MapDashboardEndpoints();
 api.MapAlertRuleEndpoints();
 api.MapAlertEndpoints();
 api.MapNotificationChannelEndpoints();
+api.MapUpdateEndpoints();
 
 app.MapAgentEndpoints();
+app.MapAgentUpdateEndpoints();
 app.MapAgentDownloads();
 app.MapArgusLive();
 

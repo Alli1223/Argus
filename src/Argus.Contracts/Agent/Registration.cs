@@ -40,3 +40,24 @@ public sealed record AgentSettings
 
     public int TopProcessCount { get; init; } = 10;
 }
+
+/// <summary>A newer agent build for this machine, to fetch from <see cref="AgentApi.UpdateDownload"/>.</summary>
+public sealed record AgentUpdateOffer
+{
+    public required string Version { get; init; }
+
+    /// <summary>SHA-256 of the build, in lowercase hex. The agent must not run a download that does not match.</summary>
+    public required string Sha256 { get; init; }
+
+    public required long Size { get; init; }
+}
+
+public sealed record AgentUpdateResult
+{
+    /// <summary>The version the agent tried to install.</summary>
+    public required string Version { get; init; }
+
+    public required bool Succeeded { get; init; }
+
+    public string? Error { get; init; }
+}

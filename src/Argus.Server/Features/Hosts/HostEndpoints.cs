@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Argus.Server.Data;
 using Argus.Server.Features.Agents;
 using Argus.Server.Features.Metrics;
+using Argus.Server.Features.Updates;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -34,13 +35,14 @@ public static class HostEndpoints
         ArgusDbContext db,
         TimeSeriesQueries series,
         IOptions<AgentOptions> agents,
+        UpdateStatus updates,
         TimeProvider time,
         CancellationToken cancellationToken)
     {
         var hosts = await db.Hosts.AsNoTracking().VisibleTo(user).OrderBy(host => host.DisplayName).ToListAsync(cancellationToken);
         var latest = await series.GetLatestAsync(hosts.Select(host => host.Id).ToList(), cancellationToken);
         var now = time.GetUtcNow();
-        return hosts.Select(host => host.ToSummary(latest.GetValueOrDefault(host.Id), agents.Value, now)).ToList();
+        return hosts.Select(host => host.ToSummary(latest.GetValueOrDefault(host.Id), agents.Value, now, updates.Current.Latest)).ToList();
     }
 
     private static async Task<Results<Ok<HostDetail>, NotFound>> GetAsync(
@@ -49,6 +51,7 @@ public static class HostEndpoints
         ArgusDbContext db,
         TimeSeriesQueries series,
         IOptions<AgentOptions> agents,
+        UpdateStatus updates,
         TimeProvider time,
         CancellationToken cancellationToken)
     {
@@ -59,7 +62,7 @@ public static class HostEndpoints
         }
 
         var latest = await series.GetLatestAsync([host.Id], cancellationToken);
-        return TypedResults.Ok(host.ToDetail(latest.GetValueOrDefault(host.Id), agents.Value, time.GetUtcNow()));
+        return TypedResults.Ok(host.ToDetail(latest.GetValueOrDefault(host.Id), agents.Value, time.GetUtcNow(), updates.Current.Latest));
     }
 
     private static async Task<Results<Ok<HostDetail>, NotFound, ValidationProblem>> UpdateAsync(
@@ -69,6 +72,7 @@ public static class HostEndpoints
         ArgusDbContext db,
         TimeSeriesQueries series,
         IOptions<AgentOptions> agents,
+        UpdateStatus updates,
         TimeProvider time,
         CancellationToken cancellationToken)
     {
@@ -106,7 +110,7 @@ public static class HostEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         var latest = await series.GetLatestAsync([host.Id], cancellationToken);
-        return TypedResults.Ok(host.ToDetail(latest.GetValueOrDefault(host.Id), agents.Value, time.GetUtcNow()));
+        return TypedResults.Ok(host.ToDetail(latest.GetValueOrDefault(host.Id), agents.Value, time.GetUtcNow(), updates.Current.Latest));
     }
 
     private static async Task<Results<NoContent, NotFound>> DeleteAsync(

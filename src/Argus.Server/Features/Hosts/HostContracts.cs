@@ -52,7 +52,8 @@ public sealed record HostSummary(
     DateTimeOffset? LastSeenAt,
     string AgentVersion,
     Guid OwnerId,
-    LatestMetrics? Latest);
+    LatestMetrics? Latest,
+    HostAgentUpdate? AgentUpdate);
 
 public sealed record HostDetail(
     Guid Id,
@@ -77,7 +78,14 @@ public sealed record HostDetail(
     DateTimeOffset? LastSeenAt,
     DateTimeOffset? InventoryUpdatedAt,
     Guid OwnerId,
-    LatestMetrics? Latest);
+    LatestMetrics? Latest,
+    HostAgentUpdate? AgentUpdate);
+
+/// <summary>
+/// The host's agent and updates: a newer release it could install, the version someone asked it to
+/// install, and why the latest attempt failed. Null when none of these apply.
+/// </summary>
+public sealed record HostAgentUpdate(string? Available, string? Requested, DateTimeOffset? RequestedAt, string? Error);
 
 /// <summary>Partial update: only the properties that are present change.</summary>
 public sealed record UpdateHostRequest

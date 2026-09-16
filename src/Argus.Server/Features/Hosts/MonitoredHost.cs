@@ -1,5 +1,6 @@
 using Argus.Contracts.Agent;
 using Argus.Server.Features.Auth;
+using Argus.Server.Features.Updates;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -59,6 +60,14 @@ public sealed class MonitoredHost
 
     public DateTimeOffset? InventoryUpdatedAt { get; set; }
 
+    /// <summary>The agent version someone asked this host to update to, until the agent runs it or gives up.</summary>
+    public string? AgentUpdateVersion { get; set; }
+
+    public DateTimeOffset? AgentUpdateRequestedAt { get; set; }
+
+    /// <summary>Why the latest agent update failed.</summary>
+    public string? AgentUpdateError { get; set; }
+
     /// <summary>Copies agent-reported inventory onto the host, clipping values that would not fit.</summary>
     public void ApplyInventory(SystemInfo info, string agentVersion, DateTimeOffset now)
     {
@@ -78,6 +87,14 @@ public sealed class MonitoredHost
             .Select(address => Clip(address, MonitoredHostConfiguration.AddressLength))
             .ToList();
         AgentVersion = Clip(agentVersion, MonitoredHostConfiguration.VersionLength);
+
+        // An agent that reports the version it was asked to update to has finished updating.
+        if (AgentUpdateVersion is not null && !ReleaseVersions.IsNewer(AgentUpdateVersion, AgentVersion))
+        {
+            AgentUpdateVersion = null;
+            AgentUpdateRequestedAt = null;
+            AgentUpdateError = null;
+        }
         InventoryUpdatedAt = now;
     }
 
@@ -94,6 +111,7 @@ internal sealed class MonitoredHostConfiguration : IEntityTypeConfiguration<Moni
     public const int VersionLength = 128;
     public const int ArchitectureLength = 32;
     public const int AddressLength = 64;
+    public const int ErrorLength = 1000;
 
     public void Configure(EntityTypeBuilder<MonitoredHost> host)
     {
@@ -114,6 +132,8 @@ internal sealed class MonitoredHostConfiguration : IEntityTypeConfiguration<Moni
         host.Property(h => h.Architecture).HasMaxLength(ArchitectureLength);
         host.Property(h => h.CpuModel).HasMaxLength(NameLength);
         host.Property(h => h.AgentVersion).HasMaxLength(VersionLength);
+        host.Property(h => h.AgentUpdateVersion).HasMaxLength(VersionLength);
+        host.Property(h => h.AgentUpdateError).HasMaxLength(ErrorLength);
         host.Property(h => h.Notes).HasMaxLength(4000);
         host.Property(h => h.AgentKeyHash).HasMaxLength(64);
 

@@ -102,6 +102,20 @@ cannot send, and the web app says so.
 | `Argus:Reports:SendHourUtc` | `7` | 0–23 | The hour (UTC) reports go out. Each covers the day or week up to that hour. |
 | `Argus:Reports:WeeklyDay` | `Monday` | `Sunday`–`Saturday` | The day weekly reports go out. |
 
+### Updates
+
+The server looks for new releases on GitHub, tells administrators when one is out, and fetches new
+agent builds for agents someone asked to update. Builds are only used when they match the release's
+`SHA256SUMS`.
+
+| Setting | Default | Allowed | What it does |
+| --- | --- | --- | --- |
+| `Argus:Updates:CheckForUpdates` | `true` | | Look for new releases. Switched off, there are no update notices and agents cannot be updated from Argus. |
+| `Argus:Updates:CheckIntervalHours` | `6` | 1–168 | How often to look. |
+| `Argus:Updates:Repository` | `Alli1223/Argus` | owner/name | The GitHub repository releases come from, for forks. |
+| `Argus:Updates:ApiUrl` | `https://api.github.com` | a URL | GitHub's API. |
+| `Argus:Updates:CacheDirectory` | a temporary folder | | Where fetched agent builds are kept. |
+
 ### Rate limits
 
 Requests over a limit are refused with `429 Too Many Requests` and a `Retry-After` header.
