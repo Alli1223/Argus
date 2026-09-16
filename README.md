@@ -21,6 +21,7 @@ On a Linux machine with Docker:
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
+git checkout v0.2.0                   # the latest release
 cp deploy/.env.example deploy/.env    # then set POSTGRES_PASSWORD and ARGUS_PUBLIC_URL
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
@@ -83,6 +84,7 @@ image for a smoke test.
 ## Documentation
 
 - [Deployment](docs/deployment.md): installing, HTTPS, upgrades, backups
+- [Releasing](docs/releasing.md): publishing a new version
 - [Configuration reference](docs/configuration.md): every server and agent setting
 - [HTTP API](docs/api.md): for scripts and integrations
 - [Architecture](docs/architecture.md)

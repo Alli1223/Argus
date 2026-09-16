@@ -3,8 +3,9 @@
 #
 #   build/package-agent.sh [output-dir]        (default: artifacts/agent)
 #
-# Produces <output>/<runtime>/argus-agent[.exe] (what the server offers under /downloads/agent)
-# plus one archive per platform containing the binary and its install scripts.
+# Produces <output>/<runtime>/argus-agent[.exe] (what the server offers under /downloads/agent), one
+# archive per platform with the binary and its install scripts, the bare binaries under names that
+# tell the platforms apart (servers fetch agent updates from these), and SHA256SUMS for all of them.
 set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -38,5 +39,10 @@ with zipfile.ZipFile(out / f"argus-agent-{version}-win-x64.zip", "w", zipfile.ZI
         archive.write(scripts / script, script)
 PY
 
+cp "$OUT/linux-x64/argus-agent" "$OUT/argus-agent-linux-x64"
+cp "$OUT/linux-arm64/argus-agent" "$OUT/argus-agent-linux-arm64"
+cp "$OUT/win-x64/argus-agent.exe" "$OUT/argus-agent-win-x64.exe"
+(cd "$OUT" && sha256sum argus-agent-* > SHA256SUMS)
+
 echo "==> Done:"
-ls -lh "$OUT"/*.tar.gz "$OUT"/*.zip
+ls -lh "$OUT"/argus-agent-* "$OUT/SHA256SUMS"
