@@ -2,9 +2,13 @@ using Argus.Contracts.Agent;
 
 namespace Argus.Agent.Collection;
 
-/// <summary>Assembles complete samples from the platform's metrics source, the process collector and service checks.</summary>
+/// <summary>Assembles complete samples from the platform's metrics source, the process collector, temperatures and service checks.</summary>
 internal sealed class SampleCollector(
-    ISystemMetricsSource system, ProcessCollector processes, IServiceStatusSource services, TimeProvider time)
+    ISystemMetricsSource system,
+    ProcessCollector processes,
+    ITemperatureSource temperatures,
+    IServiceStatusSource services,
+    TimeProvider time)
 {
     /// <summary>Service checks can start a process, so they run at most this often.</summary>
     public static readonly TimeSpan ServiceCheckInterval = TimeSpan.FromMinutes(1);
@@ -44,6 +48,7 @@ internal sealed class SampleCollector(
             UptimeSeconds = reading.UptimeSeconds,
             Filesystems = reading.Filesystems,
             Interfaces = reading.Interfaces,
+            Temperatures = temperatures.Collect(),
             TopProcesses = TopProcessCount > 0 ? topProcesses : null,
             FailedServices = failedServices,
         };

@@ -65,12 +65,25 @@ public class LinuxCollectorsTests
     }
 
     [Fact]
+    public void Temperatures_read_from_this_machine_are_believable()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "Linux only");
+
+        // Containers and virtual machines often have no sensors, so only the readings found are checked.
+        var readings = new LinuxTemperatures(includeDrives: false).Collect();
+
+        Assert.All(readings, reading => Assert.InRange(reading.Celsius, -40, 125));
+        Assert.Equal(readings.Count, readings.DistinctBy(reading => (reading.Device, reading.Sensor)).Count());
+    }
+
+    [Fact]
     public async Task Complete_samples_serialize_for_the_server()
     {
         Assert.SkipUnless(OperatingSystem.IsLinux(), "Linux only");
         var collector = new SampleCollector(
             new LinuxMetricsSource(NullLogger<LinuxMetricsSource>.Instance),
             new ProcessCollector(),
+            new LinuxTemperatures(includeDrives: false),
             new NoServiceStatus(),
             TimeProvider.System);
         collector.Prime();

@@ -70,6 +70,8 @@ internal static class AgentCommands
         var collector = new SampleCollector(
             PlatformCollectors.CreateMetricsSource(loggers),
             new ProcessCollector(),
+            // Default settings: the config file is often readable only by the service.
+            PlatformCollectors.CreateTemperatureSource(loggers, new AgentConfig()),
             PlatformCollectors.CreateServiceStatusSource(loggers),
             TimeProvider.System);
         collector.Prime();

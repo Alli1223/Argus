@@ -1,5 +1,6 @@
 using Argus.Agent.Collection.Linux;
 using Argus.Agent.Collection.Windows;
+using Argus.Agent.Configuration;
 
 namespace Argus.Agent.Collection;
 
@@ -49,5 +50,20 @@ internal static class PlatformCollectors
         }
 
         return new NoServiceStatus();
+    }
+
+    public static ITemperatureSource CreateTemperatureSource(ILoggerFactory loggers, AgentConfig config)
+    {
+        if (OperatingSystem.IsLinux())
+        {
+            return new LinuxTemperatures(config.DriveTemperatures);
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            return new WindowsTemperatures(loggers.CreateLogger<WindowsTemperatures>());
+        }
+
+        return new NoTemperatures();
     }
 }

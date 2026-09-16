@@ -21,6 +21,12 @@ public sealed class AgentConfig
     /// <summary>Samples kept while the server is unreachable (default: 12 hours at 15 s).</summary>
     public int BufferCapacity { get; set; } = 2880;
 
+    /// <summary>
+    /// Also reads SATA drive temperatures (the Linux drivetemp driver). Off by default: on some drives,
+    /// reading the temperature resets the spin-down timer, so drives meant to sleep stay awake.
+    /// </summary>
+    public bool DriveTemperatures { get; set; }
+
     public string ResolvedStateDirectory =>
         string.IsNullOrWhiteSpace(StateDirectory) ? AgentPaths.DefaultStateDirectory : StateDirectory;
 

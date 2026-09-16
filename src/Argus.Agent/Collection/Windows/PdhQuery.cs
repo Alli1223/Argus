@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 namespace Argus.Agent.Collection.Windows;
@@ -40,6 +41,48 @@ internal sealed class PdhQuery : IDisposable
         && value.Status is 0 or 1
             ? value.DoubleValue
             : null;
+
+    /// <summary>The value of every instance of a wildcard counter path, such as <c>\Thermal Zone Information(*)\Temperature</c>.</summary>
+    public unsafe List<(string Instance, double Value)> ReadInstances(string counterPath)
+    {
+        var values = new List<(string Instance, double Value)>();
+        if (!_counters.TryGetValue(counterPath, out var counter))
+        {
+            return values;
+        }
+
+        uint size = 0;
+        if (WindowsNative.PdhGetFormattedCounterArray(counter, WindowsNative.PdhFormatDouble, ref size, out _, null) != WindowsNative.PdhMoreData
+            || size == 0)
+        {
+            return values;
+        }
+
+        // The names the items point to are stored in the same buffer, after the items.
+        var buffer = (WindowsNative.PdhCounterValueItem*)NativeMemory.Alloc(size);
+        try
+        {
+            if (WindowsNative.PdhGetFormattedCounterArray(counter, WindowsNative.PdhFormatDouble, ref size, out var count, buffer) != 0)
+            {
+                return values;
+            }
+
+            for (var index = 0; index < count; index++)
+            {
+                var item = buffer[index];
+                if (item.Value.Status is 0 or 1 && Marshal.PtrToStringUni(item.Name) is { } name)
+                {
+                    values.Add((name, item.Value.DoubleValue));
+                }
+            }
+
+            return values;
+        }
+        finally
+        {
+            NativeMemory.Free(buffer);
+        }
+    }
 
     public void Dispose() => WindowsNative.PdhCloseQuery(_query);
 }

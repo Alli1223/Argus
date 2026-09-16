@@ -46,6 +46,9 @@ public sealed record MetricSample
 
     public IReadOnlyList<NetworkInterfaceMetrics> Interfaces { get; init; } = [];
 
+    /// <summary>Temperature sensors the machine exposes; empty where it has none the agent can read.</summary>
+    public IReadOnlyList<TemperatureMetrics> Temperatures { get; init; } = [];
+
     /// <summary>Busiest processes; agents may only attach this to the newest sample of a batch.</summary>
     public IReadOnlyList<ProcessMetrics>? TopProcesses { get; init; }
 
@@ -165,6 +168,17 @@ public sealed record NetworkInterfaceMetrics
     public double RxErrorsPerSec { get; init; }
 
     public double TxErrorsPerSec { get; init; }
+}
+
+public sealed record TemperatureMetrics
+{
+    /// <summary>The chip, drive or zone the sensor belongs to, such as "coretemp", "nvme0" or "acpitz".</summary>
+    public required string Device { get; init; }
+
+    /// <summary>The sensor on that device, such as "Package id 0", "Core 3" or "Composite".</summary>
+    public required string Sensor { get; init; }
+
+    public required double Celsius { get; init; }
 }
 
 public sealed record ProcessMetrics

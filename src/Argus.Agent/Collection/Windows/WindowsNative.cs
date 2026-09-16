@@ -10,6 +10,9 @@ internal static unsafe partial class WindowsNative
 {
     public const uint PdhFormatDouble = 0x00000200;
 
+    /// <summary>PDH_MORE_DATA: the buffer passed was too small (or missing); its needed size was returned.</summary>
+    public const uint PdhMoreData = 0x800007D2;
+
     private const int RelationProcessorCore = 0;
 
 #pragma warning disable CS0649 // Written by native code.
@@ -46,6 +49,14 @@ internal static unsafe partial class WindowsNative
         public double DoubleValue;
     }
 
+    /// <summary>One instance's value in the array <see cref="PdhGetFormattedCounterArray"/> fills.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PdhCounterValueItem
+    {
+        public nint Name;
+        public PdhCounterValue Value;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct LogicalProcessorInformation
     {
@@ -79,6 +90,10 @@ internal static unsafe partial class WindowsNative
 
     [LibraryImport("pdh.dll")]
     public static partial uint PdhGetFormattedCounterValue(nint counter, uint format, out uint type, out PdhCounterValue value);
+
+    [LibraryImport("pdh.dll", EntryPoint = "PdhGetFormattedCounterArrayW")]
+    public static partial uint PdhGetFormattedCounterArray(
+        nint counter, uint format, ref uint bufferSize, out uint itemCount, PdhCounterValueItem* items);
 
     [LibraryImport("pdh.dll")]
     public static partial uint PdhCloseQuery(nint query);
