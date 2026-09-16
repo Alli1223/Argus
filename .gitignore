@@ -39,3 +39,6 @@ Thumbs.db
 !.env.example
 appsettings.*.local.json
 *.local.json
+
+# Database backups the updater makes before installing a release
+deploy/backups/

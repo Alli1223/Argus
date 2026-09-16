@@ -1,8 +1,8 @@
-# Argus in production: the server (with the web app and agent downloads) and TimescaleDB, and
-# optionally Caddy in front of them for automatic HTTPS.
+# Argus in production: the server (with the web app and agent downloads), TimescaleDB, the updater
+# that installs new releases from the web app, and optionally Caddy in front for automatic HTTPS.
 #
 #   cp deploy/.env.example deploy/.env      # then edit it
-#   docker compose -f deploy/docker-compose.yml up -d --build
+#   docker compose -f deploy/docker-compose.yml up -d
 #
 # See docs/deployment.md.
 name: argus
@@ -27,9 +27,8 @@ services:
       - argus
 
   server:
-    image: ${ARGUS_IMAGE:-argus:latest}
-    build:
-      context: ..
+    # The release in ARGUS_VERSION; the updater changes it there when it installs another.
+    image: ${ARGUS_IMAGE:-ghcr.io/alli1223/argus}:${ARGUS_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -46,10 +45,27 @@ services:
       Argus__Smtp__From: ${ARGUS_SMTP_FROM:-}
       # X-Forwarded-* headers are believed from Caddy's fixed address, and from nobody else.
       Argus__Proxy__TrustedProxies__0: 172.30.0.10
+      Argus__Updates__ServerUpdatesDirectory: /updates
     ports:
       - "${ARGUS_HTTP_BIND:-8080}:8080"
+    volumes:
+      - updates:/updates
     networks:
       - argus
+
+  # Installs the releases administrators choose in the web app: it backs up the database, starts the
+  # new server and goes back to the old one if that does not come up. Doing so takes Docker itself,
+  # which is as good as root on this machine, so the updater has no network and no ports, and the server
+  # can only ask it for a release by its version number. Remove this service to update by hand instead.
+  updater:
+    image: ${ARGUS_UPDATER_IMAGE:-ghcr.io/alli1223/argus-updater}:${ARGUS_VERSION:-latest}
+    restart: unless-stopped
+    network_mode: none
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # This directory, for the Compose files, .env and backups/. It has to be mounted at /deploy.
+      - .:/deploy
+      - updates:/updates
 
   caddy:
     image: caddy:2-alpine
@@ -80,5 +96,6 @@ networks:
 
 volumes:
   db-data:
+  updates:
   caddy-data:
   caddy-config:
