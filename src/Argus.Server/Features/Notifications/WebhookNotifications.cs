@@ -24,6 +24,8 @@ internal sealed class WebhookNotificationSender(NotificationChannelKind kind, IH
             NotificationKind.AlertFired or NotificationKind.AlertResolved =>
                 WebhookPayloads.ForAlert(kind, AlertNotification.FromJson(delivery.Payload), argus.Value.PublicUrl),
             NotificationKind.Test => WebhookPayloads.ForTest(kind, channel),
+            NotificationKind.DailyReport or NotificationKind.WeeklyReport =>
+                WebhookPayloads.ForReport(kind, ReportSummary.FromJson(delivery.Payload), argus.Value.PublicUrl),
             _ => throw new NotSupportedException($"There is no webhook message for {delivery.Kind} notifications."),
         };
 
@@ -49,6 +51,75 @@ public static class WebhookPayloads
             NotificationChannelKind.Discord => Discord(alert, link),
             _ => Generic(alert, link),
         };
+    }
+
+    /// <summary>
+    /// A report: the whole summary for generic webhooks, and the headline figures with what is firing for
+    /// Slack and Discord.
+    /// </summary>
+    public static JsonObject ForReport(NotificationChannelKind kind, ReportSummary report, string? publicUrl)
+    {
+        var title = ReportText.Title(report);
+        var link = string.IsNullOrWhiteSpace(publicUrl) ? null : publicUrl.TrimEnd('/');
+        List<string> lines =
+        [
+            $"Hosts: {ReportText.Hosts(report)}",
+            $"Alerts raised: {ReportText.Raised(report.AlertsRaised)}",
+            $"Firing now: {report.FiringCount}",
+        ];
+        lines.AddRange(report.Firing.Take(5).Select(alert => $"• [{alert.Severity}] {alert.Title}"));
+        if (report.FiringCount > 5)
+        {
+            lines.Add($"• and {report.FiringCount - 5} more");
+        }
+
+        var colour = report.Firing.Count == 0
+            ? "#13a17b"
+            : report.Firing[0].Severity switch
+            {
+                AlertSeverity.Critical => "#d0342a",
+                AlertSeverity.Warning => "#c2860c",
+                _ => "#4f5be0",
+            };
+
+        switch (kind)
+        {
+            case NotificationChannelKind.Slack:
+                var heading = SlackEscape($"{title}: {ReportText.Headline(report)}");
+                return new JsonObject
+                {
+                    ["text"] = link is null ? $"*{heading}*" : $"*<{link}|{heading}>*",
+                    ["attachments"] = new JsonArray(new JsonObject
+                    {
+                        ["color"] = colour,
+                        ["text"] = SlackEscape(string.Join("\n", lines)),
+                        ["footer"] = "Argus",
+                        ["ts"] = report.To.ToUnixTimeSeconds(),
+                    }),
+                };
+            case NotificationChannelKind.Discord:
+                var embed = new JsonObject
+                {
+                    ["title"] = Clip($"{title}: {ReportText.Headline(report)}", 256),
+                    ["description"] = Clip(string.Join("\n", lines), 4096),
+                    ["color"] = Convert.ToInt32(colour[1..], 16),
+                    ["footer"] = new JsonObject { ["text"] = "Argus" },
+                    ["timestamp"] = report.To,
+                };
+                if (link is not null)
+                {
+                    embed["url"] = link;
+                }
+
+                return new JsonObject { ["username"] = "Argus", ["embeds"] = new JsonArray(embed) };
+            default:
+                return new JsonObject
+                {
+                    ["event"] = report.Kind == ReportKind.Daily ? "report.daily" : "report.weekly",
+                    ["report"] = JsonNode.Parse(report.ToJson()),
+                    ["url"] = link,
+                };
+        }
     }
 
     /// <summary>A message that shows the channel works.</summary>

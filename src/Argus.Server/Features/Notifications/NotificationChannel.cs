@@ -30,6 +30,18 @@ public sealed class NotificationChannel
 
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Also send a summary of the past day, every day.</summary>
+    public bool DailyReport { get; set; }
+
+    /// <summary>Also send a summary of the past week, once a week.</summary>
+    public bool WeeklyReport { get; set; }
+
+    /// <summary>The end of the period the latest daily report covered, so each period is reported once.</summary>
+    public DateTimeOffset? DailyReportSentFor { get; set; }
+
+    /// <summary>The end of the period the latest weekly report covered.</summary>
+    public DateTimeOffset? WeeklyReportSentFor { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

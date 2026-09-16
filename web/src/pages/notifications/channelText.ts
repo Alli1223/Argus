@@ -3,6 +3,7 @@ import type {
   NotificationChannel,
   NotificationChannelKind,
   NotificationChannelRequest,
+  NotificationSupport,
 } from "../../api/types";
 import { formatAgo } from "../../lib/format";
 
@@ -88,6 +89,24 @@ export function describeFilter(
   return channel.notifyOnResolved ? `${which}, and when they resolve` : `${which}, when they fire`;
 }
 
+/** The reports a channel receives besides alerts, or null for none: "Daily and weekly reports". */
+export function describeReports(
+  channel: Pick<NotificationChannel, "dailyReport" | "weeklyReport">,
+): string | null {
+  if (channel.dailyReport && channel.weeklyReport) return "Daily and weekly reports";
+  if (channel.dailyReport) return "Daily report";
+  return channel.weeklyReport ? "Weekly report" : null;
+}
+
+/** When reports go out, from the server's settings: "07:00 UTC", "Mondays at 07:00 UTC". */
+export function reportTime(
+  support: Pick<NotificationSupport, "reportHourUtc" | "weeklyReportDay">,
+  weekly: boolean,
+): string {
+  const time = `${String(support.reportHourUtc).padStart(2, "0")}:00 UTC`;
+  return weekly ? `${support.weeklyReportDay}s at ${time}` : time;
+}
+
 export type DeliveryTone = "sent" | "problem" | "waiting" | "none";
 
 /** How a channel's latest notification went, in words. */
@@ -111,6 +130,7 @@ export function describeDelivery(
 
 /** The request that saves a channel as it stands, for example to switch it on or off. */
 export function channelToRequest(channel: NotificationChannel): NotificationChannelRequest {
-  const { name, kind, target, minimumSeverity, notifyOnResolved, enabled } = channel;
-  return { name, kind, target, minimumSeverity, notifyOnResolved, enabled };
+  const { name, kind, target, minimumSeverity, notifyOnResolved, enabled, dailyReport, weeklyReport } =
+    channel;
+  return { name, kind, target, minimumSeverity, notifyOnResolved, enabled, dailyReport, weeklyReport };
 }

@@ -144,10 +144,11 @@ public sealed class NotificationChannelApiTests(NotificationsFixture app) : ICla
     }
 
     [Fact]
-    public async Task The_server_says_whether_it_can_send_email()
+    public async Task The_server_says_whether_it_can_send_email_and_when_reports_go_out()
     {
         var owner = await app.CreateOwnerAsync("channels-g@example.com");
 
-        Assert.True((await owner.GetJsonAsync<NotificationSupport>($"{Route}/support"))!.Email);
+        Assert.Equal(new NotificationSupport(Email: true, ReportHourUtc: 7, WeeklyReportDay: DayOfWeek.Monday),
+            await owner.GetJsonAsync<NotificationSupport>($"{Route}/support"));
     }
 }

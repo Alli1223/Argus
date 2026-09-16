@@ -51,6 +51,8 @@ internal sealed class EmailNotificationSender(IEmailTransport transport, IOption
             NotificationKind.AlertFired or NotificationKind.AlertResolved =>
                 NotificationEmail.ForAlert(AlertNotification.FromJson(delivery.Payload), channel.Name, argus.Value.PublicUrl),
             NotificationKind.Test => NotificationEmail.ForTest(channel.Name),
+            NotificationKind.DailyReport or NotificationKind.WeeklyReport =>
+                NotificationEmail.ForReport(ReportSummary.FromJson(delivery.Payload), channel.Name, argus.Value.PublicUrl),
             _ => throw new NotSupportedException($"There is no email for {delivery.Kind} notifications."),
         };
 

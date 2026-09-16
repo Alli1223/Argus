@@ -9,7 +9,7 @@ import type {
   NotificationChannelKind,
   NotificationChannelRequest,
 } from "../../api/types";
-import { KIND_LABELS, TARGET_FIELDS, splitAddresses, targetError } from "./channelText";
+import { KIND_LABELS, TARGET_FIELDS, reportTime, splitAddresses, targetError } from "./channelText";
 
 const KIND_CHOICES = (Object.keys(KIND_LABELS) as NotificationChannelKind[]).map((kind) => ({
   value: kind,
@@ -29,6 +29,8 @@ const NEW_CHANNEL: NotificationChannelRequest = {
   minimumSeverity: "Warning",
   notifyOnResolved: true,
   enabled: true,
+  dailyReport: false,
+  weeklyReport: false,
 };
 
 interface ChannelEditorProps {
@@ -61,6 +63,8 @@ function ChannelForm({ channel, onClose }: { channel: NotificationChannel | null
           minimumSeverity: channel.minimumSeverity,
           notifyOnResolved: channel.notifyOnResolved,
           enabled: channel.enabled,
+          dailyReport: channel.dailyReport,
+          weeklyReport: channel.weeklyReport,
         }
       : NEW_CHANNEL,
     validate: {
@@ -159,6 +163,16 @@ function ChannelForm({ channel, onClose }: { channel: NotificationChannel | null
         <Switch
           label="Also send when alerts resolve"
           {...form.getInputProps("notifyOnResolved", { type: "checkbox" })}
+        />
+        <Switch
+          label="Daily report"
+          description={`A summary of the past day's alerts and hosts${support.data ? `, every day at ${reportTime(support.data, false)}` : ""}.`}
+          {...form.getInputProps("dailyReport", { type: "checkbox" })}
+        />
+        <Switch
+          label="Weekly report"
+          description={`The same for the past week${support.data ? `, ${reportTime(support.data, true)}` : ""}.`}
+          {...form.getInputProps("weeklyReport", { type: "checkbox" })}
         />
         <Switch
           label="Enabled"

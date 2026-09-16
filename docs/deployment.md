@@ -88,6 +88,7 @@ The server reads its settings from environment variables named after its configu
 | `Argus:Smtp:Security` | `Auto` | `Auto` (TLS on port 465, otherwise STARTTLS when offered), `None`, `StartTls` or `SslOnConnect`. |
 | `Argus:Smtp:Username`, `Argus:Smtp:Password` | none | The mail server sign-in, if it needs one. |
 | `Argus:Smtp:From`, `Argus:Smtp:FromName` | none, `Argus` | Who emails come from. Required with a host. |
+| `Argus:Reports:SendHourUtc`, `Argus:Reports:WeeklyDay` | `7`, `Monday` | When daily and weekly reports go out (UTC). Each covers the day or week up to that hour. |
 | `Argus:Notifications:MaxAttempts` | `6` | How many times a notification is tried before Argus gives up. Retries wait 1, 5 and 15 minutes, then 1 and 4 hours. |
 | `Argus:Retention:RawDays` | `14` | How long individual readings are kept. |
 | `Argus:Retention:FiveMinuteDays` | `90` | How long five-minute averages are kept. |
