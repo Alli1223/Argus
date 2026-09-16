@@ -25,6 +25,7 @@ import {
   IconSend,
   IconServer2,
   IconSun,
+  IconTemperature,
   IconUserCircle,
   IconUsers,
 } from "@tabler/icons-react";
@@ -50,6 +51,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: "/", label: "Overview", icon: IconEye },
   { to: "/hosts", label: "Hosts", icon: IconServer2 },
+  { to: "/temperatures", label: "Temperatures", icon: IconTemperature },
   { to: "/alerts", label: "Alerts", icon: IconBell },
   { to: "/rules", label: "Alert rules", icon: IconAdjustmentsHorizontal },
   { to: "/notifications", label: "Notifications", icon: IconSend },

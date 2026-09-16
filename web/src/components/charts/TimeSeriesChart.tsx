@@ -204,7 +204,13 @@ function Plot({
         },
         scales: {
           x: { time: true, range: () => [latest.current.from, latest.current.to] },
-          y: { range: (_self, _min, dataMax) => [0, config.max ?? (dataMax > 0 ? dataMax * 1.12 : 1)] },
+          // From zero, unless readings go below it (temperatures can).
+          y: {
+            range: (_self, dataMin, dataMax) => [
+              dataMin < 0 ? dataMin * 1.12 : 0,
+              config.max ?? (dataMax > 0 ? dataMax * 1.12 : 1),
+            ],
+          },
         },
         axes: [
           {

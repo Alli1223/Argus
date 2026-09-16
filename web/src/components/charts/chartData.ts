@@ -1,7 +1,7 @@
-import { formatBytes, formatPercent, formatRate } from "../../lib/format";
+import { formatBytes, formatPercent, formatRate, formatTemperature } from "../../lib/format";
 
-/** How a chart's values read: percentages, byte rates or load averages. */
-export type ChartUnit = "percent" | "bytesPerSecond" | "load";
+/** How a chart's values read: percentages, byte rates, load averages or temperatures. */
+export type ChartUnit = "percent" | "bytesPerSecond" | "load" | "celsius";
 
 /** One line on a chart. Values line up with the chart's timestamps; null is a gap. */
 export interface ChartSeries {
@@ -19,18 +19,20 @@ export const BYTE_INCREMENTS = [0, 1, 2, 3, 4].flatMap((power) =>
   BYTE_STEPS.map((step) => step * 1024 ** power),
 );
 
-/** A value in a tooltip, legend or table: "42.5%", "1.2 MB/s", "0.73". */
+/** A value in a tooltip, legend or table: "42.5%", "1.2 MB/s", "0.73", "61.5 °C". */
 export function formatValue(value: number | null | undefined, unit: ChartUnit): string {
   if (value == null || !Number.isFinite(value)) return MISSING;
   if (unit === "percent") return formatPercent(value, 1);
   if (unit === "bytesPerSecond") return formatRate(value);
+  if (unit === "celsius") return formatTemperature(value);
   return value.toFixed(2);
 }
 
-/** An axis tick, without needless decimals: "50%", "1 MB/s", "1.5". */
+/** An axis tick, without needless decimals: "50%", "1 MB/s", "1.5", "60 °C". */
 export function formatTick(value: number, unit: ChartUnit): string {
   if (unit === "percent") return `${Math.round(value)}%`;
   if (unit === "bytesPerSecond") return `${formatBytes(value).replace(/\.0 /, " ")}/s`;
+  if (unit === "celsius") return `${Number(value.toFixed(1))} °C`;
   return String(Number(value.toFixed(2)));
 }
 

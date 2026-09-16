@@ -23,6 +23,11 @@ export function formatRate(bytesPerSecond: number | null | undefined): string {
   return isNumber(bytesPerSecond) ? `${formatBytes(bytesPerSecond)}/s` : MISSING;
 }
 
+/** Degrees Celsius: 61.5 → "61.5 °C". */
+export function formatTemperature(celsius: number | null | undefined, digits = 1): string {
+  return isNumber(celsius) ? `${celsius.toFixed(digits)} °C` : MISSING;
+}
+
 export function formatPercent(value: number | null | undefined, digits = 0): string {
   return isNumber(value) ? `${value.toFixed(digits)}%` : MISSING;
 }

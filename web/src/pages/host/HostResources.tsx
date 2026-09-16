@@ -7,6 +7,7 @@ import {
   useHostProcesses,
   useHostServices,
   useNetworkHistory,
+  useTemperatureHistory,
 } from "../../api/metrics";
 import { SERIES_COLORS } from "../../components/charts/chartPalette";
 import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
@@ -14,6 +15,7 @@ import { Section } from "../../components/Section";
 import { Sparkline } from "../../components/Sparkline";
 import { UsageMeter } from "../../components/UsageMeter";
 import { formatAgo, formatBytes, formatDuration, formatPercent } from "../../lib/format";
+import { temperatureCharts } from "../../lib/temperatures";
 import type { TimeRange } from "../../lib/timeRange";
 import { describeTrend, interfaceCharts } from "./hostResources";
 import { describeServices } from "./hostServices";
@@ -196,6 +198,56 @@ export function InterfacesSection({
             from={from}
             to={to}
             refreshing={network.isPlaceholderData}
+            onZoom={onZoom}
+          />
+        ))}
+      </SimpleGrid>
+    </Box>
+  );
+}
+
+/**
+ * Every temperature sensor the host reports, one chart per device. Hosts without sensors (most virtual
+ * machines) skip this.
+ */
+export function TemperaturesSection({
+  hostId,
+  range,
+  onZoom,
+}: {
+  hostId: string;
+  range: TimeRange;
+  onZoom: (from: number, to: number) => void;
+}) {
+  const scheme = useComputedColorScheme("light");
+  const temperatures = useTemperatureHistory(hostId, range);
+  const charts = useMemo(
+    () => (temperatures.data ? temperatureCharts(temperatures.data, scheme) : []),
+    [temperatures.data, scheme],
+  );
+
+  if (!temperatures.data || charts.length === 0) return null;
+
+  const from = Date.parse(temperatures.data.from) / 1000;
+  const to = Date.parse(temperatures.data.to) / 1000;
+  return (
+    <Box mt="xl">
+      <Title order={2} fz={17}>
+        Temperatures
+      </Title>
+      <Text fz="xs" c="dimmed" mb="sm">
+        The hottest reading of each sensor in each point.
+      </Text>
+      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+        {charts.map(({ key, ...chart }) => (
+          <TimeSeriesChart
+            key={key}
+            {...chart}
+            time={temperatures.data.time}
+            unit="celsius"
+            from={from}
+            to={to}
+            refreshing={temperatures.isPlaceholderData}
             onZoom={onZoom}
           />
         ))}
