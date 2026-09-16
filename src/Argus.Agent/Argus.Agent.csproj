@@ -7,12 +7,15 @@
     <!-- Source-generated P/Invoke (LibraryImport) emits unsafe code. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+    <!-- Builds are trimmed, so every build checks that the code stays safe to trim. -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
 
-  <!-- Builds for a specific runtime are one self-contained file: nothing else to install on the host. -->
+  <!-- Builds for a specific runtime are one self-contained, trimmed file: nothing else to install on the host. -->
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <DebugType>none</DebugType>
   </PropertyGroup>
