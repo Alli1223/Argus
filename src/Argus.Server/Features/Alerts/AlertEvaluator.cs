@@ -90,6 +90,7 @@ public sealed class AlertEvaluator(
                     else if (alert is { Status: AlertStatus.Firing } && verdict.Value is { } value)
                     {
                         alert.Value = value;
+                        alert.Baseline = verdict.Baseline ?? alert.Baseline;
                     }
                 }
 
@@ -144,11 +145,13 @@ public sealed class AlertEvaluator(
             ResourceKey = resourceKey,
             Title = AlertDecision.Title(rule, host.DisplayName, resourceKey),
             Metric = rule.Metric,
+            Condition = rule.Condition,
             Operator = rule.Operator,
             Threshold = rule.Threshold,
             Severity = rule.Severity,
             Status = AlertStatus.Firing,
             Value = verdict.Value,
+            Baseline = verdict.Baseline,
             FiredAt = now,
         };
         db.Alerts.Add(alert);
@@ -190,28 +193,86 @@ public sealed class AlertEvaluator(
             return await ObserveServicesAsync(rule, hosts, duration, now, cancellationToken);
         }
 
+        var anomaly = rule.Condition == AlertCondition.Anomaly;
+        if (anomaly && duration < AlertDecision.MinimumAnomalyDuration)
+        {
+            duration = AlertDecision.MinimumAnomalyDuration;
+        }
+
         var byId = hosts.ToDictionary(host => host.Id);
+        var windowStart = now - AlertDecision.Window(duration, tolerance);
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         var rows = await connection.QueryAsync<StatsRow>(new CommandDefinition(
             StatsSql(rule.Metric),
             new
             {
                 host_ids = byId.Keys.ToArray(),
-                window_start = now - AlertDecision.Window(duration, tolerance),
+                window_start = windowStart,
                 recent_start = now - AlertDecision.ResolveWindow(duration, tolerance),
                 now,
                 resource = string.IsNullOrWhiteSpace(rule.ResourceFilter) ? null : rule.ResourceFilter,
             },
             cancellationToken: cancellationToken));
 
+        Dictionary<Guid, BaselineStats> baselines = anomaly
+            ? await BaselinesAsync(connection, rule.Metric, byId.Keys.ToArray(), windowStart, cancellationToken)
+            : [];
+
         return rows
             .Where(row => byId.ContainsKey(row.HostId))
             .Select(row => new Observation(
                 byId[row.HostId],
                 row.ResourceKey,
-                AlertDecision.Evaluate(rule.Operator, rule.Threshold, duration, row.ToStats(), now, tolerance)))
+                anomaly
+                    ? AlertDecision.EvaluateAnomaly(
+                        rule.Operator, rule.Threshold, rule.Metric, duration, row.ToStats(), baselines.GetValueOrDefault(row.HostId), now, tolerance)
+                    : AlertDecision.Evaluate(rule.Operator, rule.Threshold, duration, row.ToStats(), now, tolerance)))
             .ToList();
     }
+
+    /// <summary>
+    /// Each host's usual level of a metric: the mean and spread of its 5-minute averages over the
+    /// baseline period. Only buckets that end before the rule's window count, so the stretch being
+    /// judged is never part of what it is judged against.
+    /// </summary>
+    private static async Task<Dictionary<Guid, BaselineStats>> BaselinesAsync(
+        NpgsqlConnection connection, AlertMetric metric, Guid[] hostIds, DateTimeOffset windowStart, CancellationToken cancellationToken)
+    {
+        var rows = await connection.QueryAsync<BaselineRow>(new CommandDefinition($"""
+            SELECT host_id, count(value)::int AS buckets, avg(value) AS mean, stddev_samp(value) AS std_dev
+            FROM (
+                SELECT m.host_id, {RollupValueExpression(metric)} AS value
+                FROM host_metrics_5m m
+                JOIN hosts h ON h.id = m.host_id
+                WHERE m.host_id = ANY(@host_ids) AND m.bucket >= @baseline_start AND m.bucket <= @last_bucket
+            ) b
+            GROUP BY host_id
+            """,
+            new
+            {
+                host_ids = hostIds,
+                baseline_start = windowStart - AlertDecision.BaselinePeriod,
+                last_bucket = windowStart - RollupBucket,
+            },
+            cancellationToken: cancellationToken));
+
+        return rows.ToDictionary(row => row.HostId, row => new BaselineStats(row.Buckets, row.Mean ?? 0, row.StdDev ?? 0));
+    }
+
+    private static readonly TimeSpan RollupBucket = TimeSpan.FromMinutes(5);
+
+    /// <summary>The metric from the 5-minute rollup, matching <see cref="ValueExpression"/>.</summary>
+    private static string RollupValueExpression(AlertMetric metric) => metric switch
+    {
+        AlertMetric.CpuUsage => "m.cpu_usage_pct",
+        AlertMetric.MemoryUsage => "m.mem_used_bytes / NULLIF(m.mem_total_bytes, 0) * 100",
+        AlertMetric.SwapUsage => "m.swap_used_bytes / NULLIF(m.swap_total_bytes, 0) * 100",
+        AlertMetric.LoadPerCore => "m.load_1 / NULLIF(h.cpu_logical_processors, 0)",
+        AlertMetric.DiskIoUtilization => "m.disk_util_pct",
+        AlertMetric.NetworkReceive => "m.net_rx_bps",
+        AlertMetric.NetworkTransmit => "m.net_tx_bps",
+        _ => throw new ArgumentOutOfRangeException(nameof(metric), metric, "No 5-minute rollup for this metric."),
+    };
 
     /// <summary>Services failing in each host's newest check, each with the time it was first seen failing.</summary>
     private async Task<List<Observation>> ObserveServicesAsync(
@@ -325,6 +386,14 @@ public sealed class AlertEvaluator(
 
         private static DateTimeOffset? Utc(DateTime? value) =>
             value is { } utc ? new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc)) : null;
+    }
+
+    private sealed class BaselineRow
+    {
+        public Guid HostId { get; set; }
+        public int Buckets { get; set; }
+        public double? Mean { get; set; }
+        public double? StdDev { get; set; }
     }
 
     private sealed class ServiceFailureRow

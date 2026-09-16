@@ -183,7 +183,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Agent: failed service detection (systemd failed units / stopped automatic Windows services)
 - [x] Server: store service status and expose it via the API
 - [x] "Service failed" alert rule type
-- [ ] Anomaly detection rule type (deviation from a rolling baseline)
+- [x] Anomaly detection rule type (deviation from a rolling baseline)
 - [x] UI: services panel and the new rule types
 
 ## Phase 14 — Notifications, email & reports

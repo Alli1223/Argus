@@ -8,6 +8,7 @@ namespace Argus.Server.Features.Alerts;
 /// <summary>
 /// "Alert when <see cref="Metric"/> stays <see cref="Operator"/> <see cref="Threshold"/> for
 /// <see cref="DurationSeconds"/>." Applies to the owner's hosts: all of them, one host, or those with a tag.
+/// Anomaly rules compare with each host's usual level instead of a fixed threshold.
 /// </summary>
 public sealed class AlertRule
 {
@@ -21,8 +22,11 @@ public sealed class AlertRule
 
     public AlertMetric Metric { get; set; }
 
+    public AlertCondition Condition { get; set; }
+
     public AlertOperator Operator { get; set; }
 
+    /// <summary>The metric's value, or for anomaly rules a number of standard deviations.</summary>
     public double Threshold { get; set; }
 
     /// <summary>How long the condition must hold before the alert fires (0 = on the latest sample).</summary>
@@ -59,6 +63,7 @@ internal sealed class AlertRuleConfiguration : IEntityTypeConfiguration<AlertRul
 
         rule.Property(r => r.Name).HasMaxLength(100);
         rule.Property(r => r.Metric).HasConversion<string>().HasMaxLength(32);
+        rule.Property(r => r.Condition).HasConversion<string>().HasMaxLength(16);
         rule.Property(r => r.Operator).HasConversion<string>().HasMaxLength(16);
         rule.Property(r => r.Severity).HasConversion<string>().HasMaxLength(16);
         rule.Property(r => r.Tag).HasMaxLength(HostTags.MaxLength);

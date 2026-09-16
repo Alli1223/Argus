@@ -97,6 +97,33 @@ public sealed class AlertApiTests(AlertsFixture app) : IClassFixture<AlertsFixtu
     }
 
     [Fact]
+    public async Task Anomaly_rules_take_a_sensitivity_and_a_host_wide_metric()
+    {
+        var (_, _, owner) = await HostAsync("rules-an@example.com");
+
+        async Task<IDictionary<string, string[]>> ErrorsFor(object request)
+        {
+            var response = await owner.PostAsJsonAsync("/api/alert-rules", request, Ct);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            return (await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>(Ct))!.Errors;
+        }
+
+        Assert.Contains("condition", (await ErrorsFor(new { name = "x", metric = "DiskUsage", condition = "Anomaly", threshold = 3 })).Keys);
+        Assert.Contains("condition", (await ErrorsFor(new { name = "x", metric = "HostOffline", condition = "Anomaly", threshold = 3 })).Keys);
+        Assert.Contains("threshold", (await ErrorsFor(new { name = "x", metric = "CpuUsage", condition = "Anomaly", threshold = 50 })).Keys);
+        Assert.Contains("durationSeconds",
+            (await ErrorsFor(new { name = "x", metric = "CpuUsage", condition = "Anomaly", threshold = 3, durationSeconds = 60 })).Keys);
+
+        var response = await owner.PostAsJsonAsync("/api/alert-rules",
+            new { name = "Odd traffic", metric = "NetworkReceive", condition = "Anomaly", threshold = 2.5, durationSeconds = 900 }, Ct);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var rule = (await response.Content.ReadFromJsonAsync<AlertRuleResponse>(TestJson.Options, Ct))!;
+        Assert.Equal(AlertCondition.Anomaly, rule.Condition);
+        Assert.Equal(2.5, rule.Threshold);
+    }
+
+    [Fact]
     public async Task New_accounts_start_with_the_default_rules()
     {
         var admin = await app.CreateOwnerAsync("rules-admin@example.com", Roles.Admin);

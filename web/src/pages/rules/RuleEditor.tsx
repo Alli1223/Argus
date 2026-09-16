@@ -17,16 +17,26 @@ import { notifications } from "@mantine/notifications";
 import { useId } from "react";
 import { useSaveAlertRule } from "../../api/alerts";
 import { useHosts } from "../../api/hosts";
-import type { AlertMetric, AlertOperator, AlertRule, AlertRuleRequest, AlertSeverity } from "../../api/types";
+import type {
+  AlertCondition,
+  AlertMetric,
+  AlertOperator,
+  AlertRule,
+  AlertRuleRequest,
+  AlertSeverity,
+} from "../../api/types";
 import { METRIC_LABELS } from "../../lib/alertMetrics";
 import { normalizeTags, tagsError } from "../../lib/tags";
 import {
+  DEFAULT_SENSITIVITY,
+  MIN_ANOMALY_MINUTES,
   defaultThreshold,
   inputToThreshold,
   isFilesystemMetric,
   isPercentMetric,
   isServiceMetric,
   isStateMetric,
+  supportsAnomaly,
   thresholdSuffix,
   thresholdToInput,
 } from "./ruleText";
@@ -36,8 +46,12 @@ type Scope = "all" | "host" | "tag";
 interface RuleValues {
   name: string;
   metric: AlertMetric;
+  condition: AlertCondition;
   operator: AlertOperator;
-  /** In the metric's input unit (percent, MB/s or per core); a string while the field is empty. */
+  /**
+   * In the metric's input unit (percent, MB/s or per core), or standard deviations for anomaly
+   * rules; a string while the field is empty.
+   */
   threshold: number | string;
   durationMinutes: number | string;
   severity: AlertSeverity;
@@ -59,11 +73,21 @@ const SCOPE_CHOICES: { label: string; value: Scope }[] = [
   { label: "Hosts with a tag", value: "tag" },
 ];
 
+const CONDITION_CHOICES: { label: string; value: AlertCondition }[] = [
+  { label: "A fixed threshold", value: "Threshold" },
+  { label: "Its usual level", value: "Anomaly" },
+];
+
+/** Whether the rule, as it stands, compares with each host's usual level. */
+const isAnomaly = (values: Pick<RuleValues, "metric" | "condition">) =>
+  values.condition === "Anomaly" && supportsAnomaly(values.metric);
+
 function initialValues(rule: AlertRule | null): RuleValues {
   if (!rule) {
     return {
       name: "",
       metric: "CpuUsage",
+      condition: "Threshold",
       operator: "Above",
       threshold: 90,
       durationMinutes: 5,
@@ -78,8 +102,9 @@ function initialValues(rule: AlertRule | null): RuleValues {
   return {
     name: rule.name,
     metric: rule.metric,
+    condition: rule.condition,
     operator: rule.operator,
-    threshold: thresholdToInput(rule.metric, rule.threshold),
+    threshold: rule.condition === "Anomaly" ? rule.threshold : thresholdToInput(rule.metric, rule.threshold),
     durationMinutes: rule.durationSeconds / 60,
     severity: rule.severity,
     scope: rule.hostId ? "host" : rule.tag ? "tag" : "all",
@@ -92,13 +117,16 @@ function initialValues(rule: AlertRule | null): RuleValues {
 
 function toRequest(values: RuleValues): AlertRuleRequest {
   const state = isStateMetric(values.metric);
+  const anomaly = isAnomaly(values);
+  const threshold = Number(values.threshold);
   const filter = values.resourceFilter.trim();
   const narrowable = isFilesystemMetric(values.metric) || isServiceMetric(values.metric);
   return {
     name: values.name.trim(),
     metric: values.metric,
+    condition: anomaly ? "Anomaly" : "Threshold",
     operator: state ? "Above" : values.operator,
-    threshold: state ? 0 : inputToThreshold(values.metric, Number(values.threshold)),
+    threshold: state ? 0 : anomaly ? threshold : inputToThreshold(values.metric, threshold),
     durationSeconds: Math.round(Number(values.durationMinutes) * 60),
     severity: values.severity,
     hostId: values.scope === "host" ? values.hostId : null,
@@ -139,6 +167,9 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
       threshold: (value, values) => {
         if (isStateMetric(values.metric)) return null;
         if (typeof value !== "number") return "Enter a number.";
+        if (isAnomaly(values)) {
+          return value < 1 || value > 10 ? "Choose from 1 to 10 standard deviations." : null;
+        }
         if (isPercentMetric(values.metric) && (value < 0 || value > 100))
           return "Choose a percentage from 0 to 100.";
         return value < 0 ? "The threshold cannot be negative." : null;
@@ -147,6 +178,9 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
         if (typeof value !== "number") return "Enter a number of minutes.";
         if (values.metric === "HostOffline" && value < 1) {
           return "Allow at least a minute, so brief network hiccups do not count as outages.";
+        }
+        if (isAnomaly(values) && value < MIN_ANOMALY_MINUTES) {
+          return "Allow at least 5 minutes, so one noisy reading cannot trip the rule.";
         }
         return value < 0 || value > 1440 ? "Choose from 0 minutes to a day." : null;
       },
@@ -162,23 +196,38 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
   const values = form.values;
   const offline = values.metric === "HostOffline";
   const state = isStateMetric(values.metric);
+  const anomaly = isAnomaly(values);
   const hostOptions = (hosts.data ?? []).map((host) => ({ value: host.id, label: host.displayName }));
   const tagOptions = [...new Set((hosts.data ?? []).flatMap((host) => host.tags))].sort();
 
-  // A different kind of metric gets a threshold that makes sense for it.
+  // A sensitivity carries over to another metric an anomaly rule can watch; otherwise a different kind
+  // of metric gets a threshold that makes sense for it.
   const changeMetric = (next: string | null) => {
     if (!next) return;
     const metric = next as AlertMetric;
+    const keepsSensitivity = isAnomaly({ metric, condition: values.condition });
+    const keepsThreshold =
+      values.condition === "Threshold" && thresholdSuffix(metric) === thresholdSuffix(values.metric);
     form.setValues({
       metric,
-      threshold:
-        thresholdSuffix(metric) === thresholdSuffix(values.metric)
-          ? values.threshold
-          : defaultThreshold(metric),
+      condition: keepsSensitivity ? "Anomaly" : "Threshold",
+      threshold: keepsSensitivity || keepsThreshold ? values.threshold : defaultThreshold(metric),
       durationMinutes:
         metric === "HostOffline" && Number(values.durationMinutes) < 1 ? 5 : values.durationMinutes,
       // A mount point makes no sense as a service name, and the other way round.
       resourceFilter: isServiceMetric(metric) === isServiceMetric(values.metric) ? values.resourceFilter : "",
+    });
+  };
+
+  const changeCondition = (next: string) => {
+    const condition = next as AlertCondition;
+    if (condition === values.condition) return;
+    const toAnomaly = condition === "Anomaly";
+    form.setValues({
+      condition,
+      threshold: toAnomaly ? DEFAULT_SENSITIVITY : defaultThreshold(values.metric),
+      durationMinutes:
+        toAnomaly && Number(values.durationMinutes) < MIN_ANOMALY_MINUTES ? 10 : values.durationMinutes,
     });
   };
 
@@ -214,6 +263,28 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
           allowDeselect={false}
         />
 
+        {supportsAnomaly(values.metric) && (
+          <Stack gap={4}>
+            <Text id={`${ids}-condition`} fz="sm" fw={500}>
+              Compare with
+            </Text>
+            <SegmentedControl
+              aria-labelledby={`${ids}-condition`}
+              w="fit-content"
+              data={CONDITION_CHOICES}
+              value={values.condition}
+              onChange={changeCondition}
+            />
+            {anomaly && (
+              <Text fz="xs" c="dimmed" maw={520}>
+                Each host&apos;s usual level comes from its last week of readings, and the sensitivity counts
+                standard deviations from it: higher means fewer alerts. The rule stays quiet until a host has
+                a day of history.
+              </Text>
+            )}
+          </Stack>
+        )}
+
         {!state && (
           <Group gap="sm" align="flex-end" wrap="wrap">
             <Stack gap={4}>
@@ -222,22 +293,42 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
               </Text>
               <SegmentedControl
                 aria-labelledby={`${ids}-operator`}
-                data={[
-                  { label: "Above", value: "Above" },
-                  { label: "Below", value: "Below" },
-                ]}
+                data={
+                  anomaly
+                    ? [
+                        { label: "Higher than usual", value: "Above" },
+                        { label: "Lower than usual", value: "Below" },
+                      ]
+                    : [
+                        { label: "Above", value: "Above" },
+                        { label: "Below", value: "Below" },
+                      ]
+                }
                 {...form.getInputProps("operator")}
               />
             </Stack>
-            <NumberInput
-              label="Threshold"
-              suffix={thresholdSuffix(values.metric)}
-              min={0}
-              max={isPercentMetric(values.metric) ? 100 : undefined}
-              decimalScale={2}
-              w={170}
-              {...form.getInputProps("threshold")}
-            />
+            {anomaly ? (
+              <NumberInput
+                label="Sensitivity"
+                suffix=" σ"
+                min={1}
+                max={10}
+                step={0.5}
+                decimalScale={1}
+                w={140}
+                {...form.getInputProps("threshold")}
+              />
+            ) : (
+              <NumberInput
+                label="Threshold"
+                suffix={thresholdSuffix(values.metric)}
+                min={0}
+                max={isPercentMetric(values.metric) ? 100 : undefined}
+                decimalScale={2}
+                w={170}
+                {...form.getInputProps("threshold")}
+              />
+            )}
           </Group>
         )}
 
@@ -248,10 +339,12 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
               ? "How long a host must go without reporting."
               : isServiceMetric(values.metric)
                 ? "How long a service must stay failed. 0 raises the alert at the next check."
-                : "How long the condition must hold. 0 fires on the first reading."
+                : anomaly
+                  ? "How long the average must stay unusual. At least 5 minutes."
+                  : "How long the condition must hold. 0 fires on the first reading."
           }
           suffix=" min"
-          min={offline ? 1 : 0}
+          min={offline ? 1 : anomaly ? MIN_ANOMALY_MINUTES : 0}
           max={1440}
           decimalScale={1}
           w={220}

@@ -73,10 +73,12 @@ public static class AlertRuleEndpoints
             return TypedResults.ValidationProblem(errors);
         }
 
-        // Open alerts describe the old condition. When the rule now measures something else, close them;
-        // threshold and scope changes are left to the next evaluation.
+        // Open alerts describe the old condition. When the rule now measures or compares something else,
+        // close them; threshold and scope changes are left to the next evaluation.
         var now = time.GetUtcNow();
-        if (rule.Metric != request.Metric || rule.ResourceFilter != NormalizeFilter(request.ResourceFilter))
+        if (rule.Metric != request.Metric
+            || rule.Condition != request.Condition
+            || rule.ResourceFilter != NormalizeFilter(request.ResourceFilter))
         {
             await ResolveOpenAlertsAsync(db, rule.Id, now, cancellationToken);
         }
@@ -109,6 +111,7 @@ public static class AlertRuleEndpoints
             rule.Id,
             rule.Name,
             rule.Metric,
+            rule.Condition,
             rule.Operator,
             rule.Threshold,
             rule.DurationSeconds,
@@ -128,7 +131,24 @@ public static class AlertRuleEndpoints
         var errors = new Dictionary<string, string[]>();
         var metric = request.Metric!.Value;
 
-        if (metric.IsPercentage() && request.Threshold is < 0 or > 100)
+        if (request.Condition == AlertCondition.Anomaly)
+        {
+            if (!metric.SupportsAnomaly())
+            {
+                errors["condition"] = ["Anomaly rules work on CPU, memory, swap, load, disk busy time and network traffic."];
+            }
+
+            if (request.Threshold is < 1 or > 10)
+            {
+                errors["threshold"] = ["Choose a sensitivity from 1 to 10 standard deviations."];
+            }
+
+            if (request.DurationSeconds < AlertDecision.MinimumAnomalyDuration.TotalSeconds)
+            {
+                errors["durationSeconds"] = ["Anomaly rules need at least 5 minutes, so one noisy reading cannot trip them."];
+            }
+        }
+        else if (metric.IsPercentage() && request.Threshold is < 0 or > 100)
         {
             errors["threshold"] = ["Percentages must be between 0 and 100."];
         }
@@ -177,6 +197,7 @@ public static class AlertRuleEndpoints
         var metric = request.Metric!.Value;
         rule.Name = request.Name.Trim();
         rule.Metric = metric;
+        rule.Condition = request.Condition;
 
         // States (offline, a failed service) have no threshold of their own: they fire once they last the duration.
         rule.Operator = metric.IsState() ? AlertOperator.Above : request.Operator;

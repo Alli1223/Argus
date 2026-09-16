@@ -32,6 +32,8 @@ public sealed class Alert
 
     public AlertMetric Metric { get; set; }
 
+    public AlertCondition Condition { get; set; }
+
     public AlertOperator Operator { get; set; }
 
     public double Threshold { get; set; }
@@ -42,6 +44,9 @@ public sealed class Alert
 
     /// <summary>The observed value: the average over the rule's window, refreshed while firing.</summary>
     public double? Value { get; set; }
+
+    /// <summary>For anomaly alerts: the host's usual level, which the value strayed from.</summary>
+    public double? Baseline { get; set; }
 
     public DateTimeOffset FiredAt { get; set; }
 
@@ -66,6 +71,7 @@ internal sealed class AlertConfiguration : IEntityTypeConfiguration<Alert>
         alert.Property(a => a.ResourceKey).HasMaxLength(256);
         alert.Property(a => a.Title).HasMaxLength(300);
         alert.Property(a => a.Metric).HasConversion<string>().HasMaxLength(32);
+        alert.Property(a => a.Condition).HasConversion<string>().HasMaxLength(16);
         alert.Property(a => a.Operator).HasConversion<string>().HasMaxLength(16);
         alert.Property(a => a.Severity).HasConversion<string>().HasMaxLength(16);
         alert.Property(a => a.Status).HasConversion<string>().HasMaxLength(16);

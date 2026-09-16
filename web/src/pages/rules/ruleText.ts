@@ -11,14 +11,28 @@ export const isServiceMetric = (metric: AlertMetric) => metric === "ServiceFaile
 /** States rather than measurements: no threshold or direction, only how long they last. */
 export const isStateMetric = (metric: AlertMetric) => metric === "HostOffline" || metric === "ServiceFailed";
 
+/** Host-wide measurements, which anomaly rules can compare with each host's usual level. */
+export const supportsAnomaly = (metric: AlertMetric) => !isStateMetric(metric) && !isFilesystemMetric(metric);
+
+/** Where a new anomaly rule's sensitivity starts, in standard deviations. */
+export const DEFAULT_SENSITIVITY = 3;
+
+/** Anomaly rules average over at least this long, so one noisy reading cannot trip them. */
+export const MIN_ANOMALY_MINUTES = 5;
+
 /** A threshold without needless decimals: "90%", "50 MB/s", "1.50 per core". */
 export function formatThreshold(metric: AlertMetric, value: number): string {
   return formatMetricValue(metric, value).replace(/\.0(?=[% ])/, "");
 }
 
+/** An anomaly rule's sensitivity in standard deviations: "3σ", "2.5σ". */
+export function formatSensitivity(value: number): string {
+  return `${Number(value.toFixed(1))}σ`;
+}
+
 type RuleCondition = Pick<
   AlertRule,
-  "metric" | "operator" | "threshold" | "durationSeconds" | "resourceFilter"
+  "metric" | "condition" | "operator" | "threshold" | "durationSeconds" | "resourceFilter"
 >;
 
 /** A rule's condition as a phrase: "CPU usage above 90% for 5 minutes". */
@@ -26,6 +40,10 @@ export function describeRule(rule: RuleCondition): string {
   const lasting = rule.durationSeconds > 0 ? ` for ${describeBucket(rule.durationSeconds)}` : "";
   if (rule.metric === "HostOffline") return `Not reporting${lasting}`;
   if (rule.metric === "ServiceFailed") return `${rule.resourceFilter ?? "Any service"} failed${lasting}`;
+  if (rule.condition === "Anomaly") {
+    const unusually = rule.operator === "Above" ? "unusually high" : "unusually low";
+    return `${METRIC_LABELS[rule.metric]} ${unusually} (${formatSensitivity(rule.threshold)})${lasting}`;
+  }
   const direction = rule.operator === "Above" ? "above" : "below";
   const where = rule.resourceFilter ? ` on ${rule.resourceFilter}` : "";
   return `${METRIC_LABELS[rule.metric]} ${direction} ${formatThreshold(rule.metric, rule.threshold)}${where}${lasting}`;
@@ -43,6 +61,7 @@ export function ruleToRequest(rule: AlertRule): AlertRuleRequest {
   const {
     name,
     metric,
+    condition,
     operator,
     threshold,
     durationSeconds,
@@ -55,6 +74,7 @@ export function ruleToRequest(rule: AlertRule): AlertRuleRequest {
   return {
     name,
     metric,
+    condition,
     operator,
     threshold,
     durationSeconds,

@@ -182,6 +182,16 @@ export function AlertsPage() {
 function Reading({ alert }: { alert: Alert }) {
   if (alert.metric === "HostOffline") return <Text fz="sm">Not reporting</Text>;
   if (alert.metric === "ServiceFailed") return <Text fz="sm">Failed</Text>;
+  if (alert.condition === "Anomaly") {
+    return (
+      <Text fz="sm">
+        {formatMetricValue(alert.metric, alert.value)}{" "}
+        <Text span fz="xs" c="dimmed">
+          usually {formatMetricValue(alert.metric, alert.baseline)}
+        </Text>
+      </Text>
+    );
+  }
   return (
     <Text fz="sm">
       {formatMetricValue(alert.metric, alert.value)}{" "}
