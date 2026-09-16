@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type ApiError } from "./client";
 import { hostKeys } from "./hosts";
-import type { HostDetail, ServerUpdateInfo } from "./types";
+import type { HostDetail, ServerSelfUpdate, ServerUpdateInfo } from "./types";
 
 export const updateKeys = {
   server: ["updates", "server"] as const,
+  selfUpdate: ["updates", "self"] as const,
 };
 
 /** This server's version against the latest release. Administrators only; the server checks every few hours. */
@@ -26,6 +27,31 @@ export function useCheckForUpdates() {
       client.setQueryData(updateKeys.server, info);
       void client.invalidateQueries({ queryKey: hostKeys.all });
     },
+  });
+}
+
+const isBusy = (state: ServerSelfUpdate | undefined) =>
+  Boolean(state?.pendingVersion || state?.lastRun?.inProgress);
+
+/**
+ * Whether Argus can update itself, and how its latest update went. While one runs this checks every
+ * two seconds, and keeps checking while the server restarts and cannot answer.
+ */
+export function useServerSelfUpdate() {
+  return useQuery({
+    queryKey: updateKeys.selfUpdate,
+    queryFn: () => api.get<ServerSelfUpdate>("/api/updates/server"),
+    retry: false,
+    refetchInterval: (query) => (isBusy(query.state.data) ? 2_000 : 30_000),
+  });
+}
+
+/** Asks the updater service to install a release. */
+export function useStartServerUpdate() {
+  const client = useQueryClient();
+  return useMutation<ServerSelfUpdate, ApiError, string>({
+    mutationFn: (version) => api.post<ServerSelfUpdate>("/api/updates/server", { version }),
+    onSuccess: (state) => client.setQueryData(updateKeys.selfUpdate, state),
   });
 }
 

@@ -115,6 +115,7 @@ agent builds for agents someone asked to update. Builds are only used when they 
 | `Argus:Updates:Repository` | `Alli1223/Argus` | owner/name | The GitHub repository releases come from, for forks. |
 | `Argus:Updates:ApiUrl` | `https://api.github.com` | a URL | GitHub's API. |
 | `Argus:Updates:CacheDirectory` | a temporary folder | | Where fetched agent builds are kept. |
+| `Argus:Updates:ServerUpdatesDirectory` | none | | The directory shared with the updater service, which installs server releases from **Settings**. The Compose file sets it to `/updates`. Without it, releases are installed by hand. |
 
 ### Rate limits
 

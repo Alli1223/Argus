@@ -35,6 +35,8 @@ public static class UpdateEndpoints
             .RequireAuthorization(policy => policy.RequireRole(Roles.Admin));
         updates.MapGet("/", (UpdateStatus status, IOptions<UpdateOptions> options) => Describe(status.Current, options.Value));
         updates.MapPost("/check", CheckAsync);
+        updates.MapGet("/server", (ServerUpdates server) => server.Describe());
+        updates.MapPost("/server", RequestServerUpdate);
 
         var hosts = routes.MapGroup("/hosts").WithTags("Hosts");
         hosts.MapPost("/agent-updates", RequestAllAsync);
@@ -87,6 +89,18 @@ public static class UpdateEndpoints
         }
 
         return TypedResults.Ok(Describe(await checker.CheckAsync(cancellationToken), options.Value));
+    }
+
+    /// <summary>Asks the updater to install the latest release; it starts within a few seconds.</summary>
+    private static Results<Accepted<ServerSelfUpdate>, ProblemHttpResult> RequestServerUpdate(
+        ServerUpdateRequest request, ClaimsPrincipal user, ServerUpdates server)
+    {
+        if (server.Request(request.Version.Trim(), user.Identity?.Name) is { } problem)
+        {
+            return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: "Argus cannot update now", detail: problem);
+        }
+
+        return TypedResults.Accepted("/api/updates/server", server.Describe());
     }
 
     private static async Task<Results<Ok<HostDetail>, NotFound, ProblemHttpResult>> RequestAsync(

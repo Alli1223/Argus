@@ -79,6 +79,22 @@ export const router = createBrowserRouter([
             ],
           },
           {
+            path: "settings",
+            element: (
+              <RequireAdmin>
+                <Outlet />
+              </RequireAdmin>
+            ),
+            children: [
+              {
+                index: true,
+                lazy: async () => ({
+                  Component: (await import("../pages/settings/SettingsPage")).SettingsPage,
+                }),
+              },
+            ],
+          },
+          {
             path: "account",
             lazy: async () => ({ Component: (await import("../pages/account/AccountPage")).AccountPage }),
           },

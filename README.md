@@ -14,6 +14,8 @@ sends notifications; and a web app shows it all.
 - **Accounts** for several people, each with their own hosts, and administrators who see them all.
 - **Easy to run:** one Docker Compose file for the server and its database, optional automatic
   HTTPS with Caddy, and install commands for agents generated in the web app.
+- **Updates from the web app** for the server and the agents. The server backs up its database first
+  and goes back to the previous version by itself if the new one does not start.
 
 ## Quick start
 
@@ -23,8 +25,8 @@ On a Linux machine with Docker:
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
 git checkout v0.3.0                   # the latest release
-cp deploy/.env.example deploy/.env    # then set POSTGRES_PASSWORD and ARGUS_PUBLIC_URL
-docker compose -f deploy/docker-compose.yml up -d --build
+cp deploy/.env.example deploy/.env    # then set POSTGRES_PASSWORD, ARGUS_PUBLIC_URL and ARGUS_VERSION
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
 Open Argus in a browser and create the administrator account. Then open **Add a system**, create an

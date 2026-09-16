@@ -37,14 +37,21 @@ trap cleanup EXIT
 json() { python3 -c "import json, sys; data = json.load(sys.stdin); print($1)"; }
 api() { curl -fsS -b "$JAR" -c "$JAR" -H "X-Argus-Csrf: 1" -H "Content-Type: application/json" "$@"; }
 
+step "Building the server and updater images"
+docker build --quiet -t argus-smoke/server:smoke "$ROOT" >/dev/null
+docker build --quiet -t argus-smoke/updater:smoke "$ROOT/deploy/updater" >/dev/null
+
 cat > "$WORK/env" <<EOF
+ARGUS_IMAGE=argus-smoke/server
+ARGUS_UPDATER_IMAGE=argus-smoke/updater
+ARGUS_VERSION=smoke
 POSTGRES_PASSWORD=smoke-$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n')
 ARGUS_PUBLIC_URL=$BASE
 ARGUS_HTTP_BIND=127.0.0.1:$PORT
 EOF
 
-step "Building and starting the stack ($PROJECT)"
-compose up --detach --build --wait --wait-timeout 300 >/dev/null || { compose logs server | tail -40; fail "the stack did not become healthy"; }
+step "Starting the stack ($PROJECT)"
+compose up --detach --wait --wait-timeout 300 >/dev/null || { compose logs server | tail -40; fail "the stack did not become healthy"; }
 
 step "Checking the web app and the server"
 curl -fsS "$BASE/" | grep -q '<div id="root">' || fail "the web app is not served at /"

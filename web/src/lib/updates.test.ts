@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HostAgentUpdate } from "../api/types";
-import { agentUpdateState, outdatedAgents, serverUpgradeCommands } from "./updates";
+import { agentUpdateState, outdatedAgents, serverUpdateSteps, serverUpgradeCommands } from "./updates";
 
 const now = Date.parse("2026-09-16T12:00:00Z");
 
@@ -50,8 +50,31 @@ describe("agent updates", () => {
   });
 
   it("give the commands that install a server release", () => {
-    expect(serverUpgradeCommands("v0.3.0")).toBe(
-      "git fetch --tags\ngit checkout v0.3.0\ndocker compose -f deploy/docker-compose.yml up -d --build",
-    );
+    const commands = serverUpgradeCommands("v0.4.0", "0.4.0").split("\n");
+    expect(commands[1]).toBe("git checkout v0.4.0");
+    expect(commands[3]).toBe("sed -i 's/^ARGUS_VERSION=.*/ARGUS_VERSION=0.4.0/' deploy/.env");
+    expect(commands.at(-1)).toBe("docker compose -f deploy/docker-compose.yml up -d");
+  });
+});
+
+describe("server update steps", () => {
+  const statuses = (state: Parameters<typeof serverUpdateSteps>[0]["state"]) =>
+    serverUpdateSteps({ state, from: "0.3.0", to: "0.4.0" }).map((step) => step.status);
+
+  it("follow the update from download to the final check", () => {
+    expect(statuses("starting")).toEqual(["current", "waiting", "waiting", "waiting"]);
+    expect(statuses("backing-up")).toEqual(["done", "current", "waiting", "waiting"]);
+    expect(statuses("verifying")).toEqual(["done", "done", "done", "current"]);
+    expect(statuses("succeeded")).toEqual(["done", "done", "done", "done"]);
+  });
+
+  it("show going back as a step of its own", () => {
+    const steps = serverUpdateSteps({ state: "rolling-back", from: "0.3.0", to: "0.4.0" });
+    expect(steps.map((step) => [step.label, step.status])).toEqual([
+      ["Download Argus 0.4.0", "done"],
+      ["Back up the database", "done"],
+      ["Argus 0.4.0 did not start properly", "failed"],
+      ["Go back to Argus 0.3.0", "current"],
+    ]);
   });
 });

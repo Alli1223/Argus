@@ -18,6 +18,7 @@ public static class UpdateServiceExtensions
         services.AddSingleton<ReleaseSource>();
         services.AddSingleton<UpdateStatus>();
         services.AddSingleton<UpdateChecker>();
+        services.AddSingleton<ServerUpdates>();
         services.AddSingleton<AgentPackages>();
         services.AddScoped<AgentUpdates>();
         services.AddHostedService<UpdateCheckService>();

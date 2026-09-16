@@ -77,5 +77,15 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      # Builds the image through deploy/docker-compose.yml, starts the stack and enrolls a real agent.
+      # Builds the images, starts deploy/docker-compose.yml and enrolls a real agent.
       - run: build/smoke-test.sh
+
+  updates:
+    name: Server updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - run: shellcheck deploy/updater/argus-updater.sh build/update-test.sh
+      # Has the updater install a good release, roll back two that do not start, and refuse others.
+      - run: build/update-test.sh

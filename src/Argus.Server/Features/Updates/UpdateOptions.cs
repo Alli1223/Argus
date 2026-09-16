@@ -25,4 +25,10 @@ public sealed class UpdateOptions
 
     /// <summary>Where agent builds downloaded for updates are kept; a temporary folder when empty.</summary>
     public string? CacheDirectory { get; set; }
+
+    /// <summary>
+    /// The directory shared with the updater service, which installs server releases administrators
+    /// choose in the web app. Without it, releases are installed by hand.
+    /// </summary>
+    public string? ServerUpdatesDirectory { get; set; }
 }

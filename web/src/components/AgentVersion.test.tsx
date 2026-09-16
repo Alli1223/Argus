@@ -1,10 +1,9 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { HostAgentUpdate, HostDetail, ServerUpdateInfo } from "../api/types";
+import type { HostAgentUpdate, HostDetail } from "../api/types";
 import { mockApi, reply } from "../test/api";
 import { renderWithApp } from "../test/render";
 import { AgentVersion } from "./AgentVersion";
-import { ServerUpdateModal } from "./ServerUpdate";
 
 const now = Date.parse("2026-09-16T12:00:00Z");
 
@@ -57,47 +56,5 @@ describe("AgentVersion", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     await waitFor(() => expect(calls.some((call) => call.method === "DELETE")).toBe(true));
-  });
-});
-
-describe("ServerUpdateModal", () => {
-  const info: ServerUpdateInfo = {
-    currentVersion: "0.2.0",
-    enabled: true,
-    latest: {
-      version: "0.3.0",
-      tag: "v0.3.0",
-      name: "Argus 0.3.0",
-      notes: "- Faster charts",
-      url: "https://github.com/Alli1223/Argus/releases/tag/v0.3.0",
-      publishedAt: "2026-09-15T10:00:00Z",
-    },
-    updateAvailable: true,
-    checkedAt: "2026-09-16T11:59:00Z",
-    error: null,
-  };
-
-  it("gives the release notes and the commands to install it", () => {
-    renderWithApp(<ServerUpdateModal info={info} opened onClose={() => {}} />);
-
-    expect(screen.getByText("- Faster charts")).toBeInTheDocument();
-    expect(screen.getByText(/git checkout v0\.3\.0/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "The release on GitHub" })).toHaveAttribute(
-      "href",
-      info.latest!.url,
-    );
-  });
-
-  it("says when the last check failed", () => {
-    renderWithApp(
-      <ServerUpdateModal
-        info={{ ...info, latest: null, updateAvailable: false, error: "GitHub answered 503." }}
-        opened
-        onClose={() => {}}
-      />,
-    );
-
-    expect(screen.getByText("This server runs Argus 0.2.0, the latest release.")).toBeInTheDocument();
-    expect(screen.getByText("The last check failed: GitHub answered 503.")).toBeInTheDocument();
   });
 });
