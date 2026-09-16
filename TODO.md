@@ -188,9 +188,9 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 14 — Notifications, email & reports
 
-- [ ] Notification dispatcher (background queue, retries) wired to alert events
-- [ ] SMTP email sender (MailKit) + configuration; Mailpit in the dev compose file
-- [ ] Alert emails (fired / resolved) with HTML templates
+- [x] Notification dispatcher (background queue, retries) wired to alert events
+- [x] SMTP email sender (MailKit) + configuration; Mailpit in the dev compose file
+- [x] Alert emails (fired / resolved) with HTML templates
 - [ ] Webhook channel (generic JSON, Slack / Discord compatible)
 - [ ] Notification channel management API + UI (with "send test")
 - [ ] Scheduled reports (daily / weekly summary email)

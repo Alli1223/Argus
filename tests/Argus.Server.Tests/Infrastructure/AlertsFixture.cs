@@ -7,7 +7,7 @@ using Microsoft.Extensions.Time.Testing;
 namespace Argus.Server.Tests.Infrastructure;
 
 /// <summary>A server whose clock the tests control, with alert evaluation on demand.</summary>
-public sealed class AlertsFixture(PostgresFixture postgres) : ArgusAppFixture(postgres)
+public class AlertsFixture(PostgresFixture postgres) : ArgusAppFixture(postgres)
 {
     /// <summary>Starts at the current time (to the second) so the database's own clock agrees closely.</summary>
     public FakeTimeProvider Time { get; } = new(DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds()));

@@ -2,6 +2,8 @@
 #
 #   docker compose -f deploy/docker-compose.dev.yml up -d
 #
+# Mailpit catches the server's emails; read them at http://localhost:8025.
+#
 name: argus-dev
 
 services:
@@ -22,6 +24,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+
+  mail:
+    image: axllent/mailpit:v1.31.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
 volumes:
   db-data:
