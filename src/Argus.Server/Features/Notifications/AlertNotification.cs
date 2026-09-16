@@ -35,6 +35,10 @@ public sealed record AlertNotification(
         alert.FiredAt,
         alert.ResolvedAt);
 
+    /// <summary>The host's page in the web app, when the server knows its public address.</summary>
+    public string? HostLink(string? publicUrl) =>
+        string.IsNullOrWhiteSpace(publicUrl) ? null : $"{publicUrl.TrimEnd('/')}/hosts/{HostId}";
+
     public string ToJson() => JsonSerializer.Serialize(this, Json);
 
     public static AlertNotification FromJson(string json) =>

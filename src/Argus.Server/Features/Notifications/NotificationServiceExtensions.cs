@@ -15,6 +15,17 @@ public static class NotificationServiceExtensions
         services.AddScoped<NotificationDispatcher>();
         services.AddSingleton<IEmailTransport, SmtpEmailTransport>();
         services.AddSingleton<INotificationSender, EmailNotificationSender>();
+
+        services.AddHttpClient(WebhookNotificationSender.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd($"Argus/{ServerVersion.Current}");
+        });
+        foreach (var kind in WebhookNotificationSender.Kinds)
+        {
+            services.AddSingleton<INotificationSender>(provider => ActivatorUtilities.CreateInstance<WebhookNotificationSender>(provider, kind));
+        }
+
         services.AddHostedService<NotificationDispatchService>();
         return services;
     }
