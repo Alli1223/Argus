@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.Json.Nodes;
 using Argus.Contracts.Agent;
 using Argus.Server.Features.Alerts;
 using Argus.Server.Features.Auth;
@@ -81,6 +83,44 @@ public sealed class NotificationTests(NotificationsFixture app) : IClassFixture<
         Assert.Empty(app.Email.SentTo("critical-b@example.com"));
         Assert.Empty(app.Email.SentTo("off-b@example.com"));
         Assert.Empty(app.Email.SentTo("stranger-b@example.com"));
+    }
+
+    [Fact]
+    public async Task Alerts_are_posted_to_webhooks_in_their_format()
+    {
+        const string Url = "https://hooks.slack.test/services/T0/B0/notify-e";
+        var (ownerId, owner) = await OwnerAsync("notify-e@example.com");
+        var (_, agent) = await app.RegisterHostAsync(owner, "notify-e-1", "web-1");
+        var channel = await app.AddChannelAsync(ownerId, NotificationChannelKind.Slack, Url);
+        await app.AddRuleAsync(ownerId, AlertMetric.CpuUsage, threshold: 80);
+
+        await agent.SendSamplesAsync(Cpu(Now.AddSeconds(-5), 97));
+        await app.EvaluateAsync();
+        Assert.Equal(new DispatchResult(Sent: 1, Retrying: 0, Failed: 0), await app.DispatchAsync());
+
+        var message = JsonNode.Parse(Assert.Single(app.Webhooks.BodiesSentTo(Url)))!;
+        Assert.StartsWith("*<https://argus.test/hosts/", (string?)message["text"]);
+        Assert.Equal("#d0342a", (string?)message["attachments"]![0]!["color"]);
+
+        // A refused post is retried like any other failed send.
+        app.Time.Advance(TimeSpan.FromMinutes(1));
+        await agent.SendSamplesAsync(Cpu(Now.AddSeconds(-20), 10), Cpu(Now.AddSeconds(-5), 12));
+        await app.EvaluateAsync();
+        app.Webhooks.Status = HttpStatusCode.NotFound;
+        try
+        {
+            Assert.Equal(new DispatchResult(Sent: 0, Retrying: 1, Failed: 0), await app.DispatchAsync());
+            Assert.Equal("The webhook answered 404 Not Found.", (await app.DeliveriesAsync(channel.Id))[1].LastError);
+        }
+        finally
+        {
+            app.Webhooks.Status = HttpStatusCode.NoContent;
+        }
+
+        app.Time.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal(new DispatchResult(Sent: 1, Retrying: 0, Failed: 0), await app.DispatchAsync());
+        Assert.StartsWith("*<https://argus.test/hosts/", (string?)JsonNode.Parse(app.Webhooks.BodiesSentTo(Url)[^1])!["text"]);
+        Assert.Contains("|Resolved: CPU usage", (string?)JsonNode.Parse(app.Webhooks.BodiesSentTo(Url)[^1])!["text"]);
     }
 
     [Fact]

@@ -14,7 +14,7 @@ public static class AlertEmail
     {
         var resolved = alert.Kind == AlertEventKind.Resolved;
         var subject = resolved ? $"Resolved: {alert.Title}" : $"[{alert.Severity}] {alert.Title}";
-        var link = string.IsNullOrWhiteSpace(publicUrl) ? null : $"{publicUrl.TrimEnd('/')}/hosts/{alert.HostId}";
+        var link = alert.HostLink(publicUrl);
 
         List<(string Label, string Value)> facts =
         [

@@ -1,4 +1,3 @@
-using System.Reflection;
 using Argus.Server.Infrastructure;
 using Microsoft.Extensions.Options;
 
@@ -9,14 +8,10 @@ public sealed record ServerInfo(string Name, string Version, string? PublicUrl);
 
 public static class InfoEndpoints
 {
-    private static readonly string Version =
-        typeof(InfoEndpoints).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
-        ?? "0.0.0";
-
     public static IEndpointRouteBuilder MapInfoEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet("/info", (IOptions<ArgusOptions> options) =>
-                new ServerInfo("Argus", Version, options.Value.PublicUrl?.TrimEnd('/')))
+                new ServerInfo("Argus", ServerVersion.Current, options.Value.PublicUrl?.TrimEnd('/')))
             .WithName("GetServerInfo")
             .WithTags("Info")
             .AllowAnonymous();
