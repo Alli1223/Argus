@@ -67,7 +67,9 @@ colours: light `#2c349c` / `#5f6de9` / `#95a0f5`, dark `#dde1ff` / `#95a0f5` / `
 Rules the charts follow:
 
 - Status colours (healthy, bronze, crimson) are never used for chart series.
-- One y-axis per chart; values with different units get separate charts.
+- One y-axis per chart; values with different units get separate charts. Axes start at zero,
+  except temperatures: zero degrees means nothing there, so their axis spans whole tens around the
+  readings, at least 20 °C tall so a degree of wobble does not look like a swing.
 - At most eight series per chart, taking the slots in order. Temperature sensors beyond eight are
   split evenly across several charts for the same device rather than given more colours.
 - 2 px lines, solid hairline gridlines, and a crosshair tooltip that lists every series at the

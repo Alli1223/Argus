@@ -36,6 +36,17 @@ export function formatTick(value: number, unit: ChartUnit): string {
   return String(Number(value.toFixed(2)));
 }
 
+/**
+ * The y-axis of a temperature chart: whole tens around the readings, at least 20 °C tall. Zero means
+ * nothing on this scale, so the axis does not start there; the minimum height keeps a wobble of a
+ * degree from looking like a swing.
+ */
+export function temperatureAxis(min: number | null, max: number | null): [number, number] {
+  if (min == null || max == null || !Number.isFinite(min) || !Number.isFinite(max)) return [0, 100];
+  const low = Math.floor((min - 5) / 10) * 10;
+  return [low, Math.max(Math.ceil((max + 5) / 10) * 10, low + 20)];
+}
+
 const clock = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 const day = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
 const moment = new Intl.DateTimeFormat(undefined, {
