@@ -203,6 +203,14 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Configuration reference and API docs
 - [x] Final README pass
 
+## Phase 16 — Releases & updates
+
+- [x] Release workflow: version tags publish the agents, their install archives and SHA256SUMS
+- [x] Server checks GitHub for releases and tells administrators when one is out
+- [x] Agent updates: the server fetches and checks builds, agents install them (root systemd unit on Linux, a copy of the service on Windows) and roll back when the new one fails
+- [x] Update notices and buttons in the web app
+- [ ] Update an agent end to end on a real systemd install and on Windows
+
 ---
 
 ## Future ideas (not scheduled)

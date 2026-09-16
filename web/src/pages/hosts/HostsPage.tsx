@@ -1,4 +1,5 @@
 import {
+  Alert,
   Anchor,
   Badge,
   Box,
@@ -12,9 +13,11 @@ import {
   TextInput,
   UnstyledButton,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconArrowDown,
   IconArrowUp,
+  IconArrowUpCircle,
   IconChevronDown,
   IconChevronUp,
   IconPlus,
@@ -23,12 +26,14 @@ import {
 import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { useHosts } from "../../api/hosts";
+import { useRequestAllAgentUpdates } from "../../api/updates";
 import type { HostSummary } from "../../api/types";
 import { HostStatusBadge, PlatformIcon } from "../../components/HostBits";
 import { PageHeader } from "../../components/PageHeader";
 import { ErrorScreen, MessageScreen } from "../../components/Screens";
 import { UsageMeter } from "../../components/UsageMeter";
 import { formatAgo, formatDuration, formatRate } from "../../lib/format";
+import { agentUpdateState, outdatedAgents } from "../../lib/updates";
 import { useNow } from "../../lib/useNow";
 
 type SortKey = "name" | "status" | "cpu" | "memory" | "disk" | "lastSeen";
@@ -53,6 +58,7 @@ function matches(host: HostSummary, search: string) {
 
 export function HostsPage() {
   const hosts = useHosts();
+  const updateAll = useRequestAllAgentUpdates();
   const now = useNow();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -81,6 +87,7 @@ export function HostsPage() {
   if (hosts.isError) return <ErrorScreen error={hosts.error} onRetry={() => void hosts.refetch()} />;
 
   const online = all.filter((host) => host.status === "Online").length;
+  const outdated = outdatedAgents(all);
   const addSystem = (
     <Button component={Link} to="/systems" leftSection={<IconPlus size={16} />}>
       Add a system
@@ -110,6 +117,37 @@ export function HostsPage() {
         description={hosts.isSuccess ? `${online} of ${all.length} online` : undefined}
         actions={addSystem}
       />
+
+      {outdated.count > 0 && (
+        <Alert
+          color="iris"
+          mb="md"
+          icon={<IconArrowUpCircle size={18} />}
+          title={`${outdated.count === 1 ? "An agent" : `${outdated.count} agents`} can update to ${outdated.version}`}
+        >
+          <Group justify="space-between" gap="sm" wrap="wrap">
+            <Text fz="sm">
+              Each agent installs the new version after its next report, then restarts itself.
+            </Text>
+            <Button
+              size="compact-sm"
+              loading={updateAll.isPending}
+              onClick={() =>
+                updateAll.mutate(undefined, {
+                  onError: (error) =>
+                    notifications.show({
+                      color: "crimson",
+                      title: "The agents were not asked to update",
+                      message: error.message,
+                    }),
+                })
+              }
+            >
+              Update all
+            </Button>
+          </Group>
+        </Alert>
+      )}
 
       <Group gap="sm" mb="md" wrap="wrap">
         <TextInput
@@ -232,6 +270,7 @@ function HostRow({ host, now }: { host: HostSummary; now: number }) {
                   {tag}
                 </Badge>
               ))}
+              <AgentUpdateBadge host={host} now={now} />
             </Group>
           </div>
         </Group>
@@ -263,6 +302,23 @@ function HostRow({ host, now }: { host: HostSummary; now: number }) {
       <Table.Td className="argus-data">{formatDuration(latest?.uptimeSeconds)}</Table.Td>
       <Table.Td className="argus-data">{formatAgo(host.lastSeenAt, now)}</Table.Td>
     </Table.Tr>
+  );
+}
+
+/** A hint that the host's agent can, or is about to, update; the host page has the details. */
+function AgentUpdateBadge({ host, now }: { host: HostSummary; now: number }) {
+  const state = agentUpdateState(host.agentUpdate, now);
+  if (state.kind === "none") return null;
+  const [label, color] =
+    state.kind === "available"
+      ? [`Agent ${state.version} available`, "iris"]
+      : state.kind === "updating"
+        ? [`Updating agent to ${state.version}`, "iris"]
+        : ["Agent update failed", "crimson"];
+  return (
+    <Badge size="xs" variant="light" color={color}>
+      {label}
+    </Badge>
   );
 }
 

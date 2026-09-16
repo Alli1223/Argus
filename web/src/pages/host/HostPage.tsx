@@ -20,6 +20,7 @@ import { useHostMetrics } from "../../api/metrics";
 import type { HostDetail, MetricSeries } from "../../api/types";
 import { RangePicker } from "../../components/charts/RangePicker";
 import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
+import { AgentVersion } from "../../components/AgentVersion";
 import { ErrorScreen, MessageScreen } from "../../components/Screens";
 import { UsageMeter } from "../../components/UsageMeter";
 import { EyeGlyph } from "../../components/watch/Watch";
@@ -212,7 +213,9 @@ function NowPanel({ host, now }: { host: HostDetail; now: number }) {
             <Reading label="Booted">
               {host.bootTime ? dateTime.format(new Date(host.bootTime)) : "Unknown"}
             </Reading>
-            <Reading label="Agent">{host.agentVersion}</Reading>
+            <Reading label="Agent">
+              <AgentVersion host={host} now={now} />
+            </Reading>
             <Reading label="Added">{dateTime.format(new Date(host.createdAt))}</Reading>
           </dl>
         </Box>

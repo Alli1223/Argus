@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
+  IconArrowUpCircle,
   IconAdjustmentsHorizontal,
   IconBell,
   IconCircleCheck,
@@ -32,7 +33,10 @@ import { Link, Outlet, useLocation, useNavigate, useNavigation } from "react-rou
 import { useAlertCounts } from "../api/alerts";
 import { useCurrentUser, useLogout } from "../api/auth";
 import { useLiveUpdates } from "../api/live";
+import { useServerInfo } from "../api/server";
+import { useServerUpdate } from "../api/updates";
 import { LiveIndicator } from "../components/LiveIndicator";
+import { ServerUpdateBadge, ServerUpdateModal } from "../components/ServerUpdate";
 import { Wordmark } from "../components/Wordmark";
 import classes from "./AppLayout.module.css";
 
@@ -85,6 +89,7 @@ export function AppLayout() {
             </Link>
           </Group>
           <Group gap="sm" wrap="nowrap">
+            <ServerUpdateBadge />
             <LiveIndicator state={live} />
             <AlertChips />
             <UserMenu />
@@ -156,50 +161,62 @@ const colorSchemes: { value: MantineColorScheme; label: string; icon: typeof Ico
 
 function UserMenu() {
   const me = useCurrentUser();
+  const server = useServerInfo();
+  const update = useServerUpdate(me.data?.isAdmin === true);
+  const [updatesOpen, updates] = useDisclosure(false);
   const logout = useLogout();
   const navigate = useNavigate();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const name = me.data?.displayName || me.data?.email || "";
 
   return (
-    <Menu position="bottom-end" width={220}>
-      <Menu.Target>
-        <UnstyledButton aria-label="Account menu">
-          <Group gap={8} wrap="nowrap">
-            <Avatar size={28} radius="xl" color="iris" name={name} />
-            <Text fz="sm" fw={500} visibleFrom="sm">
-              {name}
-            </Text>
-          </Group>
-        </UnstyledButton>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Label>{me.data?.email}</Menu.Label>
-        <Menu.Item component={Link} to="/account" leftSection={<IconUserCircle size={16} />}>
-          Account
-        </Menu.Item>
-        <Menu.Divider />
-        <Menu.Label>Appearance</Menu.Label>
-        {colorSchemes.map((scheme) => (
-          <Menu.Item
-            key={scheme.value}
-            leftSection={<scheme.icon size={16} />}
-            onClick={() => setColorScheme(scheme.value)}
-            rightSection={colorScheme === scheme.value ? <IconCircleCheck size={14} /> : undefined}
-          >
-            {scheme.label}
+    <>
+      <Menu position="bottom-end" width={220}>
+        <Menu.Target>
+          <UnstyledButton aria-label="Account menu">
+            <Group gap={8} wrap="nowrap">
+              <Avatar size={28} radius="xl" color="iris" name={name} />
+              <Text fz="sm" fw={500} visibleFrom="sm">
+                {name}
+              </Text>
+            </Group>
+          </UnstyledButton>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Label>{me.data?.email}</Menu.Label>
+          <Menu.Item component={Link} to="/account" leftSection={<IconUserCircle size={16} />}>
+            Account
           </Menu.Item>
-        ))}
-        <Menu.Divider />
-        <Menu.Item
-          leftSection={<IconLogout size={16} />}
-          onClick={() =>
-            logout.mutate(undefined, { onSettled: () => void navigate("/login", { replace: true }) })
-          }
-        >
-          Sign out
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
+          {me.data?.isAdmin && update.data && (
+            <Menu.Item leftSection={<IconArrowUpCircle size={16} />} onClick={updates.open}>
+              Updates
+            </Menu.Item>
+          )}
+          <Menu.Divider />
+          <Menu.Label>Appearance</Menu.Label>
+          {colorSchemes.map((scheme) => (
+            <Menu.Item
+              key={scheme.value}
+              leftSection={<scheme.icon size={16} />}
+              onClick={() => setColorScheme(scheme.value)}
+              rightSection={colorScheme === scheme.value ? <IconCircleCheck size={14} /> : undefined}
+            >
+              {scheme.label}
+            </Menu.Item>
+          ))}
+          <Menu.Divider />
+          <Menu.Item
+            leftSection={<IconLogout size={16} />}
+            onClick={() =>
+              logout.mutate(undefined, { onSettled: () => void navigate("/login", { replace: true }) })
+            }
+          >
+            Sign out
+          </Menu.Item>
+          {server.data && <Menu.Label>Argus {server.data.version}</Menu.Label>}
+        </Menu.Dropdown>
+      </Menu>
+      {update.data && <ServerUpdateModal info={update.data} opened={updatesOpen} onClose={updates.close} />}
+    </>
   );
 }
