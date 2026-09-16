@@ -108,4 +108,45 @@ public class ArgusClientTests
         Assert.Equal("Unreachable", result.Failure.ToString());
         Assert.Contains("Connection refused", result.Detail, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task Update_offers_are_read_and_an_absent_offer_is_not_an_error()
+    {
+        var (client, _) = Create(_ => Json(HttpStatusCode.OK, """{"version":"9.9.9","sha256":"abc","size":42}"""));
+        var offer = await client.GetUpdateOfferAsync("argus_ak_key", TestContext.Current.CancellationToken);
+        Assert.Equal(("9.9.9", "abc", 42L), (offer.Value!.Version, offer.Value.Sha256, offer.Value.Size));
+
+        var (none, handler) = Create(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
+        var result = await none.GetUpdateOfferAsync("argus_ak_key", TestContext.Current.CancellationToken);
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value);
+        Assert.Equal("https://argus.test/base/api/agent/v1/update/offer", Assert.Single(handler.Requests).Request.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task Update_downloads_are_kept_only_when_they_match_the_offer()
+    {
+        var build = Encoding.UTF8.GetBytes("new agent");
+        var offer = new AgentUpdateOffer { Version = "9.9.9", Sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(build)), Size = build.Length };
+        var directory = Directory.CreateTempSubdirectory("argus-download-").FullName;
+        try
+        {
+            var path = Path.Combine(directory, "argus-agent.new");
+            var (client, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(build) });
+
+            Assert.True((await client.DownloadUpdateAsync("argus_ak_key", offer, path, TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.Equal(build, File.ReadAllBytes(path));
+            File.Delete(path);
+
+            var tooLong = await client.DownloadUpdateAsync("argus_ak_key", offer with { Size = build.Length - 1 }, path, TestContext.Current.CancellationToken);
+            Assert.Equal(FailureKind.Rejected, tooLong.Failure);
+            var tampered = await client.DownloadUpdateAsync("argus_ak_key", offer with { Sha256 = new string('0', 64) }, path, TestContext.Current.CancellationToken);
+            Assert.Equal("The download does not match the offered SHA-256.", tampered.Detail);
+            Assert.Empty(Directory.GetFiles(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

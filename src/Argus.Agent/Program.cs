@@ -23,10 +23,18 @@ register.SetAction((parsed, cancellationToken) => AgentCommands.RegisterAsync(
 var collect = new Command("collect", "Collect one sample and print it as JSON, for troubleshooting");
 collect.SetAction((_, cancellationToken) => AgentCommands.CollectAsync(cancellationToken));
 
+var targetOption = new Option<string?>("--target") { Description = "The agent program to replace (default: this one)" };
+var applyUpdate = new Command("apply-update", "Install the update the server offers and restart the service (the updater runs this)")
+{
+    targetOption,
+};
+applyUpdate.SetAction((parsed, cancellationToken) => AgentCommands.ApplyUpdateAsync(
+    parsed.GetValue(configOption), parsed.GetValue(targetOption), cancellationToken));
+
 var version = new Command("version", "Print the agent version");
 version.SetAction(_ => Console.WriteLine(AgentInfo.Version));
 
-var root = new RootCommand("Argus monitoring agent") { run, register, collect, version };
+var root = new RootCommand("Argus monitoring agent") { run, register, collect, applyUpdate, version };
 root.Options.Add(configOption);
 
 // The host handles Ctrl+C and service stop requests itself (and needs time for a final flush).

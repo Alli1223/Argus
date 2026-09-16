@@ -2,6 +2,7 @@ using Argus.Agent.Collection;
 using Argus.Agent.Configuration;
 using Argus.Agent.State;
 using Argus.Agent.Transport;
+using Argus.Agent.Updates;
 using Argus.Contracts.Agent;
 
 namespace Argus.Agent;
@@ -19,10 +20,14 @@ internal sealed class AgentWorker(
     Registrar registrar,
     ArgusClient client,
     SampleBuffer buffer,
+    IUpdateLauncher updates,
     TimeProvider time,
     ILogger<AgentWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan FinalFlushTimeout = TimeSpan.FromSeconds(3);
+
+    /// <summary>How long to leave a started update alone before starting it again, should the server still offer it.</summary>
+    private static readonly TimeSpan UpdateRetryAfter = TimeSpan.FromMinutes(15);
 
     private readonly Backoff _sendBackoff = new(TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(5));
     private AgentSettings _settings = new();
@@ -30,6 +35,8 @@ internal sealed class AgentWorker(
     private DateTimeOffset _nextSendAt = DateTimeOffset.MinValue;
     private DateTimeOffset _nextInventoryAt = DateTimeOffset.MinValue;
     private long _reportedDrops;
+    private string? _updateStartedFor;
+    private DateTimeOffset _updateStartedAt;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -127,6 +134,7 @@ internal sealed class AgentWorker(
 
                 _sendBackoff.Reset();
                 ApplySettings(result.Value!.Settings);
+                await StartUpdateAsync(result.Value.Update, cancellationToken);
                 continue;
             }
 
@@ -246,6 +254,27 @@ internal sealed class AgentWorker(
         }
 
         _nextInventoryAt = time.GetUtcNow().AddMinutes(result.IsSuccess ? _settings.InventoryIntervalMinutes : 5);
+    }
+
+    /// <summary>Hands an offered update to the platform's updater, which replaces this agent and restarts it.</summary>
+    private async Task StartUpdateAsync(AgentUpdateOffer? offer, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        if (offer is null || (offer.Version == _updateStartedFor && now - _updateStartedAt < UpdateRetryAfter))
+        {
+            return;
+        }
+
+        _updateStartedFor = offer.Version;
+        _updateStartedAt = now;
+        logger.LogInformation("Updating from agent {Current} to {Version}", AgentInfo.Version, offer.Version);
+
+        if (updates.Launch(offer) is { } problem)
+        {
+            logger.LogError("Cannot update to agent {Version}: {Problem}", offer.Version, problem);
+            var report = new AgentUpdateResult { Version = offer.Version, Succeeded = false, Error = problem };
+            await client.ReportUpdateResultAsync(_state!.AgentKey, report, cancellationToken);
+        }
     }
 
     private void ApplySettings(AgentSettings? settings)

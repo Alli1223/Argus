@@ -16,6 +16,15 @@ public static class AgentPaths
                 ? Path.Combine(WindowsDataDirectory, "agent.json")
                 : "/etc/argus-agent/agent.json";
 
+    /// <summary>
+    /// On Linux, the agent asks for an update by creating this file; a root systemd unit watching for it
+    /// installs the update. It sits in the agent's own state directory, the one place the service may write.
+    /// </summary>
+    public const string LinuxUpdateRequestFile = "/var/lib/argus-agent/update-requested";
+
+    /// <summary>The systemd unit that watches for update requests, which install.sh adds.</summary>
+    public const string LinuxUpdaterUnit = "/etc/systemd/system/argus-agent-update.path";
+
     public static string DefaultStateDirectory =>
         OperatingSystem.IsWindows() ? WindowsDataDirectory : "/var/lib/argus-agent";
 }
