@@ -278,3 +278,43 @@ export interface DashboardSummary {
   busiestByCpu: HostSummary[];
   fullestDisks: HostSummary[];
 }
+
+export type NotificationChannelKind = "Email" | "Webhook" | "Slack" | "Discord";
+export type DeliveryStatus = "Pending" | "Sent" | "Failed";
+
+/** A channel's most recent notification: when it was queued, whether it went out, and why not. */
+export interface DeliverySummary {
+  status: DeliveryStatus;
+  attempts: number;
+  createdAt: string;
+  sentAt: string | null;
+  lastError: string | null;
+}
+
+export interface NotificationChannel {
+  id: string;
+  name: string;
+  kind: NotificationChannelKind;
+  /** Email addresses separated by commas, or the webhook URL. */
+  target: string;
+  minimumSeverity: AlertSeverity;
+  notifyOnResolved: boolean;
+  enabled: boolean;
+  lastDelivery: DeliverySummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationChannelRequest {
+  name: string;
+  kind: NotificationChannelKind;
+  target: string;
+  minimumSeverity: AlertSeverity;
+  notifyOnResolved: boolean;
+  enabled: boolean;
+}
+
+/** What the server can send: email needs a mail server in its settings. */
+export interface NotificationSupport {
+  email: boolean;
+}

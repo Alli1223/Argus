@@ -192,7 +192,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] SMTP email sender (MailKit) + configuration; Mailpit in the dev compose file
 - [x] Alert emails (fired / resolved) with HTML templates
 - [x] Webhook channel (generic JSON, Slack / Discord compatible)
-- [ ] Notification channel management API + UI (with "send test")
+- [x] Notification channel management API + UI (with "send test")
 - [ ] Scheduled reports (daily / weekly summary email)
 
 ## Phase 15 — CI & polish

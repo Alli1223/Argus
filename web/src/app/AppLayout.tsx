@@ -21,6 +21,7 @@ import {
   IconLogout,
   IconMoon,
   IconPlus,
+  IconSend,
   IconServer2,
   IconSun,
   IconUserCircle,
@@ -47,6 +48,7 @@ const navItems: NavItem[] = [
   { to: "/hosts", label: "Hosts", icon: IconServer2 },
   { to: "/alerts", label: "Alerts", icon: IconBell },
   { to: "/rules", label: "Alert rules", icon: IconAdjustmentsHorizontal },
+  { to: "/notifications", label: "Notifications", icon: IconSend },
   { to: "/systems", label: "Add a system", icon: IconPlus },
   { to: "/users", label: "Users", icon: IconUsers, adminOnly: true },
 ];
