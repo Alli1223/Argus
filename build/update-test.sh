@@ -127,7 +127,7 @@ expect_state succeeded
 [ "$(server_image)" = "$SERVER:0.9.1" ] || fail "the server runs $(server_image), not 0.9.1"
 [ "$(env_version)" = 0.9.1 ] || fail ".env names $(env_version), not 0.9.1"
 backup="$(ls "$DEPLOY"/backups/argus-0.9.0-before-0.9.1-*.dump 2>/dev/null)" || fail "no backup was made"
-[ -r "$backup" ] && [ -s "$backup" ] || fail "no readable backup was made"
+if [ ! -r "$backup" ] || [ ! -s "$backup" ]; then fail "no readable backup was made"; fi
 [ "$(stat -c %a "$backup")" = 600 ] || fail "the backup can be read by others"
 [ "$(api "$BASE/api/updates/server" | jq -r '.lastRun.state')" = succeeded ] || fail "the server does not show the update"
 curl -fsS "$BASE/health/ready" >/dev/null || fail "Argus is not ready after the update"
@@ -164,6 +164,6 @@ update_to 0.9.9
 expect_state failed
 update_to 0.9.0
 expect_state failed
-[ "$(server_image)" = "$SERVER:0.9.1" ] && [ "$(env_version)" = 0.9.1 ] || fail "a refused update changed the server"
+if [ "$(server_image)" != "$SERVER:0.9.1" ] || [ "$(env_version)" != 0.9.1 ]; then fail "a refused update changed the server"; fi
 
 step "Update test passed"
