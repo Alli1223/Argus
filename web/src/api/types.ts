@@ -140,6 +140,46 @@ export interface ServerUpdateInfo {
   error: string | null;
 }
 
+/** Where an update of the server stands: steps in order, then how it ended. */
+export type ServerUpdateState =
+  | "starting"
+  | "downloading"
+  | "backing-up"
+  | "deploying"
+  | "verifying"
+  | "rolling-back"
+  | "succeeded"
+  | "rolled-back"
+  | "failed";
+
+/** One update of the server, as the updater service records it. */
+export interface ServerUpdateRun {
+  id: string;
+  from: string;
+  to: string;
+  requestedBy: string | null;
+  state: ServerUpdateState;
+  inProgress: boolean;
+  startedAt: string;
+  finishedAt: string | null;
+  error: string | null;
+  /** Where the backup taken before the update is, on the server's machine. */
+  backup: string | null;
+  /** The new server's last log lines, when it had to be rolled back. */
+  serverLog: string | null;
+  log: { at: string; message: string }[] | null;
+}
+
+/** Whether Argus can install releases itself (or why not), and its latest update. */
+export interface ServerSelfUpdate {
+  available: boolean;
+  unavailable: string | null;
+  updaterVersion: string | null;
+  /** A version asked for that the updater has not started on yet. */
+  pendingVersion: string | null;
+  lastRun: ServerUpdateRun | null;
+}
+
 export interface UpdateHost {
   displayName?: string;
   tags?: string[];
