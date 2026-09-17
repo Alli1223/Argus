@@ -228,7 +228,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Web: Settings page with release notes, **Update**, step-by-step progress through the restart, and how an update ended
 - [x] CI: end-to-end update test with a good release, two that roll back (one restoring the backup) and refused ones
 - [x] First release with images (0.4.0): both packages came out public, and this machine's install moved to them
-- [ ] Install a real release through the updater on a production install
+- [x] Install a real release through the updater on a production install (0.4.0 to 0.5.0 on this machine)
 
 ## Phase 19 — Docker containers
 
