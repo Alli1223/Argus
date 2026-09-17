@@ -14,7 +14,9 @@ export type AlertMetric =
   | "DiskUsage"
   | "InodeUsage"
   | "HostOffline"
-  | "ServiceFailed";
+  | "ServiceFailed"
+  | "ContainerDown"
+  | "ContainerRestarts";
 export type AlertOperator = "Above" | "Below";
 /** A fixed threshold, or the host's usual level (the threshold then counts standard deviations). */
 export type AlertCondition = "Threshold" | "Anomaly";

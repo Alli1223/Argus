@@ -125,12 +125,15 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
 `hostId` or a `tag` to narrow it.
 
 - `metric` is one of `CpuUsage`, `MemoryUsage`, `SwapUsage`, `LoadPerCore`, `DiskIoUtilization`,
-  `NetworkReceive`, `NetworkTransmit`, `DiskUsage`, `InodeUsage`, `HostOffline` or
-  `ServiceFailed`. Percentages are 0–100, network rates bytes per second.
-- `DiskUsage` and `InodeUsage` rules can be narrowed to one mount point, and `ServiceFailed` rules to
-  one service, with `resourceFilter`.
-- `HostOffline` and `ServiceFailed` have no threshold: they fire once the state has lasted the
-  duration.
+  `NetworkReceive`, `NetworkTransmit`, `DiskUsage`, `InodeUsage`, `HostOffline`, `ServiceFailed`,
+  `ContainerDown` or `ContainerRestarts`. Percentages are 0–100, network rates bytes per second.
+- `DiskUsage` and `InodeUsage` rules can be narrowed to one mount point, `ServiceFailed` rules to
+  one service, and container rules to one container by name, with `resourceFilter`.
+- `HostOffline`, `ServiceFailed` and `ContainerDown` have no threshold: they fire once the state has
+  lasted the duration. A container is down when it is restarting, dead, unhealthy or has crashed; a
+  rule that names the container also counts it down when it was stopped, paused or never started.
+- `ContainerRestarts` fires when Docker restarted a container more than `threshold` times (a whole
+  number) within `durationSeconds`, at least 60.
 - `condition` is `Threshold` (the default) or `Anomaly`. Anomaly rules work on the host-wide
   metrics, compare with each host's usual level over the past week, and take the threshold as a
   number of standard deviations (1–10) and a duration of at least 5 minutes.

@@ -7,12 +7,23 @@ const MB = 1024 ** 2;
 export const isPercentMetric = (metric: AlertMetric) => METRIC_UNITS[metric] === "percent";
 export const isFilesystemMetric = (metric: AlertMetric) => metric === "DiskUsage" || metric === "InodeUsage";
 export const isServiceMetric = (metric: AlertMetric) => metric === "ServiceFailed";
+export const isContainerMetric = (metric: AlertMetric) =>
+  metric === "ContainerDown" || metric === "ContainerRestarts";
+
+/** What a rule can be narrowed to: a mount point, a service or a container, or nothing. */
+export function resourceKind(metric: AlertMetric): "filesystem" | "service" | "container" | null {
+  if (isFilesystemMetric(metric)) return "filesystem";
+  if (isServiceMetric(metric)) return "service";
+  return isContainerMetric(metric) ? "container" : null;
+}
 
 /** States rather than measurements: no threshold or direction, only how long they last. */
-export const isStateMetric = (metric: AlertMetric) => metric === "HostOffline" || metric === "ServiceFailed";
+export const isStateMetric = (metric: AlertMetric) =>
+  metric === "HostOffline" || metric === "ServiceFailed" || metric === "ContainerDown";
 
 /** Host-wide measurements, which anomaly rules can compare with each host's usual level. */
-export const supportsAnomaly = (metric: AlertMetric) => !isStateMetric(metric) && !isFilesystemMetric(metric);
+export const supportsAnomaly = (metric: AlertMetric) =>
+  !isStateMetric(metric) && resourceKind(metric) === null;
 
 /** Where a new anomaly rule's sensitivity starts, in standard deviations. */
 export const DEFAULT_SENSITIVITY = 3;
@@ -40,6 +51,11 @@ export function describeRule(rule: RuleCondition): string {
   const lasting = rule.durationSeconds > 0 ? ` for ${describeBucket(rule.durationSeconds)}` : "";
   if (rule.metric === "HostOffline") return `Not reporting${lasting}`;
   if (rule.metric === "ServiceFailed") return `${rule.resourceFilter ?? "Any service"} failed${lasting}`;
+  if (rule.metric === "ContainerDown") return `${rule.resourceFilter ?? "Any container"} down${lasting}`;
+  if (rule.metric === "ContainerRestarts") {
+    const times = rule.threshold === 1 ? "once" : `${rule.threshold} times`;
+    return `${rule.resourceFilter ?? "Any container"} restarted more than ${times} in ${describeBucket(rule.durationSeconds)}`;
+  }
   if (rule.condition === "Anomaly") {
     const unusually = rule.operator === "Above" ? "unusually high" : "unusually low";
     return `${METRIC_LABELS[rule.metric]} ${unusually} (${formatSensitivity(rule.threshold)})${lasting}`;
@@ -100,6 +116,7 @@ export function thresholdSuffix(metric: AlertMetric): string {
   const unit = METRIC_UNITS[metric];
   if (unit === "percent") return "%";
   if (unit === "bytesPerSecond") return " MB/s";
+  if (unit === "restarts") return " restarts";
   return unit === "perCore" ? " per core" : "";
 }
 
@@ -108,5 +125,6 @@ export function defaultThreshold(metric: AlertMetric): number {
   const unit = METRIC_UNITS[metric];
   if (unit === "percent") return 90;
   if (unit === "bytesPerSecond") return 100;
+  if (unit === "restarts") return 3;
   return unit === "perCore" ? 1.5 : 0;
 }

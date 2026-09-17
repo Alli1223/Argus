@@ -51,6 +51,7 @@ public sealed record AlertNotification(
             ? $"No report for {DescribeDuration(TimeSpan.FromSeconds(silence))}"
             : "Has never reported",
         { Metric: AlertMetric.ServiceFailed } => $"{alert.ResourceKey} has failed",
+        { Metric: AlertMetric.ContainerDown } => $"{alert.ResourceKey} is down",
         { Condition: AlertCondition.Anomaly } => $"{Format(alert, alert.Value)}, usually {Format(alert, alert.Baseline)}",
         _ => $"{Format(alert, alert.Value)}, threshold {Format(alert, alert.Threshold)}",
     };

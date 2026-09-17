@@ -21,9 +21,11 @@ export const METRIC_LABELS: Record<AlertMetric, string> = {
   InodeUsage: "Inodes used",
   HostOffline: "Host offline",
   ServiceFailed: "Service failed",
+  ContainerDown: "Container down",
+  ContainerRestarts: "Container restarts",
 };
 
-type MetricUnit = "percent" | "bytesPerSecond" | "perCore" | "none";
+type MetricUnit = "percent" | "bytesPerSecond" | "perCore" | "restarts" | "none";
 
 export const METRIC_UNITS: Record<AlertMetric, MetricUnit> = {
   CpuUsage: "percent",
@@ -37,9 +39,11 @@ export const METRIC_UNITS: Record<AlertMetric, MetricUnit> = {
   InodeUsage: "percent",
   HostOffline: "none",
   ServiceFailed: "none",
+  ContainerDown: "none",
+  ContainerRestarts: "restarts",
 };
 
-/** A reading or threshold of a metric: "93.2%", "12.0 MB/s", "1.50 per core". */
+/** A reading or threshold of a metric: "93.2%", "12.0 MB/s", "1.50 per core", "4 restarts". */
 export function formatMetricValue(metric: AlertMetric, value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "–";
   switch (METRIC_UNITS[metric]) {
@@ -49,6 +53,8 @@ export function formatMetricValue(metric: AlertMetric, value: number | null | un
       return formatRate(value);
     case "perCore":
       return `${value.toFixed(2)} per core`;
+    case "restarts":
+      return `${Math.round(value)} ${Math.round(value) === 1 ? "restart" : "restarts"}`;
     default:
       return "–";
   }

@@ -29,6 +29,22 @@ const rule: AlertRule = {
 };
 
 describe("describeRule", () => {
+  it("describes container rules", () => {
+    expect(describeRule({ ...rule, metric: "ContainerDown", durationSeconds: 120 })).toBe(
+      "Any container down for 2 minutes",
+    );
+    expect(
+      describeRule({
+        ...rule,
+        metric: "ContainerRestarts",
+        threshold: 3,
+        durationSeconds: 600,
+        resourceFilter: "worker",
+      }),
+    ).toBe("worker restarted more than 3 times in 10 minutes");
+    expect(thresholdSuffix("ContainerRestarts")).toBe(" restarts");
+  });
+
   it("reads as a phrase", () => {
     expect(describeRule(rule)).toBe("CPU usage above 90% for 5 minutes");
     expect(
