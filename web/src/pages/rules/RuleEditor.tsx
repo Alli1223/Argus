@@ -36,6 +36,7 @@ import {
   isPercentMetric,
   isServiceMetric,
   isStateMetric,
+  resourceKind,
   supportsAnomaly,
   thresholdSuffix,
   thresholdToInput,
@@ -120,12 +121,12 @@ function toRequest(values: RuleValues): AlertRuleRequest {
   const anomaly = isAnomaly(values);
   const threshold = Number(values.threshold);
   const filter = values.resourceFilter.trim();
-  const narrowable = isFilesystemMetric(values.metric) || isServiceMetric(values.metric);
+  const narrowable = resourceKind(values.metric) !== null;
   return {
     name: values.name.trim(),
     metric: values.metric,
     condition: anomaly ? "Anomaly" : "Threshold",
-    operator: state ? "Above" : values.operator,
+    operator: state || values.metric === "ContainerRestarts" ? "Above" : values.operator,
     threshold: state ? 0 : anomaly ? threshold : inputToThreshold(values.metric, threshold),
     durationSeconds: Math.round(Number(values.durationMinutes) * 60),
     severity: values.severity,
@@ -172,12 +173,17 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
         }
         if (isPercentMetric(values.metric) && (value < 0 || value > 100))
           return "Choose a percentage from 0 to 100.";
+        if (values.metric === "ContainerRestarts" && (!Number.isInteger(value) || value < 0 || value > 1000))
+          return "Choose a whole number of restarts from 0 to 1000.";
         return value < 0 ? "The threshold cannot be negative." : null;
       },
       durationMinutes: (value, values) => {
         if (typeof value !== "number") return "Enter a number of minutes.";
         if (values.metric === "HostOffline" && value < 1) {
           return "Allow at least a minute, so brief network hiccups do not count as outages.";
+        }
+        if (values.metric === "ContainerRestarts" && value < 1) {
+          return "Count over at least a minute: agents report restarts about once a minute.";
         }
         if (isAnomaly(values) && value < MIN_ANOMALY_MINUTES) {
           return "Allow at least 5 minutes, so one noisy reading cannot trip the rule.";
@@ -189,12 +195,13 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
         if (values.scope !== "tag") return null;
         return value.trim() === "" ? "Choose a tag." : tagsError([value.trim()]);
       },
-      resourceFilter: (value) => (value.length > 256 ? "Mount points can be up to 256 characters." : null),
+      resourceFilter: (value) => (value.length > 256 ? "Names can be up to 256 characters." : null),
     },
   });
 
   const values = form.values;
   const offline = values.metric === "HostOffline";
+  const restarts = values.metric === "ContainerRestarts";
   const state = isStateMetric(values.metric);
   const anomaly = isAnomaly(values);
   const hostOptions = (hosts.data ?? []).map((host) => ({ value: host.id, label: host.displayName }));
@@ -213,9 +220,13 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
       condition: keepsSensitivity ? "Anomaly" : "Threshold",
       threshold: keepsSensitivity || keepsThreshold ? values.threshold : defaultThreshold(metric),
       durationMinutes:
-        metric === "HostOffline" && Number(values.durationMinutes) < 1 ? 5 : values.durationMinutes,
-      // A mount point makes no sense as a service name, and the other way round.
-      resourceFilter: isServiceMetric(metric) === isServiceMetric(values.metric) ? values.resourceFilter : "",
+        metric === "HostOffline" && Number(values.durationMinutes) < 1
+          ? 5
+          : metric === "ContainerRestarts" && Number(values.durationMinutes) < 1
+            ? 10
+            : values.durationMinutes,
+      // A mount point makes no sense as a service or container name, and so on.
+      resourceFilter: resourceKind(metric) === resourceKind(values.metric) ? values.resourceFilter : "",
     });
   };
 
@@ -285,7 +296,19 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
           </Stack>
         )}
 
-        {!state && (
+        {restarts && (
+          <NumberInput
+            label="Fires when Docker restarts a container more than"
+            suffix=" times"
+            min={0}
+            max={1000}
+            decimalScale={0}
+            w={320}
+            {...form.getInputProps("threshold")}
+          />
+        )}
+
+        {!state && !restarts && (
           <Group gap="sm" align="flex-end" wrap="wrap">
             <Stack gap={4}>
               <Text id={`${ids}-operator`} fz="sm" fw={500}>
@@ -333,18 +356,22 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
         )}
 
         <NumberInput
-          label={offline ? "After going quiet for" : "For at least"}
+          label={offline ? "After going quiet for" : restarts ? "Within" : "For at least"}
           description={
             offline
               ? "How long a host must go without reporting."
-              : isServiceMetric(values.metric)
-                ? "How long a service must stay failed. 0 raises the alert at the next check."
-                : anomaly
-                  ? "How long the average must stay unusual. At least 5 minutes."
-                  : "How long the condition must hold. 0 fires on the first reading."
+              : restarts
+                ? "How far back to count restarts."
+                : values.metric === "ContainerDown"
+                  ? "How long a container must stay down. 0 raises the alert at the next report."
+                  : isServiceMetric(values.metric)
+                    ? "How long a service must stay failed. 0 raises the alert at the next check."
+                    : anomaly
+                      ? "How long the average must stay unusual. At least 5 minutes."
+                      : "How long the condition must hold. 0 fires on the first reading."
           }
           suffix=" min"
-          min={offline ? 1 : anomaly ? MIN_ANOMALY_MINUTES : 0}
+          min={offline || restarts ? 1 : anomaly ? MIN_ANOMALY_MINUTES : 0}
           max={1440}
           decimalScale={1}
           w={220}
@@ -356,6 +383,18 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
             label="Mount point"
             description="Leave empty to watch every filesystem."
             placeholder="/var"
+            {...form.getInputProps("resourceFilter")}
+          />
+        )}
+        {resourceKind(values.metric) === "container" && (
+          <TextInput
+            label="Container"
+            description={
+              values.metric === "ContainerDown"
+                ? "Leave empty to watch every container; crashes, failing health checks and restart loops then count, but containers stopped on purpose do not. A rule naming a container fires whenever it is not up."
+                : "Leave empty to watch every container."
+            }
+            placeholder="shop-web-1"
             {...form.getInputProps("resourceFilter")}
           />
         )}

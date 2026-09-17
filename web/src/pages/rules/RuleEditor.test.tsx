@@ -53,6 +53,34 @@ describe("RuleEditor", () => {
     );
   });
 
+  it("counts a container's restarts over a window", async () => {
+    const calls = mockApi({
+      "GET /api/hosts": [],
+      "POST /api/alert-rules": (body) => ({ ...diskRule, ...(body as object), id: "r3" }),
+    });
+    const { user } = renderWithApp(<RuleEditor rule={null} opened onClose={() => {}} />);
+
+    await user.type(screen.getByLabelText(/^Name/), "Worker loop");
+    await user.click(screen.getByLabelText("Watch", { selector: "input" }));
+    await user.click(await screen.findByRole("option", { name: "Container restarts" }));
+
+    expect(screen.getByLabelText("Fires when Docker restarts a container more than")).toHaveValue("3 times");
+    expect(screen.getByLabelText("Within")).toHaveValue("5 min");
+    expect(screen.queryByRole("radio", { name: "Below" })).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText(/^Container/), "worker");
+    await user.click(screen.getByRole("button", { name: "Create rule" }));
+
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === "POST")?.body).toMatchObject({
+        metric: "ContainerRestarts",
+        operator: "Above",
+        threshold: 3,
+        durationSeconds: 300,
+        resourceFilter: "worker",
+      }),
+    );
+  });
+
   it("keeps disk rules to fixed thresholds", async () => {
     mockApi({ "GET /api/hosts": [] });
     renderWithApp(<RuleEditor rule={diskRule} opened onClose={() => {}} />);

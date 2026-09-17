@@ -14,6 +14,11 @@ public static class DefaultAlertRules
 
         // A failed service is already a settled state rather than a noisy reading, so it alerts at once.
         Rule(ownerId, now, "Service failed", AlertMetric.ServiceFailed, 0, AlertSeverity.Warning, TimeSpan.Zero),
+
+        // Over every container these only fire for crashes, failing health checks and restart loops, not for
+        // containers people stopped, so they are quiet on hosts without Docker and on healthy ones.
+        Rule(ownerId, now, "Container down", AlertMetric.ContainerDown, 0, AlertSeverity.Warning, TimeSpan.FromMinutes(2)),
+        Rule(ownerId, now, "Container restart loop", AlertMetric.ContainerRestarts, 3, AlertSeverity.Warning, TimeSpan.FromMinutes(10)),
     ];
 
     private static AlertRule Rule(

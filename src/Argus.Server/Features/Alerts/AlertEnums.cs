@@ -35,6 +35,12 @@ public enum AlertMetric
 
     /// <summary>A service that should be running has failed; evaluated per service.</summary>
     ServiceFailed,
+
+    /// <summary>A Docker container is down: crashed, unhealthy, restarting or dead; evaluated per container.</summary>
+    ContainerDown,
+
+    /// <summary>Docker restarted a container more times than the threshold within the rule's duration.</summary>
+    ContainerRestarts,
 }
 
 /// <summary>How a rule decides that a reading is a problem.</summary>
@@ -71,14 +77,24 @@ public static class AlertMetrics
     /// <summary>Metrics evaluated once per filesystem rather than once per host.</summary>
     public static bool IsPerFilesystem(this AlertMetric metric) => metric is AlertMetric.DiskUsage or AlertMetric.InodeUsage;
 
-    /// <summary>Metrics evaluated per resource (a mount point or a service), which a rule may narrow to one.</summary>
-    public static bool IsPerResource(this AlertMetric metric) => metric.IsPerFilesystem() || metric == AlertMetric.ServiceFailed;
+    public static bool IsContainer(this AlertMetric metric) => metric is AlertMetric.ContainerDown or AlertMetric.ContainerRestarts;
+
+    /// <summary>Metrics evaluated per resource (a mount point, a service or a container), which a rule may narrow to one.</summary>
+    public static bool IsPerResource(this AlertMetric metric) =>
+        metric.IsPerFilesystem() || metric == AlertMetric.ServiceFailed || metric.IsContainer();
 
     /// <summary>States rather than measurements: no threshold or direction, only how long they last.</summary>
-    public static bool IsState(this AlertMetric metric) => metric is AlertMetric.HostOffline or AlertMetric.ServiceFailed;
+    public static bool IsState(this AlertMetric metric) =>
+        metric is AlertMetric.HostOffline or AlertMetric.ServiceFailed or AlertMetric.ContainerDown;
+
+    /// <summary>
+    /// Alerts that end when their resource stops being observed, such as a service no longer failing or a
+    /// container back up, rather than when a measurement returns to normal.
+    /// </summary>
+    public static bool ResolvesWhenUnobserved(this AlertMetric metric) => metric is AlertMetric.ServiceFailed || metric.IsContainer();
 
     /// <summary>Host-wide measurements, which have the 5-minute rollup anomaly rules learn from.</summary>
-    public static bool SupportsAnomaly(this AlertMetric metric) => !metric.IsState() && !metric.IsPerFilesystem();
+    public static bool SupportsAnomaly(this AlertMetric metric) => !metric.IsState() && !metric.IsPerResource();
 
     public static bool IsPercentage(this AlertMetric metric) =>
         metric is AlertMetric.CpuUsage or AlertMetric.MemoryUsage or AlertMetric.SwapUsage
@@ -97,6 +113,8 @@ public static class AlertMetrics
         AlertMetric.InodeUsage => "Inode usage",
         AlertMetric.HostOffline => "Host offline",
         AlertMetric.ServiceFailed => "Service failed",
+        AlertMetric.ContainerDown => "Container down",
+        AlertMetric.ContainerRestarts => "Container restarts",
         _ => metric.ToString(),
     };
 }

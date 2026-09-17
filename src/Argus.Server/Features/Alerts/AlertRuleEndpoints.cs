@@ -157,6 +157,19 @@ public static class AlertRuleEndpoints
             errors["threshold"] = ["The threshold cannot be negative."];
         }
 
+        if (metric == AlertMetric.ContainerRestarts)
+        {
+            if (request.Threshold is < 0 or > 1000 || request.Threshold != Math.Floor(request.Threshold))
+            {
+                errors["threshold"] = ["Give a whole number of restarts from 0 to 1000."];
+            }
+
+            if (request.DurationSeconds < 60)
+            {
+                errors["durationSeconds"] = ["Count restarts over at least a minute: agents report them about once a minute."];
+            }
+        }
+
         if (metric == AlertMetric.HostOffline && request.DurationSeconds < 60)
         {
             errors["durationSeconds"] = ["Allow at least 60 seconds, so brief network hiccups do not count as outages."];
@@ -164,7 +177,7 @@ public static class AlertRuleEndpoints
 
         if (!metric.IsPerResource() && !string.IsNullOrWhiteSpace(request.ResourceFilter))
         {
-            errors["resourceFilter"] = ["Only disk, inode and service rules can be narrowed to one mount point or service."];
+            errors["resourceFilter"] = ["Only disk, inode, service and container rules can be narrowed to one mount point, service or container."];
         }
 
         string? tag = null;
@@ -200,7 +213,7 @@ public static class AlertRuleEndpoints
         rule.Condition = request.Condition;
 
         // States (offline, a failed service) have no threshold of their own: they fire once they last the duration.
-        rule.Operator = metric.IsState() ? AlertOperator.Above : request.Operator;
+        rule.Operator = metric.IsState() || metric == AlertMetric.ContainerRestarts ? AlertOperator.Above : request.Operator;
         rule.Threshold = metric.IsState() ? 0 : request.Threshold;
         rule.DurationSeconds = request.DurationSeconds;
         rule.Severity = request.Severity;

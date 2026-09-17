@@ -78,6 +78,30 @@ public static class AlertDecision
     public static Verdict EvaluateServiceFailure(DateTimeOffset since, TimeSpan duration, DateTimeOffset now) =>
         new(Fire: duration <= TimeSpan.Zero || now - since >= duration, Clear: false, Value: null);
 
+    /// <summary>
+    /// Exit codes of a container that was stopped rather than crashed: clean exits, and the signals
+    /// <c>docker stop</c> and Ctrl+C send (SIGTERM, then SIGKILL after the timeout; SIGINT).
+    /// </summary>
+    private static readonly HashSet<int> StopCodes = [0, 130, 137, 143];
+
+    /// <summary>
+    /// Whether a container is down: unhealthy, restarting, dead or crashed. A rule that names the container
+    /// wants it up, so for it a container stopped on purpose, paused or never started is down too; a rule
+    /// over every container leaves those alone, as that is how one-off jobs end and how people stop things.
+    /// </summary>
+    public static bool IsContainerDown(string state, string? health, int? exitCode, bool oomKilled, bool named) => state switch
+    {
+        "running" => health == "unhealthy",
+        "restarting" or "dead" => true,
+        "exited" => named || oomKilled || exitCode is not { } code || !StopCodes.Contains(code),
+        "paused" or "created" => named,
+        _ => false,
+    };
+
+    /// <summary>A container restarting more often than the threshold in the rule's window; it clears once it no longer does.</summary>
+    public static Verdict EvaluateRestarts(int restarts, double threshold) =>
+        new(Fire: restarts > threshold, Clear: restarts <= threshold, Value: restarts);
+
     /// <summary>How much history anomaly rules learn a host's usual level from.</summary>
     public static readonly TimeSpan BaselinePeriod = TimeSpan.FromDays(7);
 
@@ -147,6 +171,16 @@ public static class AlertDecision
             return $"{resourceKey} failed on {hostName}";
         }
 
+        if (rule.Metric == AlertMetric.ContainerDown)
+        {
+            return $"{resourceKey} is down on {hostName}";
+        }
+
+        if (rule.Metric == AlertMetric.ContainerRestarts)
+        {
+            return $"{resourceKey} keeps restarting on {hostName}";
+        }
+
         if (rule.Condition == AlertCondition.Anomaly)
         {
             return $"{rule.Metric.Label()} on {hostName} unusually {(rule.Operator == AlertOperator.Above ? "high" : "low")}";
@@ -163,6 +197,7 @@ public static class AlertDecision
     {
         _ when metric.IsPercentage() => threshold.ToString("0.#", CultureInfo.InvariantCulture) + "%",
         AlertMetric.NetworkReceive or AlertMetric.NetworkTransmit => FormatRate(threshold),
+        AlertMetric.ContainerRestarts => threshold == 1 ? "1 restart" : threshold.ToString("0", CultureInfo.InvariantCulture) + " restarts",
         _ => threshold.ToString("0.##", CultureInfo.InvariantCulture),
     };
 

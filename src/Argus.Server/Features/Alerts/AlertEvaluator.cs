@@ -101,9 +101,9 @@ public sealed class AlertEvaluator(
                     Resolve(alert, now, events);
                 }
 
-                // A recovered service simply stops being reported as failed, so its alert ends here. (For
+                // A recovered service or container simply stops being observed, so its alert ends here. (For
                 // measured metrics a missing observation only means no data, which keeps the state.)
-                if (rule.Metric == AlertMetric.ServiceFailed)
+                if (rule.Metric.ResolvesWhenUnobserved())
                 {
                     foreach (var alert in open.Where(alert => alert.RuleId == rule.Id
                                  && scopeIds.Contains(alert.HostId)
@@ -191,6 +191,16 @@ public sealed class AlertEvaluator(
         if (rule.Metric == AlertMetric.ServiceFailed)
         {
             return await ObserveServicesAsync(rule, hosts, duration, now, cancellationToken);
+        }
+
+        if (rule.Metric == AlertMetric.ContainerDown)
+        {
+            return await ObserveContainersDownAsync(rule, hosts, duration, now, cancellationToken);
+        }
+
+        if (rule.Metric == AlertMetric.ContainerRestarts)
+        {
+            return await ObserveContainerRestartsAsync(rule, hosts, duration, now, cancellationToken);
         }
 
         var anomaly = rule.Condition == AlertCondition.Anomaly;
@@ -300,6 +310,57 @@ public sealed class AlertEvaluator(
             .ToList();
     }
 
+    /// <summary>Containers that are down in each host's newest report, each since its state last changed.</summary>
+    private async Task<List<Observation>> ObserveContainersDownAsync(
+        AlertRule rule, List<HostInfo> hosts, TimeSpan duration, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var byId = hosts.ToDictionary(host => host.Id);
+        var named = !string.IsNullOrWhiteSpace(rule.ResourceFilter);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<ContainerStateRow>(new CommandDefinition("""
+            SELECT host_id, name, state, health, exit_code, oom_killed, state_since
+            FROM host_containers
+            WHERE host_id = ANY(@host_ids) AND (@resource::text IS NULL OR name = @resource)
+            """,
+            new { host_ids = byId.Keys.ToArray(), resource = named ? rule.ResourceFilter : null },
+            cancellationToken: cancellationToken));
+
+        return rows
+            .Where(row => byId.ContainsKey(row.HostId)
+                && AlertDecision.IsContainerDown(row.State, row.Health, row.ExitCode, row.OomKilled, named))
+            .Select(row => new Observation(
+                byId[row.HostId], row.Name, AlertDecision.EvaluateServiceFailure(row.StateSinceUtc, duration, now)))
+            .ToList();
+    }
+
+    /// <summary>How often Docker restarted each container within the rule's duration.</summary>
+    private async Task<List<Observation>> ObserveContainerRestartsAsync(
+        AlertRule rule, List<HostInfo> hosts, TimeSpan duration, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var byId = hosts.ToDictionary(host => host.Id);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<ContainerRestartsRow>(new CommandDefinition("""
+            SELECT host_id, container, sum(count)::int AS restarts
+            FROM container_events
+            WHERE host_id = ANY(@host_ids) AND kind = 'restarted' AND time > @since AND time <= @now
+              AND (@resource::text IS NULL OR container = @resource)
+            GROUP BY host_id, container
+            """,
+            new
+            {
+                host_ids = byId.Keys.ToArray(),
+                since = now - duration,
+                now,
+                resource = string.IsNullOrWhiteSpace(rule.ResourceFilter) ? null : rule.ResourceFilter,
+            },
+            cancellationToken: cancellationToken));
+
+        return rows
+            .Where(row => byId.ContainsKey(row.HostId))
+            .Select(row => new Observation(byId[row.HostId], row.Container, AlertDecision.EvaluateRestarts(row.Restarts, rule.Threshold)))
+            .ToList();
+    }
+
     /// <summary>Window aggregates per host (and mount point). The value expressions are fixed per metric.</summary>
     private static string StatsSql(AlertMetric metric)
     {
@@ -394,6 +455,26 @@ public sealed class AlertEvaluator(
         public int Buckets { get; set; }
         public double? Mean { get; set; }
         public double? StdDev { get; set; }
+    }
+
+    private sealed class ContainerStateRow
+    {
+        public Guid HostId { get; set; }
+        public string Name { get; set; } = "";
+        public string State { get; set; } = "";
+        public string? Health { get; set; }
+        public int? ExitCode { get; set; }
+        public bool OomKilled { get; set; }
+        public DateTime StateSince { get; set; }
+
+        public DateTimeOffset StateSinceUtc => new(DateTime.SpecifyKind(StateSince, DateTimeKind.Utc));
+    }
+
+    private sealed class ContainerRestartsRow
+    {
+        public Guid HostId { get; set; }
+        public string Container { get; set; } = "";
+        public int Restarts { get; set; }
     }
 
     private sealed class ServiceFailureRow
