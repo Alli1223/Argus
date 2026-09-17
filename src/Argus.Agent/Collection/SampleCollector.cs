@@ -1,12 +1,17 @@
+using Argus.Agent.Collection.Containers;
 using Argus.Contracts.Agent;
 
 namespace Argus.Agent.Collection;
 
-/// <summary>Assembles complete samples from the platform's metrics source, the process collector, temperatures and service checks.</summary>
+/// <summary>
+/// Assembles complete samples from the platform's metrics source, the process collector, temperatures,
+/// containers and service checks.
+/// </summary>
 internal sealed class SampleCollector(
     ISystemMetricsSource system,
     ProcessCollector processes,
     ITemperatureSource temperatures,
+    IContainerSource containers,
     IServiceStatusSource services,
     TimeProvider time)
 {
@@ -21,12 +26,14 @@ internal sealed class SampleCollector(
     {
         system.Prime();
         processes.Prime();
+        containers.Prime();
     }
 
     public MetricSample Collect()
     {
         var reading = system.Collect();
         var (processCount, topProcesses) = processes.Collect(TopProcessCount);
+        var containerReading = containers.Collect();
         var now = time.GetUtcNow();
 
         IReadOnlyList<ServiceProblem>? failedServices = null;
@@ -49,6 +56,8 @@ internal sealed class SampleCollector(
             Filesystems = reading.Filesystems,
             Interfaces = reading.Interfaces,
             Temperatures = temperatures.Collect(),
+            Containers = containerReading.Report,
+            ContainerUsage = containerReading.Usage,
             TopProcesses = TopProcessCount > 0 ? topProcesses : null,
             FailedServices = failedServices,
         };

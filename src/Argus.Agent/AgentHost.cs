@@ -54,6 +54,8 @@ internal static class AgentHost
             PlatformCollectors.CreateServiceStatusSource(services.GetRequiredService<ILoggerFactory>()));
         builder.Services.AddSingleton(services =>
             PlatformCollectors.CreateTemperatureSource(services.GetRequiredService<ILoggerFactory>(), agentConfig));
+        builder.Services.AddSingleton(services => PlatformCollectors.CreateContainerSource(
+            services.GetRequiredService<ILoggerFactory>(), agentConfig, services.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton<ProcessCollector>();
         builder.Services.AddSingleton<SampleCollector>();
         builder.Services.AddSingleton(new SampleBuffer(agentConfig.BufferCapacity));

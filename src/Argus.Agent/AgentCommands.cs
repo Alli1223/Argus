@@ -72,6 +72,7 @@ internal static class AgentCommands
             new ProcessCollector(),
             // Default settings: the config file is often readable only by the service.
             PlatformCollectors.CreateTemperatureSource(loggers, new AgentConfig()),
+            PlatformCollectors.CreateContainerSource(loggers, new AgentConfig(), TimeProvider.System),
             PlatformCollectors.CreateServiceStatusSource(loggers),
             TimeProvider.System);
         collector.Prime();

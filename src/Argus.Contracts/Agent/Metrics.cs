@@ -49,6 +49,15 @@ public sealed record MetricSample
     /// <summary>Temperature sensors the machine exposes; empty where it has none the agent can read.</summary>
     public IReadOnlyList<TemperatureMetrics> Temperatures { get; init; } = [];
 
+    /// <summary>
+    /// The machine's Docker containers, running or not. Only on samples where they changed, or at least
+    /// a minute after the last report; null on other samples and from agents that do not watch Docker.
+    /// </summary>
+    public ContainerReport? Containers { get; init; }
+
+    /// <summary>What each running container used over the interval; null from agents that do not watch Docker.</summary>
+    public IReadOnlyList<ContainerUsage>? ContainerUsage { get; init; }
+
     /// <summary>Busiest processes; agents may only attach this to the newest sample of a batch.</summary>
     public IReadOnlyList<ProcessMetrics>? TopProcesses { get; init; }
 
@@ -179,6 +188,82 @@ public sealed record TemperatureMetrics
     public required string Sensor { get; init; }
 
     public required double Celsius { get; init; }
+}
+
+/// <summary>The containers on a machine, or why the agent could not list them.</summary>
+public sealed record ContainerReport
+{
+    /// <summary>Docker's version, when the agent could reach it.</summary>
+    public string? EngineVersion { get; init; }
+
+    /// <summary>Why the agent could not read Docker, such as being refused access to its socket.</summary>
+    public string? Problem { get; init; }
+
+    /// <summary>Whether this machine lets Argus read container logs and start, stop and restart containers.</summary>
+    public bool ActionsEnabled { get; init; }
+
+    public IReadOnlyList<ContainerInfo> Items { get; init; } = [];
+}
+
+public sealed record ContainerInfo
+{
+    /// <summary>Docker's id, which changes when the container is recreated.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>The name, without Docker's leading slash. It stays the same when Compose recreates a container.</summary>
+    public required string Name { get; init; }
+
+    public required string Image { get; init; }
+
+    /// <summary>Docker's state: created, running, paused, restarting, removing, exited or dead.</summary>
+    public required string State { get; init; }
+
+    /// <summary>starting, healthy or unhealthy, for containers with a health check.</summary>
+    public string? Health { get; init; }
+
+    /// <summary>How often Docker restarted this container under its restart policy.</summary>
+    public int RestartCount { get; init; }
+
+    /// <summary>The exit code of the last run, for containers that have stopped.</summary>
+    public int? ExitCode { get; init; }
+
+    /// <summary>Whether the last run was killed for running out of memory.</summary>
+    public bool OomKilled { get; init; }
+
+    public DateTimeOffset CreatedAt { get; init; }
+
+    public DateTimeOffset? StartedAt { get; init; }
+
+    public DateTimeOffset? FinishedAt { get; init; }
+
+    /// <summary>no, always, unless-stopped or on-failure.</summary>
+    public string? RestartPolicy { get; init; }
+
+    public string? ComposeProject { get; init; }
+
+    public string? ComposeService { get; init; }
+
+    /// <summary>Published ports, such as "0.0.0.0:8080->80/tcp".</summary>
+    public IReadOnlyList<string> Ports { get; init; } = [];
+}
+
+public sealed record ContainerUsage
+{
+    public required string Name { get; init; }
+
+    /// <summary>Share of the whole machine's CPU (0–100), like process CPU.</summary>
+    public double CpuPercent { get; init; }
+
+    /// <summary>Memory in use, not counting file cache the kernel can reclaim.</summary>
+    public long MemoryBytes { get; init; }
+
+    /// <summary>The container's memory limit, or the machine's memory when it has none.</summary>
+    public long? MemoryLimitBytes { get; init; }
+
+    /// <summary>Received traffic; null for containers without a network of their own, such as those on the host's.</summary>
+    public double? NetRxBytesPerSec { get; init; }
+
+    public double? NetTxBytesPerSec { get; init; }
 }
 
 public sealed record ProcessMetrics

@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using System.Text.Json;
 using Argus.Agent.Collection;
+using Argus.Agent.Collection.Containers;
 using Argus.Agent.Collection.Linux;
 using Argus.Contracts.Agent;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -84,6 +85,7 @@ public class LinuxCollectorsTests
             new LinuxMetricsSource(NullLogger<LinuxMetricsSource>.Instance),
             new ProcessCollector(),
             new LinuxTemperatures(includeDrives: false),
+            new NoContainers(),
             new NoServiceStatus(),
             TimeProvider.System);
         collector.Prime();
