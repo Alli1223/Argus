@@ -285,11 +285,12 @@ function InstallCommands({ token }: { token: string }) {
   const info = useServerInfo();
   const [platform, setPlatform] = useState<"linux" | "windows">("linux");
   const [docker, setDocker] = useState(false);
+  const [containerActions, setContainerActions] = useState(false);
 
   if (info.isPending) return <Skeleton h={96} />;
 
   const server = serverAddress(info.data?.publicUrl, window.location.origin);
-  const commands = installCommands(server, token, { docker });
+  const commands = installCommands(server, token, { docker, containerActions });
   return (
     <Stack gap="sm">
       <SegmentedControl
@@ -308,12 +309,21 @@ function InstallCommands({ token }: { token: string }) {
           : "Run this in PowerShell opened as administrator, on 64-bit Windows."}
       </Text>
       {platform === "linux" && (
-        <Checkbox
-          checked={docker}
-          onChange={(event) => setDocker(event.currentTarget.checked)}
-          label="Watch Docker containers"
-          description="The agent joins the docker group to read Docker, which lets it do anything root could on the machine."
-        />
+        <Stack gap="xs">
+          <Checkbox
+            checked={docker || containerActions}
+            disabled={containerActions}
+            onChange={(event) => setDocker(event.currentTarget.checked)}
+            label="Watch Docker containers"
+            description="The agent joins the docker group to read Docker, which lets it do anything root could on the machine."
+          />
+          <Checkbox
+            checked={containerActions}
+            onChange={(event) => setContainerActions(event.currentTarget.checked)}
+            label="Allow container logs and start, stop and restart"
+            description="Anyone who can see this machine in Argus can then read its containers' logs and stop them."
+          />
+        </Stack>
       )}
       <CommandBlock command={commands[platform]} />
       <Text fz="xs" c="dimmed">

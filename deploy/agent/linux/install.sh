@@ -11,12 +11,16 @@
 #   --binary PATH   Install this agent binary instead of downloading it from the server.
 #   --docker        Let the agent watch Docker's containers. It joins the docker group for that, which lets
 #                   it use Docker as root could. Reinstalling without the option leaves this as it is.
+#   --container-actions
+#                   Also let people who can see this machine in Argus read its containers' logs and start,
+#                   stop and restart them. Implies --docker. Reinstalling without it leaves this as it is.
 set -euo pipefail
 
 SERVER=""
 TOKEN=""
 BINARY=""
 DOCKER=false
+CONTAINER_ACTIONS=false
 INSTALL_DIR=/opt/argus-agent
 CONFIG_DIR=/etc/argus-agent
 STATE_DIR=/var/lib/argus-agent
@@ -38,7 +42,8 @@ while [ $# -gt 0 ]; do
     --token) TOKEN="${2:-}"; shift 2 ;;
     --binary) BINARY="${2:-}"; shift 2 ;;
     --docker) DOCKER=true; shift ;;
-    *) fail "unknown option '$1' (expected --server, --token, --binary or --docker)" ;;
+    --container-actions) CONTAINER_ACTIONS=true; DOCKER=true; shift ;;
+    *) fail "unknown option '$1' (expected --server, --token, --binary, --docker or --container-actions)" ;;
   esac
 done
 
@@ -135,6 +140,14 @@ if $DOCKER; then
     "# Docker's socket belongs to the docker group. Using it is as good as root on this machine." \
     "SupplementaryGroups=docker" > "/etc/systemd/system/$SERVICE.service.d/docker.conf"
   chmod 0644 "/etc/systemd/system/$SERVICE.service.d/docker.conf"
+fi
+
+if $CONTAINER_ACTIONS; then
+  step "Letting Argus read container logs and start, stop and restart containers"
+  printf '%s\n' "[Service]" \
+    "# People who can see this machine in Argus may read its containers' logs and start, stop and restart them." \
+    "Environment=ARGUS_CONTAINERACTIONS=true" > "/etc/systemd/system/$SERVICE.service.d/container-actions.conf"
+  chmod 0644 "/etc/systemd/system/$SERVICE.service.d/container-actions.conf"
 fi
 systemctl daemon-reload
 systemctl enable --now argus-agent-update.path >/dev/null

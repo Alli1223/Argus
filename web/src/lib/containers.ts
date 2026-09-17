@@ -145,6 +145,12 @@ export function describeEvent(event: ContainerEventInfo): string {
       return "Health check failing";
     case "healthy":
       return "Health check passing again";
+    case "start-requested":
+      return `Start asked for${event.detail ? ` by ${event.detail}` : ""}`;
+    case "stop-requested":
+      return `Stop asked for${event.detail ? ` by ${event.detail}` : ""}`;
+    case "restart-requested":
+      return `Restart asked for${event.detail ? ` by ${event.detail}` : ""}`;
     default:
       return event.kind;
   }

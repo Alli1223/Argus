@@ -264,13 +264,28 @@ export type ContainerEventKind =
   | "paused"
   | "died"
   | "unhealthy"
-  | "healthy";
+  | "healthy"
+  | "start-requested"
+  | "stop-requested"
+  | "restart-requested";
 
 export interface ContainerEventInfo {
   time: string;
   kind: ContainerEventKind;
   detail: string | null;
   count: number;
+}
+
+export interface ContainerLogLine {
+  time: string | null;
+  stream: "stdout" | "stderr";
+  text: string;
+}
+
+/** A container's newest log lines, oldest first; `truncated` when older ones were left out. */
+export interface ContainerLogs {
+  lines: ContainerLogLine[];
+  truncated: boolean;
 }
 
 export interface ContainerDetail {
