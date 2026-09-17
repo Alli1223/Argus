@@ -1,3 +1,4 @@
+using Argus.Agent.Collection.Containers;
 using Argus.Agent.Collection.Linux;
 using Argus.Agent.Collection.Windows;
 using Argus.Agent.Configuration;
@@ -51,6 +52,12 @@ internal static class PlatformCollectors
 
         return new NoServiceStatus();
     }
+
+    /// <summary>Docker's containers on Linux. (Docker on Windows is not watched yet.)</summary>
+    public static IContainerSource CreateContainerSource(ILoggerFactory loggers, AgentConfig config, TimeProvider time) =>
+        OperatingSystem.IsLinux() && !string.IsNullOrWhiteSpace(config.DockerSocket)
+            ? new DockerContainers(config.DockerSocket, config.ContainerActions, time, loggers.CreateLogger<DockerContainers>())
+            : new NoContainers();
 
     public static ITemperatureSource CreateTemperatureSource(ILoggerFactory loggers, AgentConfig config)
     {

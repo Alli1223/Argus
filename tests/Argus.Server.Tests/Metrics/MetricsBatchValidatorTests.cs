@@ -95,6 +95,37 @@ public class MetricsBatchValidatorTests
     }
 
     [Fact]
+    public void Containers_are_named_once_with_states_argus_knows()
+    {
+        var sample = Sample(Now) with
+        {
+            Containers = new ContainerReport
+            {
+                Items =
+                [
+                    new ContainerInfo { Id = "a1", Name = "web", Image = "nginx", State = "running", Health = "healthy", RestartCount = -2 },
+                    new ContainerInfo { Id = "a2", Name = "web", Image = "nginx", State = "exited" },
+                    new ContainerInfo { Id = "b1", Name = "odd", Image = "x", State = "hibernating", Health = "sort of", RestartPolicy = "sometimes" },
+                    new ContainerInfo { Id = "", Name = "nameless-id", Image = "x", State = "running" },
+                ],
+            },
+            ContainerUsage =
+            [
+                new ContainerUsage { Name = "web", CpuPercent = 250, MemoryBytes = -1, MemoryLimitBytes = 0, NetRxBytesPerSec = double.NaN },
+                new ContainerUsage { Name = " ", CpuPercent = 1 },
+            ],
+        };
+
+        var cleaned = Assert.Single(MetricsBatchValidator.Sanitize([sample], Now, MaxAge, MaxSkew, out _));
+
+        Assert.Equal(["web", "odd"], cleaned.Containers!.Items.Select(container => container.Name));
+        Assert.Equal(("running", 0), (cleaned.Containers.Items[0].State, cleaned.Containers.Items[0].RestartCount));
+        Assert.Equal(("unknown", (string?)null, (string?)null), (cleaned.Containers.Items[1].State, cleaned.Containers.Items[1].Health, cleaned.Containers.Items[1].RestartPolicy));
+        var usage = Assert.Single(cleaned.ContainerUsage!);
+        Assert.Equal((100d, 0L, (long?)null, (double?)0), (usage.CpuPercent, usage.MemoryBytes, usage.MemoryLimitBytes, usage.NetRxBytesPerSec));
+    }
+
+    [Fact]
     public void Oversized_lists_are_truncated()
     {
         var sample = Sample(Now) with

@@ -72,6 +72,10 @@ All paths start with `/api`.
 | `GET /hosts/{id}/filesystems` | Every filesystem in the latest reading. |
 | `GET /hosts/{id}/filesystems/history` | Space used per filesystem over time. |
 | `GET /hosts/{id}/network` | Traffic per network interface over time. |
+| `GET /hosts/{id}/containers` | The host's Docker containers from its newest report: `checkedAt` (null if its agent has never reported any), `engineVersion`, a `problem` when the agent could not read Docker, `actionsEnabled`, and `containers`, each with its `state`, `health`, `restartCount`, `restartsLastHour`, `exitCode`, times, Compose `composeProject` and `composeService`, `ports` and newest `usage`. |
+| `GET /hosts/{id}/containers/{name}` | One container, with its latest `events` (such as `started`, `stopped`, `restarted`, `unhealthy`), newest first. |
+| `GET /hosts/{id}/containers/{name}/metrics` | A container's CPU (`cpu`, `cpuMax`), memory (`memory`, `memoryLimit`) and traffic (`netRx`, `netTx`) over time. |
+| `GET /containers` | Every host you can see that reports containers, with its containers. |
 | `GET /hosts/{id}/temperatures` | Each temperature sensor over time, in degrees Celsius. |
 | `GET /hosts/temperatures` | The temperature history of every host that reported temperatures in the range, by name: `hostId`, `displayName` and `history`. |
 | `GET /hosts/{id}/processes` | The busiest processes in the latest reading. |

@@ -7,6 +7,8 @@ sends notifications; and a web app shows it all.
 - **Hosts at a glance:** CPU, memory, swap, load, disk and network, live and over time, with
   filesystems, network interfaces, temperatures, the busiest processes and failed services for each
   machine, and every machine's temperature sensors on one page.
+- **Docker containers** on every machine: state, health checks, restart loops and crashes, with each
+  container's CPU, memory and network over time.
 - **Alert rules** on fixed thresholds, on readings that stray from a host's usual level, on hosts
   that stop reporting and on services that fail. Rules can cover every host, one host or a tag.
 - **Notifications** by email, Slack, Discord or webhook, with retries, plus daily and weekly

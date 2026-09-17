@@ -223,7 +223,7 @@ function Plot({
             ...axis,
             size: 64,
             space: 32,
-            incrs: config.unit === "bytesPerSecond" ? BYTE_INCREMENTS : undefined,
+            incrs: config.unit === "bytes" || config.unit === "bytesPerSecond" ? BYTE_INCREMENTS : undefined,
             values: (_self, splits) => splits.map((value) => formatTick(value, config.unit)),
           },
         ],

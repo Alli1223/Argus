@@ -144,11 +144,11 @@ public sealed class MetricsIngestionTests(ArgusAppFixture app) : IClassFixture<A
     {
         var hypertables = await ScalarAsync<string>(
             "SELECT string_agg(hypertable_name, ',' ORDER BY hypertable_name) FROM timescaledb_information.hypertables WHERE hypertable_schema = 'public'");
-        Assert.Equal("filesystem_metrics,host_metrics,network_metrics,temperature_metrics", hypertables);
+        Assert.Equal("container_events,container_metrics,filesystem_metrics,host_metrics,network_metrics,temperature_metrics", hypertables);
 
         var rollups = await ScalarAsync<string>(
             "SELECT string_agg(view_name, ',' ORDER BY view_name) FROM timescaledb_information.continuous_aggregates");
-        Assert.Equal("filesystem_metrics_1h,host_metrics_1h,host_metrics_5m,network_metrics_1h,temperature_metrics_1h", rollups);
+        Assert.Equal("container_metrics_1h,filesystem_metrics_1h,host_metrics_1h,host_metrics_5m,network_metrics_1h,temperature_metrics_1h", rollups);
 
         var rawRetention = await ScalarAsync<string>(
             "SELECT config->>'drop_after' FROM timescaledb_information.jobs WHERE proc_name = 'policy_retention' AND hypertable_name = 'host_metrics'");

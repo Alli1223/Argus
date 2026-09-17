@@ -15,6 +15,7 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   IconAdjustmentsHorizontal,
   IconBell,
+  IconBrandDocker,
   IconCircleCheck,
   IconDeviceDesktopAnalytics,
   IconEye,
@@ -50,6 +51,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: "/", label: "Overview", icon: IconEye },
   { to: "/hosts", label: "Hosts", icon: IconServer2 },
+  { to: "/containers", label: "Containers", icon: IconBrandDocker },
   { to: "/temperatures", label: "Temperatures", icon: IconTemperature },
   { to: "/alerts", label: "Alerts", icon: IconBell },
   { to: "/rules", label: "Alert rules", icon: IconAdjustmentsHorizontal },

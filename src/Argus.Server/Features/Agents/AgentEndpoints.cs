@@ -152,6 +152,7 @@ public static class AgentEndpoints
         ILoggerFactory loggers,
         Live.LiveUpdates live,
         AgentUpdates updates,
+        Containers.ContainerStore containers,
         CancellationToken cancellationToken)
     {
         if (MetricsBatchValidator.ValidateShape(batch) is { } problem)
@@ -176,6 +177,11 @@ public static class AgentEndpoints
         }
 
         var accepted = await ingestor.IngestAsync(hostId, samples, now, cancellationToken);
+        if (samples.Where(sample => sample.Containers is not null).MaxBy(sample => sample.Timestamp) is { } containerCheck)
+        {
+            await containers.ApplyReportAsync(hostId, containerCheck.Timestamp, containerCheck.Containers!, cancellationToken);
+        }
+
         if (samples.Count > 0)
         {
             var newest = samples.MaxBy(sample => sample.Timestamp)!;

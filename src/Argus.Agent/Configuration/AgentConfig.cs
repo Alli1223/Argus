@@ -27,6 +27,15 @@ public sealed class AgentConfig
     /// </summary>
     public bool DriveTemperatures { get; set; }
 
+    /// <summary>Docker's socket. The agent watches containers when it exists and the agent may use it.</summary>
+    public string DockerSocket { get; set; } = "/var/run/docker.sock";
+
+    /// <summary>
+    /// Lets people who can see this machine in Argus read its containers' logs and start, stop and restart
+    /// them. Off by default, so that an Argus login alone never controls a machine's containers.
+    /// </summary>
+    public bool ContainerActions { get; set; }
+
     public string ResolvedStateDirectory =>
         string.IsNullOrWhiteSpace(StateDirectory) ? AgentPaths.DefaultStateDirectory : StateDirectory;
 

@@ -1,6 +1,19 @@
-import { Box, Group, SimpleGrid, Skeleton, Table, Text, Title, useComputedColorScheme } from "@mantine/core";
+import {
+  Alert,
+  Box,
+  Group,
+  SimpleGrid,
+  Skeleton,
+  Table,
+  Text,
+  Title,
+  useComputedColorScheme,
+} from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 import { useMemo } from "react";
+import { useHostContainers } from "../../api/containers";
+import { ContainersTable } from "../../components/containers/ContainersTable";
+import { countContainers, describeCounts, sortContainers } from "../../lib/containers";
 import {
   useFilesystemHistory,
   useHostFilesystems,
@@ -73,6 +86,49 @@ export function ProcessesSection({ hostId, now }: { hostId: string; now: number 
             ))}
           </Table.Tbody>
         </Table>
+      )}
+    </Section>
+  );
+}
+
+/** The host's Docker containers, problems first. Hosts whose agent does not watch Docker skip this. */
+export function ContainersSection({ hostId, now }: { hostId: string; now: number }) {
+  const report = useHostContainers(hostId);
+  const data = report.data;
+  const rows = useMemo(
+    () => sortContainers((data?.containers ?? []).map((container) => ({ ...container, hostId }))),
+    [data, hostId],
+  );
+
+  if (!data?.checkedAt) return null;
+
+  return (
+    <Section
+      title="Containers"
+      mt="xl"
+      action={
+        <Text fz="xs" c="dimmed">
+          {describeCounts(countContainers(data.containers))}, checked {formatAgo(data.checkedAt, now)}
+        </Text>
+      }
+    >
+      {data.problem && (
+        <Alert
+          color="bronze"
+          icon={<IconAlertTriangle size={18} />}
+          m="md"
+          title="The agent cannot read Docker"
+        >
+          {data.problem}
+          {rows.length > 0 && " The containers below are as it last saw them."}
+        </Alert>
+      )}
+      {rows.length === 0 ? (
+        <Text fz="sm" c="dimmed" p="md">
+          No containers on this host.
+        </Text>
+      ) : (
+        <ContainersTable rows={rows} now={now} />
       )}
     </Section>
   );

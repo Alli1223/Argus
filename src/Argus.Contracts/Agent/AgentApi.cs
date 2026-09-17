@@ -33,6 +33,8 @@ public static class AgentLimits
     public const int MaxFilesystemsPerSample = 64;
     public const int MaxInterfacesPerSample = 64;
     public const int MaxTemperaturesPerSample = 256;
+    public const int MaxContainers = 500;
+    public const int MaxContainerPorts = 32;
     public const int MaxTopProcesses = 50;
     public const int MaxFailedServices = 100;
     public const int MaxIpAddresses = 32;

@@ -1,4 +1,5 @@
 using Argus.Agent.Collection;
+using Argus.Agent.Collection.Containers;
 using Argus.Agent.Collection.Linux;
 using Argus.Contracts.Agent;
 using Microsoft.Extensions.Time.Testing;
@@ -67,7 +68,7 @@ public sealed class SampleCollectorServiceTests
     {
         var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-09-15T12:00:00Z"));
         var services = new CountingServices();
-        var collector = new SampleCollector(new FixedMetrics(), new ProcessCollector(), new NoTemperatures(), services, time) { TopProcessCount = 0 };
+        var collector = new SampleCollector(new FixedMetrics(), new ProcessCollector(), new NoTemperatures(), new NoContainers(), services, time) { TopProcessCount = 0 };
 
         var first = collector.Collect();
         time.Advance(TimeSpan.FromSeconds(15));

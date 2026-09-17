@@ -230,6 +230,17 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] First release with images (0.4.0): both packages came out public, and this machine's install moved to them
 - [ ] Install a real release through the updater on a production install
 
+## Phase 19 — Docker containers
+
+- [x] Agent: Docker's containers over its socket (state, health, restarts, exit codes, Compose labels, ports) and per-container CPU, memory and network; the list only when it changes or once a minute
+- [x] Server: host_containers, container_events from comparing reports, container_metrics hypertable with an hourly rollup; container API
+- [x] Web: containers on the host page, a Containers page for every host, and a page per container with its history and events
+- [x] Install script `--docker` (systemd drop-in joining the docker group), and a box for it in the install command
+- [ ] Alert rules: container down, restart loops
+- [ ] Logs and start / stop / restart, only on machines that set `ContainerActions`
+- [ ] Check `--docker` with the sandboxed systemd unit on a real machine
+- [ ] Containers on Windows (Docker Desktop's named pipe)
+
 ---
 
 ## Future ideas (not scheduled)

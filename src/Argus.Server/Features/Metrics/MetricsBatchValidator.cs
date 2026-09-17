@@ -8,7 +8,14 @@ public static class MetricsBatchValidator
     private const int NameLength = 256;
     private const int FsTypeLength = 64;
     private const int StateLength = 32;
+    private const int ImageLength = 512;
+    private const int PortLength = 64;
+    private const int ProblemLength = 1000;
     private const double AbsoluteZero = -273.15;
+
+    private static readonly HashSet<string> ContainerStates = ["created", "running", "paused", "restarting", "removing", "exited", "dead"];
+    private static readonly HashSet<string> ContainerHealth = ["starting", "healthy", "unhealthy"];
+    private static readonly HashSet<string> RestartPolicies = ["no", "always", "unless-stopped", "on-failure"];
     private const double MaxCelsius = 1000;
 
     /// <summary>Problems that make the whole batch unacceptable; the agent should not resend it.</summary>
@@ -125,6 +132,21 @@ public static class MetricsBatchValidator
             .DistinctBy(reading => (reading.Device, reading.Sensor))
             .Take(AgentLimits.MaxTemperaturesPerSample)
             .ToList(),
+        Containers = sample.Containers is { } report ? Clean(report) : null,
+        ContainerUsage = sample.ContainerUsage?
+            .Where(usage => !string.IsNullOrWhiteSpace(usage.Name))
+            .DistinctBy(usage => usage.Name)
+            .Take(AgentLimits.MaxContainers)
+            .Select(usage => new ContainerUsage
+            {
+                Name = Clip(usage.Name, NameLength),
+                CpuPercent = Percent(usage.CpuPercent),
+                MemoryBytes = Math.Max(0, usage.MemoryBytes),
+                MemoryLimitBytes = usage.MemoryLimitBytes is > 0 and var limit ? limit : null,
+                NetRxBytesPerSec = usage.NetRxBytesPerSec is { } rx ? Rate(rx) : null,
+                NetTxBytesPerSec = usage.NetTxBytesPerSec is { } tx ? Rate(tx) : null,
+            })
+            .ToList(),
         TopProcesses = sample.TopProcesses?
             .Take(AgentLimits.MaxTopProcesses)
             .Select(process => new ProcessMetrics
@@ -145,6 +167,35 @@ public static class MetricsBatchValidator
                 Name = Clip(service.Name, NameLength),
                 Description = ClipOptional(service.Description, NameLength),
                 State = Clip(string.IsNullOrWhiteSpace(service.State) ? "failed" : service.State, StateLength),
+            })
+            .ToList(),
+    };
+
+    /// <summary>Containers named once each, with Docker's words for states kept to the ones Argus knows.</summary>
+    private static ContainerReport Clean(ContainerReport report) => new()
+    {
+        EngineVersion = ClipOptional(report.EngineVersion, FsTypeLength),
+        Problem = ClipOptional(report.Problem, ProblemLength),
+        ActionsEnabled = report.ActionsEnabled,
+        Items = report.Items
+            .Where(container => !string.IsNullOrWhiteSpace(container.Name) && !string.IsNullOrWhiteSpace(container.Id))
+            .DistinctBy(container => container.Name)
+            .Take(AgentLimits.MaxContainers)
+            .Select(container => container with
+            {
+                Id = Clip(container.Id, FsTypeLength * 2),
+                Name = Clip(container.Name, NameLength),
+                Image = Clip(container.Image ?? "", ImageLength),
+                State = ContainerStates.Contains(container.State) ? container.State : "unknown",
+                Health = container.Health is { } health && ContainerHealth.Contains(health) ? health : null,
+                RestartCount = Math.Max(0, container.RestartCount),
+                CreatedAt = container.CreatedAt.ToUniversalTime(),
+                StartedAt = container.StartedAt?.ToUniversalTime(),
+                FinishedAt = container.FinishedAt?.ToUniversalTime(),
+                RestartPolicy = container.RestartPolicy is { } policy && RestartPolicies.Contains(policy) ? policy : null,
+                ComposeProject = ClipOptional(container.ComposeProject, NameLength),
+                ComposeService = ClipOptional(container.ComposeService, NameLength),
+                Ports = container.Ports.Take(AgentLimits.MaxContainerPorts).Select(port => Clip(port, PortLength)).ToList(),
             })
             .ToList(),
     };

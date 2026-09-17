@@ -4,6 +4,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Code,
   CopyButton,
   Group,
@@ -283,11 +284,12 @@ function CommandBlock({ command }: { command: string }) {
 function InstallCommands({ token }: { token: string }) {
   const info = useServerInfo();
   const [platform, setPlatform] = useState<"linux" | "windows">("linux");
+  const [docker, setDocker] = useState(false);
 
   if (info.isPending) return <Skeleton h={96} />;
 
   const server = serverAddress(info.data?.publicUrl, window.location.origin);
-  const commands = installCommands(server, token);
+  const commands = installCommands(server, token, { docker });
   return (
     <Stack gap="sm">
       <SegmentedControl
@@ -305,6 +307,14 @@ function InstallCommands({ token }: { token: string }) {
           ? "Run this on the machine. It needs sudo, systemd and a 64-bit x86 or ARM processor."
           : "Run this in PowerShell opened as administrator, on 64-bit Windows."}
       </Text>
+      {platform === "linux" && (
+        <Checkbox
+          checked={docker}
+          onChange={(event) => setDocker(event.currentTarget.checked)}
+          label="Watch Docker containers"
+          description="The agent joins the docker group to read Docker, which lets it do anything root could on the machine."
+        />
+      )}
       <CommandBlock command={commands[platform]} />
       <Text fz="xs" c="dimmed">
         The command contains the token, which Argus shows only once. Copy it before you leave this page.
