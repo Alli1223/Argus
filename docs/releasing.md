@@ -22,8 +22,8 @@ The [release workflow](../.github/workflows/release.yml) refuses a tag that does
 | `ghcr.io/alli1223/argus:<version>` and `:latest` | The server, with the web app and the agent builds. |
 | `ghcr.io/alli1223/argus-updater:<version>` and `:latest` | The updater, which installs releases from **Settings**. |
 
-GitHub makes a new package private. After the first release that publishes them, open each package's
-settings on GitHub and make it public, or servers cannot download it.
+Both are public, as the repository is, so servers download them without signing in. A fork whose
+packages come out private has to make them public in each package's settings on GitHub.
 
 Then it publishes the release, since servers offer a release as soon as it is out:
 
