@@ -29,6 +29,8 @@ import type { ContainerDetail, MetricSeries } from "../../api/types";
 import { SERIES_COLORS } from "../../components/charts/chartPalette";
 import { RangePicker } from "../../components/charts/RangePicker";
 import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
+import { ContainerActions } from "../../components/containers/ContainerActions";
+import { ContainerLogsPanel } from "../../components/containers/ContainerLogsPanel";
 import { ContainerStatusBadge } from "../../components/containers/ContainerStatusBadge";
 import { ErrorScreen, MessageScreen } from "../../components/Screens";
 import { Section } from "../../components/Section";
@@ -90,28 +92,36 @@ function ContainerView({ detail, now }: { detail: ContainerDetail; now: number }
 
   return (
     <>
-      <Stack gap={6} mb="lg" miw={0}>
-        <Anchor component={Link} to={`/hosts/${detail.hostId}`} fz="sm" w="fit-content">
-          <Group gap={4} wrap="nowrap">
-            <IconArrowLeft size={14} aria-hidden />
-            {detail.hostName}
+      <Group justify="space-between" align="flex-end" wrap="wrap" gap="md" mb="lg">
+        <Stack gap={6} miw={0}>
+          <Anchor component={Link} to={`/hosts/${detail.hostId}`} fz="sm" w="fit-content">
+            <Group gap={4} wrap="nowrap">
+              <IconArrowLeft size={14} aria-hidden />
+              {detail.hostName}
+            </Group>
+          </Anchor>
+          <Group gap="sm" wrap="wrap" align="center">
+            <Title order={1} fz={26} style={{ overflowWrap: "anywhere" }}>
+              {container.name}
+            </Title>
+            <ContainerStatusBadge container={container} />
           </Group>
-        </Anchor>
-        <Group gap="sm" wrap="wrap" align="center">
-          <Title order={1} fz={26} style={{ overflowWrap: "anywhere" }}>
-            {container.name}
-          </Title>
-          <ContainerStatusBadge container={container} />
-        </Group>
-        <Text c="dimmed" fz="sm">
-          {[composeName(container), container.image].filter(Boolean).join(", ")}
-        </Text>
-        {status.reason && (
-          <Text c="crimson" fz="sm">
-            {status.reason}
+          <Text c="dimmed" fz="sm">
+            {[composeName(container), container.image].filter(Boolean).join(", ")}
           </Text>
-        )}
-      </Stack>
+          {status.reason && (
+            <Text c="crimson" fz="sm">
+              {status.reason}
+            </Text>
+          )}
+        </Stack>
+        <ContainerActions
+          hostId={detail.hostId}
+          hostName={detail.hostName}
+          container={container}
+          actionsEnabled={detail.actionsEnabled}
+        />
+      </Group>
 
       <Paper className="argus-surface" radius="lg" p="lg">
         <Group align="flex-start" gap="xl" wrap="wrap">
@@ -199,6 +209,12 @@ function ContainerView({ detail, now }: { detail: ContainerDetail; now: number }
           </Box>
         </Group>
       </Paper>
+
+      <ContainerLogsPanel
+        hostId={detail.hostId}
+        name={container.name}
+        actionsEnabled={detail.actionsEnabled}
+      />
 
       <Title order={2} fz={17} mt="xl" mb="sm">
         History

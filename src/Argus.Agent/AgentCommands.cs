@@ -21,6 +21,7 @@ internal static class AgentCommands
         }
 
         builder.Services.AddHostedService<AgentWorker>();
+        builder.Services.AddHostedService<Commands.CommandWorker>();
         using var host = builder.Build();
         await host.RunAsync(cancellationToken);
         return 0;

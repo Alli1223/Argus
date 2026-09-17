@@ -22,6 +22,11 @@ public static class ContainerEventKinds
     public const string Died = "died";
     public const string Unhealthy = "unhealthy";
     public const string Healthy = "healthy";
+
+    // Someone asked, through Argus, for the container to be started, stopped or restarted; the detail says who.
+    public const string StartRequested = "start-requested";
+    public const string StopRequested = "stop-requested";
+    public const string RestartRequested = "restart-requested";
 }
 
 /// <summary>What a new report changes: the containers to store, those that are gone, and the events in between.</summary>

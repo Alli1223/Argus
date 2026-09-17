@@ -64,6 +64,26 @@ internal sealed class ArgusClient(HttpClient http)
             },
             cancellationToken);
 
+    /// <summary>
+    /// Waits for commands: the server holds the request open until there is one, or for
+    /// <see cref="AgentLimits.CommandWaitSeconds"/> seconds, well inside this client's timeout.
+    /// </summary>
+    public Task<ApiResult<AgentCommandBatch>> GetCommandsAsync(string agentKey, CancellationToken cancellationToken) =>
+        ExchangeAsync(Request(HttpMethod.Get, AgentApi.Commands, agentKey), HttpCompletionOption.ResponseContentRead,
+            async response => ApiResult<AgentCommandBatch>.Success(response.StatusCode == HttpStatusCode.NoContent
+                ? new AgentCommandBatch()
+                : await response.Content.ReadFromJsonAsync(AgentJsonContext.Default.AgentCommandBatch, cancellationToken)
+                    ?? new AgentCommandBatch()),
+            cancellationToken);
+
+    public Task<ApiResult<bool>> SendCommandResultAsync(string agentKey, AgentCommandResult result, CancellationToken cancellationToken)
+    {
+        var request = Request(HttpMethod.Post, AgentApi.CommandResults, agentKey);
+        request.Content = CreateContent(result, AgentJsonContext.Default.AgentCommandResult);
+        return ExchangeAsync(request, HttpCompletionOption.ResponseContentRead,
+            _ => Task.FromResult(ApiResult<bool>.Success(true)), cancellationToken);
+    }
+
     public Task<ApiResult<bool>> ReportUpdateResultAsync(string agentKey, AgentUpdateResult result, CancellationToken cancellationToken)
     {
         var request = Request(HttpMethod.Post, AgentApi.UpdateResult, agentKey);

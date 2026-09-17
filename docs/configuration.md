@@ -162,6 +162,7 @@ starting with `ARGUS_` override the file: `ARGUS_SERVERURL`, `ARGUS_ENROLLMENTTO
 | `StateDirectory` | `/var/lib/argus-agent`, or `C:\ProgramData\Argus\Agent` | | Where the agent keeps its host id and key. |
 | `CollectionIntervalSeconds` | from the server | 5–3600 | Takes readings on this machine at a different pace from the server's setting. |
 | `BufferCapacity` | `2880` | 10–100000 | How many readings the agent holds while the server is unreachable: 12 hours at the default pace. |
+| `ContainerActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus read its containers' logs and start, stop and restart them; see [Containers](#containers). |
 | `DockerSocket` | `/var/run/docker.sock` | a path | Docker's socket. On Linux the agent lists containers whenever the socket exists and it may use it; see [Containers](#containers). |
 | `DriveTemperatures` | `false` | `true` or `false` | Also reads the temperatures of SATA drives on Linux (the `drivetemp` driver). Off by default: on some drives, reading the temperature resets the spin-down timer, so drives meant to sleep would stay awake. NVMe drives are always read. |
 
@@ -176,4 +177,13 @@ with it. That adds a systemd drop-in, `/etc/systemd/system/argus-agent.service.d
 
 If Docker's socket is somewhere else, point `DockerSocket` at it. Containers on Windows are not
 watched yet.
+
+Reading containers' logs and starting, stopping and restarting them from Argus is off unless the
+machine itself allows it, so that an Argus login alone never controls a machine's containers. Install
+with `--container-actions` (which includes `--docker`), or run the install command again with it; it
+adds `/etc/systemd/system/argus-agent.service.d/container-actions.conf`, which sets
+`ARGUS_CONTAINERACTIONS=true`. The agent then keeps a request open with the server for commands, and
+carries out only these: start, stop (Docker gives the container 10 seconds) and restart a container by
+name, and read its newest log lines. Logs pass through the server without being stored. Whoever asked for
+a start, stop or restart is noted in the container's events.
 

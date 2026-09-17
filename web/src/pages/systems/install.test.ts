@@ -29,6 +29,14 @@ describe("installCommands", () => {
     expect(commands.linux).toMatch(/ --token argus_et_abc --docker$/);
     expect(commands.windows).not.toContain("docker");
   });
+
+  it("allows container actions, which include watching Docker", () => {
+    const commands = installCommands("https://argus.example.com", "argus_et_abc", {
+      docker: true,
+      containerActions: true,
+    });
+    expect(commands.linux).toMatch(/ --token argus_et_abc --container-actions$/);
+  });
 });
 
 describe("isInsecureAddress", () => {

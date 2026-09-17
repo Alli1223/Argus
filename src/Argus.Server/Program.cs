@@ -93,6 +93,7 @@ api.MapUserEndpoints();
 api.MapEnrollmentEndpoints();
 api.MapHostEndpoints();
 api.MapContainerEndpoints();
+api.MapContainerActionEndpoints();
 api.MapDashboardEndpoints();
 api.MapAlertRuleEndpoints();
 api.MapAlertEndpoints();
@@ -101,6 +102,7 @@ api.MapUpdateEndpoints();
 
 app.MapAgentEndpoints();
 app.MapAgentUpdateEndpoints();
+app.MapAgentCommandEndpoints();
 app.MapAgentDownloads();
 app.MapArgusLive();
 

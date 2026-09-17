@@ -14,11 +14,15 @@ export interface InstallCommands {
  * One-line installs: fetch the agent from this server, register it with the token, run it as a service.
  * With `docker`, the Linux agent may also watch Docker's containers.
  */
-export function installCommands(server: string, token: string, { docker = false } = {}): InstallCommands {
+export function installCommands(
+  server: string,
+  token: string,
+  { docker = false, containerActions = false } = {},
+): InstallCommands {
+  // Container actions need Docker, and the install script's option says so itself.
+  const linuxOption = containerActions ? " --container-actions" : docker ? " --docker" : "";
   return {
-    linux:
-      `curl -fsSL ${server}/downloads/install.sh | sudo bash -s -- --server ${server} --token ${token}` +
-      (docker ? " --docker" : ""),
+    linux: `curl -fsSL ${server}/downloads/install.sh | sudo bash -s -- --server ${server} --token ${token}${linuxOption}`,
     windows:
       `& ([scriptblock]::Create((Invoke-RestMethod ${server}/downloads/install.ps1)))` +
       ` -Server ${server} -Token ${token}`,

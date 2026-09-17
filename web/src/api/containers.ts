@@ -1,7 +1,7 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { refreshInterval, resolveRange, type TimeRange } from "../lib/timeRange";
-import { api, query } from "./client";
-import type { ContainerDetail, ContainerHost, HostContainers, MetricSeries } from "./types";
+import { api, query, type ApiError } from "./client";
+import type { ContainerDetail, ContainerHost, ContainerLogs, HostContainers, MetricSeries } from "./types";
 
 // Agents report changes to containers with their next reading, so these follow at about that pace.
 const LIVE = 15_000;
@@ -13,7 +13,10 @@ export const containerKeys = {
   detail: (hostId: string, name: string) => ["containers", "detail", hostId, name] as const,
   history: (hostId: string, name: string, range: TimeRange) =>
     ["containers", "history", hostId, name, range] as const,
+  logs: (hostId: string, name: string, tail: number) => ["containers", "logs", hostId, name, tail] as const,
 };
+
+export type ContainerAction = "start" | "stop" | "restart";
 
 const path = (hostId: string, name: string) => `/api/hosts/${hostId}/containers/${encodeURIComponent(name)}`;
 
@@ -57,5 +60,35 @@ export function useContainerHistory(hostId: string, name: string, range: TimeRan
     },
     placeholderData: keepPreviousData,
     refetchInterval: refreshInterval(range),
+  });
+}
+
+/** Starts, stops or restarts a container through its host's agent, then fetches its state again. */
+export function useContainerAction(hostId: string, name: string) {
+  const client = useQueryClient();
+  return useMutation<void, ApiError, ContainerAction>({
+    mutationFn: (action) => api.post(`${path(hostId, name)}/${action}`),
+    onSettled: () => void client.invalidateQueries({ queryKey: containerKeys.all }),
+  });
+}
+
+/**
+ * A container's newest log lines, read through its host's agent. Following fetches them again every
+ * few seconds; nothing is fetched while `enabled` is false.
+ */
+export function useContainerLogs(
+  hostId: string,
+  name: string,
+  tail: number,
+  follow: boolean,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: containerKeys.logs(hostId, name, tail),
+    queryFn: () => api.get<ContainerLogs>(`${path(hostId, name)}/logs${query({ tail })}`),
+    enabled,
+    retry: false,
+    placeholderData: keepPreviousData,
+    refetchInterval: follow ? 3_000 : false,
   });
 }

@@ -50,3 +50,6 @@ public sealed record ContainerDetail(
 /// <summary>A host that reports containers, for the page that lists every host's.</summary>
 public sealed record ContainerHost(
     Guid HostId, string HostName, DateTimeOffset CheckedAt, string? Problem, bool ActionsEnabled, IReadOnlyList<ContainerSummary> Containers);
+
+/// <summary>A container's newest log lines, oldest first; <see cref="Truncated"/> when older ones were left out.</summary>
+public sealed record ContainerLogs(IReadOnlyList<Argus.Contracts.Agent.ContainerLogLine> Lines, bool Truncated);

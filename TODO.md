@@ -237,7 +237,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Web: containers on the host page, a Containers page for every host, and a page per container with its history and events
 - [x] Install script `--docker` (systemd drop-in joining the docker group), and a box for it in the install command
 - [x] Alert rules: container down (crashes, failing health checks, restarting; any state but up for a named container) and restart loops, with default rules for new accounts
-- [ ] Logs and start / stop / restart, only on machines that set `ContainerActions`
+- [x] Logs and start / stop / restart through a long-poll command channel, only on machines that set `ContainerActions` (install script `--container-actions`); requests noted in container events
 - [ ] Check `--docker` with the sandboxed systemd unit on a real machine
 - [ ] Containers on Windows (Docker Desktop's named pipe)
 
