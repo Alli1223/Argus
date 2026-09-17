@@ -4,6 +4,7 @@ import { BYTE_INCREMENTS, formatTick, formatValue, temperatureAxis } from "./cha
 describe("formatTick", () => {
   it("drops needless decimals", () => {
     expect(formatTick(50, "percent")).toBe("50%");
+    expect(formatTick(0.25, "percent")).toBe("0.25%");
     expect(formatTick(0, "bytesPerSecond")).toBe("0 B/s");
     expect(formatTick(500 * 1024, "bytesPerSecond")).toBe("500 KB/s");
     expect(formatTick(1024 ** 2, "bytesPerSecond")).toBe("1 MB/s");

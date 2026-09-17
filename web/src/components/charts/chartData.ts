@@ -31,7 +31,8 @@ export function formatValue(value: number | null | undefined, unit: ChartUnit): 
 
 /** An axis tick, without needless decimals: "50%", "1 MB/s", "1.5", "60 °C". */
 export function formatTick(value: number, unit: ChartUnit): string {
-  if (unit === "percent") return `${Math.round(value)}%`;
+  // Small percentages, such as an idle container's CPU, keep their decimals so the ticks differ.
+  if (unit === "percent") return `${Number(value.toFixed(2))}%`;
   if (unit === "bytes") return formatBytes(value).replace(/\.0 /, " ");
   if (unit === "bytesPerSecond") return `${formatBytes(value).replace(/\.0 /, " ")}/s`;
   if (unit === "celsius") return `${Number(value.toFixed(1))} °C`;
