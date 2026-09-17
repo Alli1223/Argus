@@ -41,6 +41,11 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
             batch.BatchCommands.Add(TemperatureMetrics(hostId, samples));
         }
 
+        if (samples.Any(sample => sample.ContainerUsage is { Count: > 0 }))
+        {
+            batch.BatchCommands.Add(ContainerMetrics(hostId, samples));
+        }
+
         if (samples.Where(sample => sample.TopProcesses is not null).MaxBy(sample => sample.Timestamp) is { } latest)
         {
             batch.BatchCommands.Add(ProcessSnapshot(hostId, latest));
@@ -181,6 +186,31 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
                 Param("device", rows.Select(r => r.Reading.Device).ToArray()),
                 Param("sensor", rows.Select(r => r.Reading.Sensor).ToArray()),
                 Param("celsius", rows.Select(r => (float)r.Reading.Celsius).ToArray()),
+            },
+        };
+    }
+
+    private static NpgsqlBatchCommand ContainerMetrics(Guid hostId, IReadOnlyList<MetricSample> samples)
+    {
+        var rows = samples.SelectMany(s => s.ContainerUsage ?? [], (s, usage) => (s.Timestamp, Usage: usage)).ToList();
+        return new NpgsqlBatchCommand("""
+            INSERT INTO container_metrics (host_id, time, container, cpu_pct, mem_used_bytes, mem_limit_bytes, net_rx_bps, net_tx_bps)
+            SELECT @host_id, * FROM unnest(
+                @time::timestamptz[], @container::text[], @cpu::real[], @memory::bigint[], @memory_limit::bigint[],
+                @net_rx::float8[], @net_tx::float8[])
+            ON CONFLICT DO NOTHING
+            """)
+        {
+            Parameters =
+            {
+                Param("host_id", hostId),
+                Param("time", rows.Select(r => r.Timestamp).ToArray()),
+                Param("container", rows.Select(r => r.Usage.Name).ToArray()),
+                Param("cpu", rows.Select(r => (float)r.Usage.CpuPercent).ToArray()),
+                Param("memory", rows.Select(r => r.Usage.MemoryBytes).ToArray()),
+                Param("memory_limit", rows.Select(r => r.Usage.MemoryLimitBytes).ToArray()),
+                Param("net_rx", rows.Select(r => r.Usage.NetRxBytesPerSec).ToArray()),
+                Param("net_tx", rows.Select(r => r.Usage.NetTxBytesPerSec).ToArray()),
             },
         };
     }

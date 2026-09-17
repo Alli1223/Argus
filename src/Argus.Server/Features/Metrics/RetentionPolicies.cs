@@ -16,11 +16,15 @@ public static class RetentionPolicies
             ("filesystem_metrics", options.RawDays),
             ("network_metrics", options.RawDays),
             ("temperature_metrics", options.RawDays),
+            ("container_metrics", options.RawDays),
             ("host_metrics_5m", options.FiveMinuteDays),
             ("host_metrics_1h", options.HourlyDays),
             ("filesystem_metrics_1h", options.HourlyDays),
             ("network_metrics_1h", options.HourlyDays),
             ("temperature_metrics_1h", options.HourlyDays),
+            ("container_metrics_1h", options.HourlyDays),
+            // What happened to containers is small and useful for longer than their readings.
+            ("container_events", options.FiveMinuteDays),
         ];
 
         await using var batch = dataSource.CreateBatch();

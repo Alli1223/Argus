@@ -295,6 +295,8 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
             DELETE FROM filesystem_metrics WHERE host_id = @host_id;
             DELETE FROM network_metrics WHERE host_id = @host_id;
             DELETE FROM temperature_metrics WHERE host_id = @host_id;
+            DELETE FROM container_metrics WHERE host_id = @host_id;
+            DELETE FROM container_events WHERE host_id = @host_id;
             """, new { host_id = hostId }, cancellationToken: cancellationToken));
     }
 
