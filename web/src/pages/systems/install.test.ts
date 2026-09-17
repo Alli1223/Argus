@@ -23,6 +23,12 @@ describe("installCommands", () => {
     expect(commands.windows).toContain("Invoke-RestMethod https://argus.example.com/downloads/install.ps1");
     expect(commands.windows).toContain("-Server https://argus.example.com -Token argus_et_abc");
   });
+
+  it("lets the Linux agent watch Docker when asked", () => {
+    const commands = installCommands("https://argus.example.com", "argus_et_abc", { docker: true });
+    expect(commands.linux).toMatch(/ --token argus_et_abc --docker$/);
+    expect(commands.windows).not.toContain("docker");
+  });
 });
 
 describe("isInsecureAddress", () => {

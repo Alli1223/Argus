@@ -162,4 +162,18 @@ starting with `ARGUS_` override the file: `ARGUS_SERVERURL`, `ARGUS_ENROLLMENTTO
 | `StateDirectory` | `/var/lib/argus-agent`, or `C:\ProgramData\Argus\Agent` | | Where the agent keeps its host id and key. |
 | `CollectionIntervalSeconds` | from the server | 5–3600 | Takes readings on this machine at a different pace from the server's setting. |
 | `BufferCapacity` | `2880` | 10–100000 | How many readings the agent holds while the server is unreachable: 12 hours at the default pace. |
+| `DockerSocket` | `/var/run/docker.sock` | a path | Docker's socket. On Linux the agent lists containers whenever the socket exists and it may use it; see [Containers](#containers). |
 | `DriveTemperatures` | `false` | `true` or `false` | Also reads the temperatures of SATA drives on Linux (the `drivetemp` driver). Off by default: on some drives, reading the temperature resets the spin-down timer, so drives meant to sleep would stay awake. NVMe drives are always read. |
+
+### Containers
+
+On Linux, the agent lists Docker's containers, with their state, health and restarts and what each
+running one uses, once it may use Docker's socket. The socket belongs to the `docker` group, and
+membership lets a program do anything root could, so agents do not join it unless asked: install
+with `--docker` (the web app's install command has a box for it), or run the install command again
+with it. That adds a systemd drop-in, `/etc/systemd/system/argus-agent.service.d/docker.conf`, with
+`SupplementaryGroups=docker`; delete it and restart the agent to stop again.
+
+Rootless Docker and Podman's Docker-compatible socket work too: point `DockerSocket` at their socket.
+Containers on Windows are not watched yet.
+

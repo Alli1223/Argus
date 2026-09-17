@@ -35,7 +35,7 @@ A .NET worker service published as a self-contained, single-file executable for 
 `linux-arm64` and `win-x64`. It runs as a systemd unit on Linux and as a Windows Service on Windows.
 
 - **Collectors** sample CPU, memory, swap, load, filesystems, disk IO, network interfaces,
-  temperatures, processes and system inventory. Each OS has its own implementation behind a shared
+  temperatures, Docker containers, processes and system inventory. Each OS has its own implementation behind a shared
   interface (`/proc` and `/sys` on Linux, Win32 APIs and performance counters on Windows).
 - **Enrollment**: on first start the agent exchanges a one-time **enrollment token** (created in
   the UI) for a **host id + agent key**, which it stores in a state file readable only by the
@@ -120,9 +120,14 @@ Time-series tables (TimescaleDB hypertables, created with SQL in migrations):
 | `filesystem_metrics` | `(host_id, mount_point, time)` | Size, used, free, inode usage per filesystem |
 | `network_metrics` | `(host_id, interface, time)` | Per-interface throughput and errors |
 | `temperature_metrics` | `(host_id, device, sensor, time)` | Degrees Celsius per temperature sensor |
+| `container_metrics` | `(host_id, container, time)` | CPU, memory and traffic per running container |
+| `container_events` | `(host_id, container, time)` | Containers starting, stopping, restarting, failing health checks, appearing and going |
+
+Each host's newest container report is kept in `host_container_checks` and `host_containers`; events
+come from comparing each report with the one before.
 
 Rollups: `host_metrics_5m` and `host_metrics_1h` continuous aggregates (avg / max per bucket), and
-hourly rollups of the filesystem, network and temperature tables.
+hourly rollups of the filesystem, network, temperature and container tables.
 Raw data is compressed after a day and dropped after a configurable retention period; rollups
 are kept longer.
 

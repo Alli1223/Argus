@@ -15,6 +15,7 @@ esac
 systemctl disable --now argus-agent-update.path argus-agent >/dev/null 2>&1 || true
 rm -f /etc/systemd/system/argus-agent.service /etc/systemd/system/argus-agent-update.service \
   /etc/systemd/system/argus-agent-update.path
+rm -rf /etc/systemd/system/argus-agent.service.d
 systemctl daemon-reload
 rm -rf /opt/argus-agent
 

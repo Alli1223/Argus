@@ -9,11 +9,14 @@
 #   --token TOKEN   Enrollment token from the web UI. Required for a first install;
 #                   reinstalling an already registered agent keeps its identity.
 #   --binary PATH   Install this agent binary instead of downloading it from the server.
+#   --docker        Let the agent watch Docker's containers. It joins the docker group for that, which lets
+#                   it use Docker as root could. Reinstalling without the option leaves this as it is.
 set -euo pipefail
 
 SERVER=""
 TOKEN=""
 BINARY=""
+DOCKER=false
 INSTALL_DIR=/opt/argus-agent
 CONFIG_DIR=/etc/argus-agent
 STATE_DIR=/var/lib/argus-agent
@@ -34,12 +37,16 @@ while [ $# -gt 0 ]; do
     --server) SERVER="${2:-}"; shift 2 ;;
     --token) TOKEN="${2:-}"; shift 2 ;;
     --binary) BINARY="${2:-}"; shift 2 ;;
-    *) fail "unknown option '$1' (expected --server, --token or --binary)" ;;
+    --docker) DOCKER=true; shift ;;
+    *) fail "unknown option '$1' (expected --server, --token, --binary or --docker)" ;;
   esac
 done
 
 [ "$(id -u)" -eq 0 ] || fail "run this as root, for example with sudo"
 command -v systemctl >/dev/null 2>&1 || fail "this installer needs systemd"
+if $DOCKER && ! getent group docker >/dev/null 2>&1; then
+  fail "--docker needs Docker installed: this machine has no docker group"
+fi
 
 SERVER="${SERVER%/}"
 case "$SERVER" in
@@ -120,6 +127,15 @@ fi
 for unit in "${UNITS[@]}"; do
   install -m 0644 "$WORK/$unit" "/etc/systemd/system/$unit"
 done
+
+if $DOCKER; then
+  step "Letting the agent watch Docker's containers"
+  install -d -m 0755 "/etc/systemd/system/$SERVICE.service.d"
+  printf '%s\n' "[Service]" \
+    "# Docker's socket belongs to the docker group. Using it is as good as root on this machine." \
+    "SupplementaryGroups=docker" > "/etc/systemd/system/$SERVICE.service.d/docker.conf"
+  chmod 0644 "/etc/systemd/system/$SERVICE.service.d/docker.conf"
+fi
 systemctl daemon-reload
 systemctl enable --now argus-agent-update.path >/dev/null
 systemctl enable --now "$SERVICE" >/dev/null
