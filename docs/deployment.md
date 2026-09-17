@@ -22,7 +22,7 @@ publishes on GitHub's container registry.
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
-git checkout v0.3.0    # the latest release, from https://github.com/Alli1223/Argus/releases
+git checkout v0.4.0    # the latest release, from https://github.com/Alli1223/Argus/releases
 cp deploy/.env.example deploy/.env
 ```
 
