@@ -75,6 +75,8 @@ All paths start with `/api`.
 | `GET /hosts/{id}/containers` | The host's Docker containers from its newest report: `checkedAt` (null if its agent has never reported any), `engineVersion`, a `problem` when the agent could not read Docker, `actionsEnabled`, and `containers`, each with its `state`, `health`, `restartCount`, `restartsLastHour`, `exitCode`, times, Compose `composeProject` and `composeService`, `ports` and newest `usage`. |
 | `GET /hosts/{id}/containers/{name}` | One container, with its latest `events` (such as `started`, `stopped`, `restarted`, `unhealthy`), newest first. |
 | `GET /hosts/{id}/containers/{name}/metrics` | A container's CPU (`cpu`, `cpuMax`), memory (`memory`, `memoryLimit`) and traffic (`netRx`, `netTx`) over time. |
+| `POST /hosts/{id}/containers/{name}/start`, `/stop`, `/restart` | Starts, stops or restarts the container through its host's agent. Answers `204` once done; `409` when the machine does not allow container actions or its agent is not connected; `502` with Docker's reason when it refused; `504` when the agent did not answer in time. |
+| `GET /hosts/{id}/containers/{name}/logs` | The container's newest log `lines` (`time`, `stream` of `stdout` or `stderr`, `text`), read through its agent: `tail` lines, 200 by default and at most 5000. `truncated` says whether older lines were left out. Same errors as above. |
 | `GET /containers` | Every host you can see that reports containers, with its containers. |
 | `GET /hosts/{id}/temperatures` | Each temperature sensor over time, in degrees Celsius. |
 | `GET /hosts/temperatures` | The temperature history of every host that reported temperatures in the range, by name: `hostId`, `displayName` and `history`. |
@@ -213,6 +215,8 @@ they register (`Authorization: Bearer argus_ak_…`), not with a session.
 | --- | --- |
 | `POST /api/agent/v1/register` | Exchanges an enrollment token (`argus_et_…`) and a description of the machine for a host id and key. |
 | `POST /api/agent/v1/metrics` | Sends a batch of up to 500 readings. The answer carries the settings the agent should use. |
+| `GET /api/agent/v1/commands` | Waits up to 20 seconds for commands for the agent: container start, stop, restart and logs. Only agents that allow container actions ask. `204` when none came. |
+| `POST /api/agent/v1/commands/results` | The agent's answer to a command. |
 | `PUT /api/agent/v1/inventory` | Updates what the machine is. |
 | `GET /api/agent/v1/update/offer` | The update the agent was asked to install: its `version`, `sha256` and `size`. `204` when there is none. Metrics responses carry the same offer as `update`. |
 | `GET /api/agent/v1/update/download` | The offered build. |

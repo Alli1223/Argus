@@ -40,6 +40,9 @@ A .NET worker service published as a self-contained, single-file executable for 
 - **Enrollment**: on first start the agent exchanges a one-time **enrollment token** (created in
   the UI) for a **host id + agent key**, which it stores in a state file readable only by the
   service account.
+- **Commands**: on machines that allow container actions, the agent keeps a request open with the
+  server for commands and carries out the few there are: start, stop and restart a container, and read
+  its logs.
 - **Transport**: samples are buffered in a bounded in-memory queue and posted in batches. If the
   server is unreachable the agent keeps buffering and retries with exponential backoff, so short
   outages do not lose data. Responses can carry settings (e.g. collection interval) from the server.
