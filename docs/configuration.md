@@ -174,6 +174,6 @@ with `--docker` (the web app's install command has a box for it), or run the ins
 with it. That adds a systemd drop-in, `/etc/systemd/system/argus-agent.service.d/docker.conf`, with
 `SupplementaryGroups=docker`; delete it and restart the agent to stop again.
 
-Rootless Docker and Podman's Docker-compatible socket work too: point `DockerSocket` at their socket.
-Containers on Windows are not watched yet.
+If Docker's socket is somewhere else, point `DockerSocket` at it. Containers on Windows are not
+watched yet.
 
