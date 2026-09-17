@@ -1,7 +1,7 @@
 import { formatBytes, formatPercent, formatRate, formatTemperature } from "../../lib/format";
 
-/** How a chart's values read: percentages, byte rates, load averages or temperatures. */
-export type ChartUnit = "percent" | "bytesPerSecond" | "load" | "celsius";
+/** How a chart's values read: percentages, bytes, byte rates, load averages or temperatures. */
+export type ChartUnit = "percent" | "bytes" | "bytesPerSecond" | "load" | "celsius";
 
 /** One line on a chart. Values line up with the chart's timestamps; null is a gap. */
 export interface ChartSeries {
@@ -23,6 +23,7 @@ export const BYTE_INCREMENTS = [0, 1, 2, 3, 4].flatMap((power) =>
 export function formatValue(value: number | null | undefined, unit: ChartUnit): string {
   if (value == null || !Number.isFinite(value)) return MISSING;
   if (unit === "percent") return formatPercent(value, 1);
+  if (unit === "bytes") return formatBytes(value);
   if (unit === "bytesPerSecond") return formatRate(value);
   if (unit === "celsius") return formatTemperature(value);
   return value.toFixed(2);
@@ -31,6 +32,7 @@ export function formatValue(value: number | null | undefined, unit: ChartUnit): 
 /** An axis tick, without needless decimals: "50%", "1 MB/s", "1.5", "60 °C". */
 export function formatTick(value: number, unit: ChartUnit): string {
   if (unit === "percent") return `${Math.round(value)}%`;
+  if (unit === "bytes") return formatBytes(value).replace(/\.0 /, " ");
   if (unit === "bytesPerSecond") return `${formatBytes(value).replace(/\.0 /, " ")}/s`;
   if (unit === "celsius") return `${Number(value.toFixed(1))} °C`;
   return String(Number(value.toFixed(2)));

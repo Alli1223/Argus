@@ -31,6 +31,7 @@ import classes from "./HostPage.module.css";
 import { hostCharts } from "./hostCharts";
 import { HostHeader } from "./HostHeader";
 import {
+  ContainersSection,
   FilesystemsSection,
   InterfacesSection,
   ProcessesSection,
@@ -90,6 +91,7 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
       <HostHeader host={host} />
       <NowPanel host={host} now={now} />
       <ServicesSection hostId={host.id} now={now} />
+      <ContainersSection hostId={host.id} now={now} />
       <ProcessesSection hostId={host.id} now={now} />
 
       <Title order={2} fz={17} mt="xl" mb="sm">

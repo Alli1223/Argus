@@ -41,6 +41,18 @@ export const router = createBrowserRouter([
             lazy: async () => ({ Component: (await import("../pages/host/HostPage")).HostPage }),
           },
           {
+            path: "hosts/:hostId/containers/:name",
+            lazy: async () => ({
+              Component: (await import("../pages/containers/ContainerPage")).ContainerPage,
+            }),
+          },
+          {
+            path: "containers",
+            lazy: async () => ({
+              Component: (await import("../pages/containers/ContainersPage")).ContainersPage,
+            }),
+          },
+          {
             path: "temperatures",
             lazy: async () => ({
               Component: (await import("../pages/temperatures/TemperaturesPage")).TemperaturesPage,

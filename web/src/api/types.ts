@@ -203,6 +203,91 @@ export interface HostTemperatures {
   history: MetricSeries;
 }
 
+/** What a running container used in its newest sample. */
+export interface ContainerUsageSnapshot {
+  time: string;
+  /** Share of the whole machine's CPU, 0–100. */
+  cpuPercent: number;
+  memoryBytes: number;
+  memoryLimitBytes: number | null;
+  /** Null for containers without a network of their own, such as those on the host's. */
+  netRxBytesPerSec: number | null;
+  netTxBytesPerSec: number | null;
+}
+
+export type ContainerState =
+  "created" | "running" | "paused" | "restarting" | "removing" | "exited" | "dead" | "unknown";
+
+export interface ContainerSummary {
+  name: string;
+  id: string;
+  image: string;
+  state: ContainerState;
+  health: "starting" | "healthy" | "unhealthy" | null;
+  restartCount: number;
+  /** How often Docker restarted it in the past hour. */
+  restartsLastHour: number;
+  exitCode: number | null;
+  oomKilled: boolean;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  /** When its state or health last changed, as far as Argus saw. */
+  stateSince: string;
+  restartPolicy: string | null;
+  composeProject: string | null;
+  composeService: string | null;
+  ports: string[];
+  usage: ContainerUsageSnapshot | null;
+}
+
+/** A host's containers; `checkedAt` is null when its agent has never reported any. */
+export interface HostContainers {
+  checkedAt: string | null;
+  engineVersion: string | null;
+  /** Why the agent could not read Docker. */
+  problem: string | null;
+  actionsEnabled: boolean;
+  containers: ContainerSummary[];
+}
+
+export type ContainerEventKind =
+  | "appeared"
+  | "removed"
+  | "recreated"
+  | "started"
+  | "stopped"
+  | "restarting"
+  | "restarted"
+  | "paused"
+  | "died"
+  | "unhealthy"
+  | "healthy";
+
+export interface ContainerEventInfo {
+  time: string;
+  kind: ContainerEventKind;
+  detail: string | null;
+  count: number;
+}
+
+export interface ContainerDetail {
+  hostId: string;
+  hostName: string;
+  actionsEnabled: boolean;
+  container: ContainerSummary;
+  events: ContainerEventInfo[];
+}
+
+export interface ContainerHost {
+  hostId: string;
+  hostName: string;
+  checkedAt: string;
+  problem: string | null;
+  actionsEnabled: boolean;
+  containers: ContainerSummary[];
+}
+
 export interface FilesystemSnapshot {
   mountPoint: string;
   device: string | null;
