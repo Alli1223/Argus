@@ -17,6 +17,8 @@ namespace Argus.Contracts.Agent;
 [JsonSerializable(typeof(AgentSettings))]
 [JsonSerializable(typeof(MetricsBatch))]
 [JsonSerializable(typeof(ContainerReport))]
+[JsonSerializable(typeof(AgentCommandBatch))]
+[JsonSerializable(typeof(AgentCommandResult))]
 [JsonSerializable(typeof(MetricsBatchResponse))]
 [JsonSerializable(typeof(AgentUpdateOffer))]
 [JsonSerializable(typeof(AgentUpdateResult))]
