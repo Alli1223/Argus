@@ -180,6 +180,26 @@ public sealed class ContainerStore(NpgsqlDataSource dataSource)
             });
     }
 
+    /// <summary>Whether the host has a container of that name, and whether its machine allows container actions.</summary>
+    public async Task<(bool Exists, bool ActionsEnabled)> GetActionTargetAsync(Guid hostId, string name, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var row = await connection.QuerySingleAsync<ActionTargetRow>(new CommandDefinition("""
+            SELECT EXISTS (SELECT 1 FROM host_containers WHERE host_id = @host_id AND name = @name) AS exists,
+                   COALESCE((SELECT actions_enabled FROM host_container_checks WHERE host_id = @host_id), false) AS actions_enabled
+            """, new { host_id = hostId, name }, cancellationToken: cancellationToken));
+        return (row.Exists, row.ActionsEnabled);
+    }
+
+    /// <summary>Notes on the container's events that someone asked for it to be started, stopped or restarted.</summary>
+    public async Task RecordRequestAsync(Guid hostId, string name, string kind, string? requestedBy, DateTimeOffset at, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "INSERT INTO container_events (time, host_id, container, kind, detail, count) VALUES (@time, @host_id, @name, @kind, @detail, 1)",
+            new { time = at, host_id = hostId, name, kind, detail = requestedBy }, cancellationToken: cancellationToken));
+    }
+
     private static async Task SaveAsync(
         NpgsqlConnection connection, NpgsqlTransaction transaction, Guid hostId, ContainerChangeSet changes, CancellationToken cancellationToken)
     {
@@ -324,6 +344,12 @@ public sealed class ContainerStore(NpgsqlDataSource dataSource)
             UsageTime is { } time
                 ? new ContainerUsageSnapshot(Utc(time), CpuPct ?? 0, MemUsedBytes ?? 0, MemLimitBytes, NetRxBps, NetTxBps)
                 : null);
+    }
+
+    private sealed class ActionTargetRow
+    {
+        public bool Exists { get; set; }
+        public bool ActionsEnabled { get; set; }
     }
 
     private sealed class EventRow
