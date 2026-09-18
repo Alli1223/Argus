@@ -248,6 +248,14 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Web: an Email section on the Settings page with the mail server, a test email, and where the settings in use come from
 - [ ] More settings in the app as they come up (public URL, registration, retention)
 
+## Phase 21 — The agent in a container
+
+- [x] Agent: `HostRoot`, so an agent in a container reads the machine's /proc, /sys, /etc and disks rather than its own
+- [x] Image `ghcr.io/alli1223/argus-agent`, published with the release, for machines without systemd (NAS boxes)
+- [x] Web: a Container tab in the install commands, with Docker's socket and actions as boxes
+- [x] Smoke test runs the agent from its image and checks it reports the machine, not the container
+- [ ] Agents in containers cannot update themselves; the image has to be pulled
+
 ---
 
 ## Future ideas (not scheduled)

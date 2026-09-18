@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing a tag such as v0.3.0 publishes the server and updater images to GitHub's container registry,
+# Pushing a tag such as v0.3.0 publishes the server, agent and updater images to GitHub's container registry,
 # then a GitHub release with the agents for every platform. Servers offer a release as soon as it is
 # published, so the images come first. The tag must match VersionPrefix in Directory.Build.props, so
 # builds from the tagged source carry the same version. See docs/releasing.md.
@@ -57,6 +57,20 @@ jobs:
             ${{ steps.version.outputs.registry }}/argus:${{ steps.version.outputs.version }}
             ${{ steps.version.outputs.registry }}/argus:latest
           # The updater reads the version from this label.
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Agent
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/agent/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.version.outputs.registry }}/argus-agent:${{ steps.version.outputs.version }}
+            ${{ steps.version.outputs.registry }}/argus-agent:latest
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

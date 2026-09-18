@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end check of the production setup: start deploy/docker-compose.yml, set up the first
-# account, enroll a real agent (downloaded from the server itself) and wait for its metrics.
+# account, enroll a real agent (downloaded from the server itself), wait for its metrics, then do the
+# same with the agent's own image, which watches the machine from a container.
 #
 #   build/smoke-test.sh
 #
@@ -15,6 +16,7 @@ BASE="http://127.0.0.1:$PORT"
 WORK="$(mktemp -d)"
 JAR="$WORK/cookies"
 AGENT_PID=""
+AGENT_CONTAINER="argus-smoke-agent-$$"
 
 step() { echo "==> $*"; }
 fail() { echo "smoke test failed: $*" >&2; exit 1; }
@@ -25,6 +27,7 @@ compose() {
 
 cleanup() {
   [ -n "$AGENT_PID" ] && kill "$AGENT_PID" 2>/dev/null || true
+  docker rm --force "$AGENT_CONTAINER" >/dev/null 2>&1 || true
   if [ "${KEEP:-}" != "1" ]; then
     compose down --volumes --remove-orphans >/dev/null 2>&1 || true
   fi
@@ -81,11 +84,43 @@ for _ in $(seq 1 30); do
     POINTS="$(api "$BASE/api/hosts/$HOST_ID/metrics" | json 'sum(1 for v in data["series"]["cpu"] if v is not None)')"
     echo "    host $HOST_ID reports; $POINTS CPU reading(s) in the last hour"
     [ "$POINTS" -ge 1 ] || fail "the host has no stored metrics"
+    METRICS_SEEN=1
+    break
+  fi
+  sleep 2
+done
+
+if [ -z "${METRICS_SEEN:-}" ]; then
+  tail -20 "$WORK/agent.log" >&2
+  fail "no metrics arrived from the agent within a minute"
+fi
+
+# The same machine, watched from a container: it reads the machine through /host, so it reports this
+# machine's name and disks rather than the container's, and Docker's socket shows the stack running here.
+step "Building the agent image"
+docker build --quiet --file "$ROOT/deploy/agent/Dockerfile" --tag argus-smoke/agent:smoke "$ROOT" >/dev/null
+
+step "Running the agent in a container"
+kill "$AGENT_PID" 2>/dev/null || true
+AGENT_PID=""
+docker run --detach --name "$AGENT_CONTAINER" --network host --pid host \
+  --mount type=bind,source=/,target=/host,readonly,bind-propagation=rslave \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  --env ARGUS_SERVERURL="$BASE" --env ARGUS_ENROLLMENTTOKEN="$TOKEN" \
+  --env ARGUS_COLLECTIONINTERVALSECONDS=5 argus-smoke/agent:smoke >/dev/null
+
+step "Waiting for the machine's containers to arrive"
+for _ in $(seq 1 30); do
+  CONTAINERS="$(api "$BASE/api/hosts/$HOST_ID/containers" | json 'len(data["containers"])')"
+  if [ "$CONTAINERS" -ge 1 ]; then
+    NAME="$(api "$BASE/api/hosts/$HOST_ID" | json 'data["hostname"]')"
+    echo "    $CONTAINERS container(s) reported for $NAME"
+    [ "$NAME" = "$(hostname)" ] || fail "the container reported the hostname '$NAME', not this machine's '$(hostname)'"
     step "Smoke test passed"
     exit 0
   fi
   sleep 2
 done
 
-tail -20 "$WORK/agent.log" >&2
-fail "no metrics arrived from the agent within a minute"
+docker logs "$AGENT_CONTAINER" 2>&1 | tail -20 >&2
+fail "the agent in a container reported no containers within a minute"

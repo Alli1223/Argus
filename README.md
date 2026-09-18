@@ -40,8 +40,8 @@ upgrades and backups.
 ## How it fits together
 
 - **Agent** ([`src/Argus.Agent`](src/Argus.Agent)): a self-contained .NET program that runs as a
-  systemd or Windows service. It takes a reading every 15 seconds and keeps readings while the
-  server is out of reach.
+  systemd or Windows service, or as a container on machines with no systemd, such as a NAS. It takes
+  a reading every 15 seconds and keeps readings while the server is out of reach.
 - **Server** ([`src/Argus.Server`](src/Argus.Server)): ASP.NET Core on .NET 10. It stores readings
   in PostgreSQL with TimescaleDB, evaluates alert rules, sends notifications and serves the web app
   and the agent downloads.

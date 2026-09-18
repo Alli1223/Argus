@@ -172,7 +172,45 @@ starting with `ARGUS_` override the file: `ARGUS_SERVERURL`, `ARGUS_ENROLLMENTTO
 | `BufferCapacity` | `2880` | 10–100000 | How many readings the agent holds while the server is unreachable: 12 hours at the default pace. |
 | `ContainerActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus read its containers' logs and start, stop and restart them; see [Containers](#containers). |
 | `DockerSocket` | `/var/run/docker.sock` | a path | Docker's socket. On Linux the agent lists containers whenever the socket exists and it may use it; see [Containers](#containers). |
+| `HostRoot` | none | a path | Where the machine's own filesystem is mounted when the agent runs in a container, such as `/host`; see [The agent in a container](#the-agent-in-a-container). |
 | `DriveTemperatures` | `false` | `true` or `false` | Also reads the temperatures of SATA drives on Linux (the `drivetemp` driver). Off by default: on some drives, reading the temperature resets the spin-down timer, so drives meant to sleep would stay awake. NVMe drives are always read. |
+
+### The agent in a container
+
+Some machines cannot run the agent as a service: NAS boxes and appliances often have no systemd, and
+some have no package manager either. They do run Docker, so the agent has an image of its own,
+`ghcr.io/alli1223/argus-agent`, which watches the machine from a container.
+
+```sh
+docker run -d --name argus-agent --restart always \
+  --network host --pid host \
+  --mount type=bind,source=/,target=/host,readonly,bind-propagation=rslave \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v argus-agent:/var/lib/argus-agent \
+  -e ARGUS_SERVERURL=https://argus.example.com \
+  -e ARGUS_ENROLLMENTTOKEN=argus_et_… \
+  -e ARGUS_CONTAINERACTIONS=true \
+  ghcr.io/alli1223/argus-agent:latest
+```
+
+Each part earns its place:
+
+- `--mount … target=/host,readonly` is the machine itself, which `HostRoot` (set to `/host` in the
+  image) tells the agent to read: its `/proc`, its `/sys`, its `/etc` and the free space on its disks,
+  rather than the container's. `rslave` carries mounts made later, such as a disk plugged in, into the
+  container. Nothing is written through it.
+- `--pid host` lets the agent see the machine's processes; without it, the busiest processes are the
+  container's own.
+- `--network host` gives the machine's addresses and its own network counters.
+- The Docker socket is what lists containers, and `ARGUS_CONTAINERACTIONS=true` allows their logs and
+  start, stop and restart. Leave both out to watch the machine only.
+- The named volume keeps the agent's identity, so a restarted container is the same host in Argus and
+  not a new one.
+
+The agent runs as root in the container, because reading another machine's `/proc` and using Docker's
+socket are root's to do. It cannot update itself there: the image is the version, so upgrade it as any
+other container, with `docker pull` and a fresh `docker run`, or through whatever the NAS offers.
+Services are not watched, as a machine without systemd has none to watch.
 
 ### Containers
 

@@ -31,6 +31,12 @@ public sealed class AgentConfig
     public string DockerSocket { get; set; } = "/var/run/docker.sock";
 
     /// <summary>
+    /// Where the machine's own filesystem is mounted when the agent runs in a container, such as
+    /// <c>/host</c>. Empty when the agent runs on the machine itself, which is the usual case.
+    /// </summary>
+    public string? HostRoot { get; set; }
+
+    /// <summary>
     /// Lets people who can see this machine in Argus read its containers' logs and start, stop and restart
     /// them. Off by default, so that an Argus login alone never controls a machine's containers.
     /// </summary>

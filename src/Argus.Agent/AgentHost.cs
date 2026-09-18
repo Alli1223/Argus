@@ -49,8 +49,8 @@ internal static class AgentHost
         builder.Services.AddSingleton(agentConfig);
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton(new StateStore(agentConfig.ResolvedStateDirectory));
-        builder.Services.AddSingleton(services => PlatformCollectors.CreateMetricsSource(services.GetRequiredService<ILoggerFactory>()));
-        builder.Services.AddSingleton(_ => PlatformCollectors.CreateSystemInfoSource());
+        builder.Services.AddSingleton(services => PlatformCollectors.CreateMetricsSource(services.GetRequiredService<ILoggerFactory>(), agentConfig));
+        builder.Services.AddSingleton(_ => PlatformCollectors.CreateSystemInfoSource(agentConfig));
         builder.Services.AddSingleton(services =>
             PlatformCollectors.CreateServiceStatusSource(services.GetRequiredService<ILoggerFactory>()));
         builder.Services.AddSingleton(services =>

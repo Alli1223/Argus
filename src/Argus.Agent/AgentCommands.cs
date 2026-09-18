@@ -68,12 +68,15 @@ internal static class AgentCommands
     public static async Task<int> CollectAsync(CancellationToken cancellationToken)
     {
         using var loggers = LoggerFactory.Create(logging => logging.AddSimpleConsole());
+
+        // Default settings with the environment on top: the config file is often readable only by the
+        // service, but ARGUS_HOSTROOT and the rest matter when this runs in the agent's container.
+        var config = new ConfigurationBuilder().AddEnvironmentVariables("ARGUS_").Build().Get<AgentConfig>() ?? new AgentConfig();
         var collector = new SampleCollector(
-            PlatformCollectors.CreateMetricsSource(loggers),
+            PlatformCollectors.CreateMetricsSource(loggers, config),
             new ProcessCollector(),
-            // Default settings: the config file is often readable only by the service.
-            PlatformCollectors.CreateTemperatureSource(loggers, new AgentConfig()),
-            PlatformCollectors.CreateContainerSource(loggers, new AgentConfig(), TimeProvider.System),
+            PlatformCollectors.CreateTemperatureSource(loggers, config),
+            PlatformCollectors.CreateContainerSource(loggers, config, TimeProvider.System),
             PlatformCollectors.CreateServiceStatusSource(loggers),
             TimeProvider.System);
         collector.Prime();
@@ -81,7 +84,7 @@ internal static class AgentCommands
         // Rates (CPU, disk, network) need an interval to measure over.
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
         var sample = collector.Collect();
-        var inventory = new InventoryReport { AgentVersion = AgentInfo.Version, SystemInfo = PlatformCollectors.CreateSystemInfoSource().Collect() };
+        var inventory = new InventoryReport { AgentVersion = AgentInfo.Version, SystemInfo = PlatformCollectors.CreateSystemInfoSource(config).Collect() };
 
         var options = new JsonSerializerOptions(AgentJsonContext.Default.Options) { WriteIndented = true };
         Console.WriteLine(JsonSerializer.Serialize(inventory, options.GetTypeInfo(typeof(InventoryReport))));

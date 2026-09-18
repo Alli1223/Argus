@@ -8,11 +8,16 @@ export function serverAddress(publicUrl: string | null | undefined, origin: stri
 export interface InstallCommands {
   linux: string;
   windows: string;
+  docker: string;
 }
+
+/** The agent image, which machines without systemd run instead of the service. */
+export const AGENT_IMAGE = "ghcr.io/alli1223/argus-agent:latest";
 
 /**
  * One-line installs: fetch the agent from this server, register it with the token, run it as a service.
- * With `docker`, the Linux agent may also watch Docker's containers.
+ * With `docker`, the Linux agent may also watch Docker's containers. The container form watches the
+ * machine from an image instead, for NAS boxes and appliances that have no systemd to run a service.
  */
 export function installCommands(
   server: string,
@@ -21,11 +26,25 @@ export function installCommands(
 ): InstallCommands {
   // Container actions need Docker, and the install script's option says so itself.
   const linuxOption = containerActions ? " --container-actions" : docker ? " --docker" : "";
+  // The machine's own filesystem at /host, its processes and its network; Docker's socket only when asked.
+  const dockerLines = [
+    "docker run -d --name argus-agent --restart always \\",
+    "  --network host --pid host \\",
+    "  --mount type=bind,source=/,target=/host,readonly,bind-propagation=rslave \\",
+    ...(docker || containerActions ? ["  -v /var/run/docker.sock:/var/run/docker.sock \\"] : []),
+    "  -v argus-agent:/var/lib/argus-agent \\",
+    `  -e ARGUS_SERVERURL=${server} \\`,
+    `  -e ARGUS_ENROLLMENTTOKEN=${token} \\`,
+    ...(containerActions ? ["  -e ARGUS_CONTAINERACTIONS=true \\"] : []),
+    `  ${AGENT_IMAGE}`,
+  ];
+
   return {
     linux: `curl -fsSL ${server}/downloads/install.sh | sudo bash -s -- --server ${server} --token ${token}${linuxOption}`,
     windows:
       `& ([scriptblock]::Create((Invoke-RestMethod ${server}/downloads/install.ps1)))` +
       ` -Server ${server} -Token ${token}`,
+    docker: dockerLines.join("\n"),
   };
 }
 
