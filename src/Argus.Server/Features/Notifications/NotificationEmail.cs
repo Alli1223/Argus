@@ -66,6 +66,22 @@ public static class NotificationEmail
         return new EmailContent(subject, html, text.ToString());
     }
 
+    /// <summary>The test an administrator sends from the email settings, before any channel exists.</summary>
+    public static EmailContent ForServerTest()
+    {
+        const string Subject = "Test from Argus";
+        const string Message = "Argus can send email: alerts will arrive at this address.";
+        var html = Layout(
+            Subject,
+            accent: "#414cc7",
+            status: "Test",
+            heading: Subject,
+            body: $"""<p style="margin:0;color:{Ink}">{Encode(Message)}</p>""",
+            footer: "Someone sent this test from the email settings in Argus.");
+
+        return new EmailContent(Subject, html, $"{Subject}\n\n{Message}\n");
+    }
+
     public static EmailContent ForTest(string channelName)
     {
         const string Subject = "Test from Argus";

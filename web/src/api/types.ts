@@ -506,3 +506,35 @@ export interface NotificationSupport {
   reportHourUtc: number;
   weeklyReportDay: string;
 }
+
+/** How Argus connects to the mail server. `Auto` is TLS on port 465 and STARTTLS elsewhere. */
+export type SmtpSecurity = "Auto" | "None" | "StartTls" | "SslOnConnect";
+
+/** Where the mail server settings in use come from. */
+export type EmailSettingsSource = "None" | "File" | "App";
+
+/** The mail server Argus sends through. The password is never sent back, only `hasPassword`. */
+export interface EmailSettings {
+  configured: boolean;
+  source: EmailSettingsSource;
+  host: string | null;
+  port: number;
+  security: SmtpSecurity;
+  username: string | null;
+  hasPassword: boolean;
+  from: string | null;
+  fromName: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+/** New mail server settings. Leave `password` out to keep the saved one; send "" to clear it. */
+export interface EmailSettingsRequest {
+  host: string;
+  port: number;
+  security: SmtpSecurity;
+  username: string | null;
+  password?: string | null;
+  from: string;
+  fromName: string;
+}

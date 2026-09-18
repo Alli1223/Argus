@@ -241,6 +241,13 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [ ] Check `--docker` with the sandboxed systemd unit on a real machine
 - [ ] Containers on Windows (Docker Desktop's named pipe)
 
+## Phase 20 — Settings in the web app
+
+- [x] Server: server_settings table and a store that puts saved settings in front of the Compose file's, with the mail server password encrypted
+- [x] API: `GET`, `PUT` and `DELETE /settings/email`, and `POST /settings/email/test`, administrators only
+- [x] Web: an Email section on the Settings page with the mail server, a test email, and where the settings in use come from
+- [ ] More settings in the app as they come up (public URL, registration, retention)
+
 ---
 
 ## Future ideas (not scheduled)

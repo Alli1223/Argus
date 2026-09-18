@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Argus.Server.Data;
 using Argus.Server.Features.Alerts;
 using Argus.Server.Features.Auth;
+using Argus.Server.Features.Settings;
 using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -68,8 +69,8 @@ public static class NotificationChannelEndpoints
         var channels = routes.MapGroup("/notification-channels").WithTags("Notification channels");
 
         channels.MapGet("/", ListAsync);
-        channels.MapGet("/support", (IOptions<SmtpOptions> smtp, IOptions<ReportOptions> reports) =>
-            new NotificationSupport(smtp.Value.IsConfigured, reports.Value.SendHourUtc, reports.Value.WeeklyDay));
+        channels.MapGet("/support", async (EmailSettingsStore email, IOptions<ReportOptions> reports, CancellationToken cancellationToken) =>
+            new NotificationSupport((await email.CurrentAsync(cancellationToken)).IsConfigured, reports.Value.SendHourUtc, reports.Value.WeeklyDay));
         channels.MapGet("/{id:guid}", GetAsync);
         channels.MapPost("/", CreateAsync);
         channels.MapPut("/{id:guid}", UpdateAsync);
