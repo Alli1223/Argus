@@ -1,3 +1,4 @@
+using Argus.Server.Features.Settings;
 using Argus.Server.Infrastructure;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
@@ -33,14 +34,14 @@ public static class EmailAddresses
         && at < address.Length - 1;
 }
 
-internal sealed class EmailNotificationSender(IEmailTransport transport, IOptions<SmtpOptions> smtp, IOptions<ArgusOptions> argus)
+internal sealed class EmailNotificationSender(IEmailTransport transport, IEmailSettings settings, IOptions<ArgusOptions> argus)
     : INotificationSender
 {
     public NotificationChannelKind Kind => NotificationChannelKind.Email;
 
     public async Task SendAsync(NotificationChannel channel, NotificationDelivery delivery, CancellationToken cancellationToken)
     {
-        var options = smtp.Value;
+        var options = await settings.CurrentAsync(cancellationToken);
         if (!options.IsConfigured)
         {
             throw new InvalidOperationException("Email is not set up on this server: set Argus:Smtp:Host and Argus:Smtp:From.");
@@ -65,13 +66,13 @@ internal sealed class EmailNotificationSender(IEmailTransport transport, IOption
     }
 }
 
-internal sealed class SmtpEmailTransport(IOptions<SmtpOptions> options) : IEmailTransport
+internal sealed class SmtpEmailTransport(IEmailSettings settings) : IEmailTransport
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
     public async Task SendAsync(MimeMessage message, CancellationToken cancellationToken)
     {
-        var smtp = options.Value;
+        var smtp = await settings.CurrentAsync(cancellationToken);
         if (!smtp.IsConfigured)
         {
             throw new InvalidOperationException("Email is not set up on this server: set Argus:Smtp:Host and Argus:Smtp:From.");

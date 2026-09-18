@@ -83,8 +83,16 @@ Retention changes apply the next time the server starts. See
 
 ### Email
 
-Email notification channels need a mail server. Without `Host`, email channels can be set up but
-cannot send, and the web app says so.
+Email notification channels need a mail server. Without one, email channels can be set up but cannot
+send, and the web app says so.
+
+Administrators set the mail server under **Settings**, which is the simplest way and needs no access
+to the machine Argus runs on: the settings are kept in the database, the password encrypted with this
+server's data protection keys, and **Send test** says what the mail server answered. Settings saved
+there are used in place of the ones below, which stay as they are in the file until someone forgets
+the saved ones again.
+
+The settings below are the other way to do it, for servers set up from files alone.
 
 | Setting | Default | Allowed | What it does |
 | --- | --- | --- | --- |

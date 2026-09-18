@@ -149,6 +149,15 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
 | `GET /updates/server` | Whether Argus can install releases itself (`available`, or why not in `unavailable`), a `pendingVersion` the updater has not started on yet, and its latest update in `lastRun`: `from`, `to`, `state`, `error`, `backup`, the new version's `serverLog` when it was rolled back, and a `log` of steps. |
 | `POST /updates/server` | Asks the updater to install the latest release: `version`. Answers `202`, or `409` with the reason when it cannot, such as when an update is already running. |
 
+### Settings (administrators)
+
+| Method and path | What it does |
+| --- | --- |
+| `GET /settings/email` | The mail server in use: `host`, `port`, `security`, `username`, `from`, `fromName`, whether it is `configured`, whether a password is kept (`hasPassword`), and a `source` of `App`, `File` or `None`. The password itself is never sent back. |
+| `PUT /settings/email` | Saves the mail server for the whole server, in place of anything the Compose file sets. Leave `password` out to keep the saved one, or send `""` to clear it. |
+| `DELETE /settings/email` | Forgets the saved settings, so the Compose file's are used again. |
+| `POST /settings/email/test` | Sends a test email to `to` with the saved settings. `204` when the mail server took it; `502` with its answer when it did not; `409` when no mail server is set. Rate limited. |
+
 ### Notification channels
 
 | Method and path | What it does |

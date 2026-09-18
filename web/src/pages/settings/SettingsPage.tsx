@@ -1,4 +1,5 @@
 import { PageHeader } from "../../components/PageHeader";
+import { EmailSettingsSection } from "./EmailSettingsSection";
 import { ServerUpdatesSection } from "./ServerUpdatesSection";
 
 /** Settings for the Argus server as a whole, for administrators. */
@@ -7,6 +8,7 @@ export function SettingsPage() {
     <>
       <PageHeader title="Settings" description="The Argus server itself." />
       <ServerUpdatesSection />
+      <EmailSettingsSection />
     </>
   );
 }
