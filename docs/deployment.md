@@ -22,7 +22,7 @@ publishes on GitHub's container registry.
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
-git checkout v0.5.0    # the latest release, from https://github.com/Alli1223/Argus/releases
+git checkout v0.5.1    # the latest release, from https://github.com/Alli1223/Argus/releases
 cp deploy/.env.example deploy/.env
 ```
 
@@ -147,12 +147,12 @@ older version than the one running. If you would rather no container had that ac
 ### By hand
 
 Take a [backup](#back-up) first: a schema update cannot be undone except by restoring one. Then,
-here for 0.5.0:
+here for 0.5.1:
 
 ```sh
 git fetch --tags
-git checkout v0.5.0
-sed -i 's/^ARGUS_VERSION=.*/ARGUS_VERSION=0.5.0/' deploy/.env    # add the line if it is not there
+git checkout v0.5.1
+sed -i 's/^ARGUS_VERSION=.*/ARGUS_VERSION=0.5.1/' deploy/.env    # add the line if it is not there
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
