@@ -6,8 +6,10 @@ namespace Argus.Agent.Collection.Linux;
 
 /// <summary>Reads CPU, memory, load, disk, filesystem and network metrics from /proc and /sys.</summary>
 [SupportedOSPlatform("linux")]
-internal sealed class LinuxMetricsSource(ILogger<LinuxMetricsSource> logger) : ISystemMetricsSource
+internal sealed class LinuxMetricsSource(ILogger<LinuxMetricsSource> logger, HostPaths? paths = null) : ISystemMetricsSource
 {
+    private readonly HostPaths _paths = paths ?? HostPaths.Local;
+
     private CpuTimes? _cpu;
     private List<DiskCounters>? _disks;
     private List<InterfaceCounters>? _interfaces;
@@ -21,20 +23,20 @@ internal sealed class LinuxMetricsSource(ILogger<LinuxMetricsSource> logger) : I
         var seconds = _lastReading == 0 ? 0 : Stopwatch.GetElapsedTime(_lastReading, now).TotalSeconds;
         _lastReading = now;
 
-        var cpuNow = ProcParsers.ParseCpuTimes(File.ReadAllText("/proc/stat"));
+        var cpuNow = ProcParsers.ParseCpuTimes(File.ReadAllText(_paths.InProc("stat")));
         var cpu = _cpu is { } cpuBefore ? CpuTimes.Usage(cpuBefore, cpuNow) : new CpuMetrics { UsagePercent = 0 };
         _cpu = cpuNow;
 
-        var disksNow = ProcParsers.ParseDiskstats(LinuxFiles.ReadOrEmpty("/proc/diskstats"));
+        var disksNow = ProcParsers.ParseDiskstats(LinuxFiles.ReadOrEmpty(_paths.InProc("diskstats")));
         DiskIoMetrics? diskIo = null;
         if (_disks is not null && seconds > 0)
         {
-            diskIo = ProcParsers.DiskRates(_disks, disksNow, LinuxFiles.WithDevice("/sys/block"), seconds);
+            diskIo = ProcParsers.DiskRates(_disks, disksNow, LinuxFiles.WithDevice($"{_paths.Sys}/block"), seconds);
         }
 
         _disks = disksNow;
 
-        var interfacesNow = ProcParsers.ParseNetDev(LinuxFiles.ReadOrEmpty("/proc/net/dev"));
+        var interfacesNow = ProcParsers.ParseNetDev(LinuxFiles.ReadOrEmpty(_paths.NetDev));
         NetworkMetrics? network = null;
         List<NetworkInterfaceMetrics> interfaces = [];
         if (_interfaces is not null && seconds > 0)
@@ -46,16 +48,16 @@ internal sealed class LinuxMetricsSource(ILogger<LinuxMetricsSource> logger) : I
 
         return new SystemReading(
             cpu,
-            ProcParsers.ParseMeminfo(File.ReadAllText("/proc/meminfo")),
-            ProcParsers.ParseLoadavg(File.ReadAllText("/proc/loadavg")),
+            ProcParsers.ParseMeminfo(File.ReadAllText(_paths.InProc("meminfo"))),
+            ProcParsers.ParseLoadavg(File.ReadAllText(_paths.InProc("loadavg"))),
             diskIo,
             network,
-            (long)ProcParsers.ParseUptimeSeconds(File.ReadAllText("/proc/uptime")),
+            (long)ProcParsers.ParseUptimeSeconds(File.ReadAllText(_paths.InProc("uptime"))),
             ReadFilesystems(),
             interfaces);
     }
 
-    private static (NetworkMetrics Total, List<NetworkInterfaceMetrics> Interfaces) NetworkRates(
+    private (NetworkMetrics Total, List<NetworkInterfaceMetrics> Interfaces) NetworkRates(
         List<InterfaceCounters> previous, List<InterfaceCounters> current, double seconds)
     {
         var before = new Dictionary<string, InterfaceCounters>(StringComparer.Ordinal);
@@ -64,7 +66,7 @@ internal sealed class LinuxMetricsSource(ILogger<LinuxMetricsSource> logger) : I
             before.TryAdd(counters.Name, counters);
         }
 
-        var physical = LinuxFiles.WithDevice("/sys/class/net");
+        var physical = LinuxFiles.WithDevice($"{_paths.Sys}/class/net");
         var interfaces = new List<NetworkInterfaceMetrics>();
         double physicalRx = 0, physicalTx = 0;
         var sawPhysical = false;
@@ -96,26 +98,26 @@ internal sealed class LinuxMetricsSource(ILogger<LinuxMetricsSource> logger) : I
         return (total, interfaces);
     }
 
-    private static bool IsUp(string interfaceName) =>
-        LinuxFiles.ReadOrEmpty($"/sys/class/net/{interfaceName}/operstate").Trim() is "up" or "unknown";
+    private bool IsUp(string interfaceName) =>
+        LinuxFiles.ReadOrEmpty($"{_paths.Sys}/class/net/{interfaceName}/operstate").Trim() is "up" or "unknown";
 
     private List<FilesystemMetrics> ReadFilesystems()
     {
-        var mounts = ProcParsers.SelectFilesystems(ProcParsers.ParseMounts(LinuxFiles.ReadOrEmpty("/proc/self/mounts")));
+        var mounts = ProcParsers.SelectFilesystems(ProcParsers.ParseMounts(LinuxFiles.ReadOrEmpty(_paths.Mounts)));
         var filesystems = new List<FilesystemMetrics>(mounts.Count);
 
         foreach (var mount in mounts)
         {
             try
             {
-                var drive = new DriveInfo(mount.MountPoint);
+                var drive = new DriveInfo(_paths.Mounted(mount.MountPoint));
                 var total = drive.TotalSize;
                 if (total <= 0)
                 {
                     continue;
                 }
 
-                var (inodesTotal, inodesUsed) = Statvfs.TryGetInodes(mount.MountPoint);
+                var (inodesTotal, inodesUsed) = Statvfs.TryGetInodes(_paths.Mounted(mount.MountPoint));
                 filesystems.Add(new FilesystemMetrics
                 {
                     MountPoint = mount.MountPoint,

@@ -283,7 +283,7 @@ function CommandBlock({ command }: { command: string }) {
 
 function InstallCommands({ token }: { token: string }) {
   const info = useServerInfo();
-  const [platform, setPlatform] = useState<"linux" | "windows">("linux");
+  const [platform, setPlatform] = useState<"linux" | "windows" | "docker">("linux");
   const [docker, setDocker] = useState(false);
   const [containerActions, setContainerActions] = useState(false);
 
@@ -297,25 +297,32 @@ function InstallCommands({ token }: { token: string }) {
         aria-label="Operating system"
         w="fit-content"
         value={platform}
-        onChange={(value) => setPlatform(value as "linux" | "windows")}
+        onChange={(value) => setPlatform(value as "linux" | "windows" | "docker")}
         data={[
           { label: "Linux", value: "linux" },
           { label: "Windows", value: "windows" },
+          { label: "Container", value: "docker" },
         ]}
       />
       <Text fz="sm">
-        {platform === "linux"
-          ? "Run this on the machine. It needs sudo, systemd and a 64-bit x86 or ARM processor."
-          : "Run this in PowerShell opened as administrator, on 64-bit Windows."}
+        {platform === "linux" &&
+          "Run this on the machine. It needs sudo, systemd and a 64-bit x86 or ARM processor."}
+        {platform === "windows" && "Run this in PowerShell opened as administrator, on 64-bit Windows."}
+        {platform === "docker" &&
+          "For machines with Docker but no systemd, such as a NAS. The agent watches the machine from a container, which Docker restarts with the machine."}
       </Text>
-      {platform === "linux" && (
+      {platform !== "windows" && (
         <Stack gap="xs">
           <Checkbox
             checked={docker || containerActions}
             disabled={containerActions}
             onChange={(event) => setDocker(event.currentTarget.checked)}
             label="Watch Docker containers"
-            description="The agent joins the docker group to read Docker, which lets it do anything root could on the machine."
+            description={
+              platform === "docker"
+                ? "The container is given Docker's socket, which lets it do anything root could on the machine."
+                : "The agent joins the docker group to read Docker, which lets it do anything root could on the machine."
+            }
           />
           <Checkbox
             checked={containerActions}

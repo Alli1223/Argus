@@ -37,6 +37,32 @@ describe("installCommands", () => {
     });
     expect(commands.linux).toMatch(/ --token argus_et_abc --container-actions$/);
   });
+
+  it("runs the agent from its image on machines without systemd", () => {
+    const plain = installCommands("https://argus.example.com", "argus_et_abc").docker;
+    expect(plain).toContain("docker run -d --name argus-agent --restart always");
+    // The machine itself, read-only, with its processes and network.
+    expect(plain).toContain("--mount type=bind,source=/,target=/host,readonly,bind-propagation=rslave");
+    expect(plain).toContain("--network host --pid host");
+    expect(plain).toContain("-e ARGUS_SERVERURL=https://argus.example.com");
+    expect(plain).toContain("-e ARGUS_ENROLLMENTTOKEN=argus_et_abc");
+    // Docker's socket is only given when the containers are wanted.
+    expect(plain).not.toContain("docker.sock");
+    expect(plain).not.toContain("ARGUS_CONTAINERACTIONS");
+    expect(plain.trimEnd()).toMatch(/ghcr\.io\/[\w-]+\/argus-agent:latest$/);
+  });
+
+  it("gives the container Docker's socket, and actions when asked", () => {
+    const watching = installCommands("https://argus.example.com", "argus_et_abc", { docker: true }).docker;
+    expect(watching).toContain("-v /var/run/docker.sock:/var/run/docker.sock");
+    expect(watching).not.toContain("ARGUS_CONTAINERACTIONS");
+
+    const acting = installCommands("https://argus.example.com", "argus_et_abc", {
+      containerActions: true,
+    }).docker;
+    expect(acting).toContain("-v /var/run/docker.sock:/var/run/docker.sock");
+    expect(acting).toContain("-e ARGUS_CONTAINERACTIONS=true");
+  });
 });
 
 describe("isInsecureAddress", () => {

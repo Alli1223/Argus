@@ -7,11 +7,11 @@ namespace Argus.Agent.Collection;
 
 internal static class PlatformCollectors
 {
-    public static ISystemMetricsSource CreateMetricsSource(ILoggerFactory loggers)
+    public static ISystemMetricsSource CreateMetricsSource(ILoggerFactory loggers, AgentConfig config)
     {
         if (OperatingSystem.IsLinux())
         {
-            return new LinuxMetricsSource(loggers.CreateLogger<LinuxMetricsSource>());
+            return new LinuxMetricsSource(loggers.CreateLogger<LinuxMetricsSource>(), Paths(config));
         }
 
         if (OperatingSystem.IsWindows())
@@ -22,11 +22,11 @@ internal static class PlatformCollectors
         throw new PlatformNotSupportedException("The Argus agent runs on Linux and Windows.");
     }
 
-    public static ISystemInfoSource CreateSystemInfoSource()
+    public static ISystemInfoSource CreateSystemInfoSource(AgentConfig config)
     {
         if (OperatingSystem.IsLinux())
         {
-            return new LinuxSystemInfoSource();
+            return new LinuxSystemInfoSource(Paths(config));
         }
 
         if (OperatingSystem.IsWindows())
@@ -59,11 +59,14 @@ internal static class PlatformCollectors
             ? new DockerContainers(config.DockerSocket, config.ContainerActions, time, loggers.CreateLogger<DockerContainers>())
             : new NoContainers();
 
+    /// <summary>Where this agent finds the machine's files: under a root of its own when containerized.</summary>
+    private static HostPaths Paths(AgentConfig config) => new(config.HostRoot);
+
     public static ITemperatureSource CreateTemperatureSource(ILoggerFactory loggers, AgentConfig config)
     {
         if (OperatingSystem.IsLinux())
         {
-            return new LinuxTemperatures(config.DriveTemperatures);
+            return new LinuxTemperatures(config.DriveTemperatures, Paths(config).Sys);
         }
 
         if (OperatingSystem.IsWindows())
