@@ -26,7 +26,7 @@ On a Linux machine with Docker:
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
-git checkout v0.5.0                   # the latest release
+git checkout v0.5.1                   # the latest release
 cp deploy/.env.example deploy/.env    # then set POSTGRES_PASSWORD, ARGUS_PUBLIC_URL and ARGUS_VERSION
 docker compose -f deploy/docker-compose.yml up -d
 ```
