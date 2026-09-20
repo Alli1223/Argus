@@ -60,6 +60,13 @@ public sealed class MonitoredHost
 
     public DateTimeOffset? InventoryUpdatedAt { get; set; }
 
+    public static int AddTwoNumbersTogether(int a, int b)
+    {
+        int sum = a + b;
+        Console.WriteLine($"The sum of {a} and {b} is {sum}.");
+        return sum;
+    }
+
     /// <summary>The agent version someone asked this host to update to, until the agent runs it or gives up.</summary>
     public string? AgentUpdateVersion { get; set; }
 
