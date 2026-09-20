@@ -21,6 +21,25 @@ export const LOAD_COLORS: Record<ChartScheme, { load1: string; load5: string; lo
   dark: { load1: "#dde1ff", load5: "#95a0f5", load15: "#5f6de9" },
 };
 
+/**
+ * Base hues for per-machine color families on the combined temperatures chart.
+ * Eight machines; more wrap (same hue, different shading — rare in practice).
+ */
+export const MACHINE_HUES: Record<ChartScheme, number[]> = {
+  light: [0, 120, 210, 30, 270, 180, 330, 60],
+  dark: [0, 130, 200, 35, 280, 175, 330, 55],
+};
+
+/** N shades of `hue` for one machine's sensor lines, stepping from dark to light. */
+export function machineShades(hue: number, n: number, scheme: ChartScheme): string[] {
+  const [lMin, lMax, sat] = scheme === "light" ? [32, 57, 74] : [45, 70, 62];
+  if (n === 1) return [`hsl(${hue}, ${sat}%, ${Math.round((lMin + lMax) / 2)}%)`];
+  return Array.from({ length: n }, (_, i) => {
+    const l = Math.round(lMin + (i / (n - 1)) * (lMax - lMin));
+    return `hsl(${hue}, ${sat}%, ${l}%)`;
+  });
+}
+
 /** Recessive furniture: axis text in the muted text tone, gridlines one step off the surface. */
 export const CHART_CHROME: Record<
   ChartScheme,
