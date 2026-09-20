@@ -26,8 +26,8 @@ export const LOAD_COLORS: Record<ChartScheme, { load1: string; load5: string; lo
  * Eight machines; more wrap (same hue, different shading — rare in practice).
  */
 export const MACHINE_HUES: Record<ChartScheme, number[]> = {
-  light: [  0, 120, 210,  30, 270, 180, 330,  60],
-  dark:  [  0, 130, 200,  35, 280, 175, 330,  55],
+  light: [0, 120, 210, 30, 270, 180, 330, 60],
+  dark: [0, 130, 200, 35, 280, 175, 330, 55],
 };
 
 /** N shades of `hue` for one machine's sensor lines, stepping from dark to light. */

@@ -1,6 +1,11 @@
 import type { HostTemperatures, MetricSeries } from "../api/types";
 import type { ChartSeries } from "../components/charts/chartData";
-import { MACHINE_HUES, SERIES_COLORS, machineShades, type ChartScheme } from "../components/charts/chartPalette";
+import {
+  MACHINE_HUES,
+  SERIES_COLORS,
+  machineShades,
+  type ChartScheme,
+} from "../components/charts/chartPalette";
 
 export interface TemperatureChart {
   key: string;
