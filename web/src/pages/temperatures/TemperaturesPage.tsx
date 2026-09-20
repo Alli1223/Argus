@@ -9,7 +9,7 @@ import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
 import { HostStatusBadge } from "../../components/HostBits";
 import { PageHeader } from "../../components/PageHeader";
 import { ErrorScreen, MessageScreen } from "../../components/Screens";
-import { temperatureCharts } from "../../lib/temperatures";
+import { fleetTemperatureChart, temperatureCharts } from "../../lib/temperatures";
 import { describeBucket, rangeFromParams, rangeToParams, type TimeRange } from "../../lib/timeRange";
 
 /** Every temperature sensor of every host, one block of charts per host. */
@@ -62,15 +62,18 @@ export function TemperaturesPage() {
           monitoring chips on Linux and ACPI thermal zones on Windows. Virtual machines usually have none.
         </MessageScreen>
       ) : (
-        reporting.map((host) => (
-          <HostTemperatureCharts
-            key={host.hostId}
-            host={host}
-            status={status.get(host.hostId)}
-            refreshing={fleet.isPlaceholderData}
-            onZoom={zoom}
-          />
-        ))
+        <>
+          <AllTemperaturesChart hosts={reporting} refreshing={fleet.isPlaceholderData} onZoom={zoom} />
+          {reporting.map((host) => (
+            <HostTemperatureCharts
+              key={host.hostId}
+              host={host}
+              status={status.get(host.hostId)}
+              refreshing={fleet.isPlaceholderData}
+              onZoom={zoom}
+            />
+          ))}
+        </>
       )}
 
       {silent.length > 0 && (
@@ -88,6 +91,33 @@ export function TemperaturesPage() {
         </Text>
       )}
     </>
+  );
+}
+
+interface AllTemperaturesChartProps {
+  hosts: HostTemperatures[];
+  refreshing: boolean;
+  onZoom: (from: number, to: number) => void;
+}
+
+function AllTemperaturesChart({ hosts, refreshing, onZoom }: AllTemperaturesChartProps) {
+  const scheme = useComputedColorScheme("light");
+  const chart = useMemo(() => fleetTemperatureChart(hosts, scheme), [hosts, scheme]);
+
+  return (
+    <Box mt="xl">
+      <TimeSeriesChart
+        title="All temperatures"
+        description="Each machine's sensors share a colour family"
+        time={chart.time}
+        series={chart.series}
+        unit="celsius"
+        from={chart.from}
+        to={chart.to}
+        refreshing={refreshing}
+        onZoom={onZoom}
+      />
+    </Box>
   );
 }
 

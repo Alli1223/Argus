@@ -1,6 +1,6 @@
-import type { MetricSeries } from "../api/types";
+import type { HostTemperatures, MetricSeries } from "../api/types";
 import type { ChartSeries } from "../components/charts/chartData";
-import { SERIES_COLORS, type ChartScheme } from "../components/charts/chartPalette";
+import { MACHINE_HUES, SERIES_COLORS, machineShades, type ChartScheme } from "../components/charts/chartPalette";
 
 export interface TemperatureChart {
   key: string;
@@ -79,6 +79,61 @@ function evenParts<T>(items: T[], size: number): T[][] {
   const parts = Math.ceil(items.length / size);
   const each = Math.ceil(items.length / parts);
   return Array.from({ length: parts }, (_, index) => items.slice(index * each, (index + 1) * each));
+}
+
+/**
+ * A single combined chart of every sensor on every host. Each machine's sensors share a hue
+ * family (shades of red, green, blue, …) so machines are easy to tell apart at a glance.
+ */
+export function fleetTemperatureChart(
+  hosts: HostTemperatures[],
+  scheme: ChartScheme,
+): { time: number[]; series: ChartSeries[]; from: number; to: number } {
+  if (hosts.length === 0) return { time: [], series: [], from: 0, to: 0 };
+
+  // Merge all hosts' timestamps into one sorted union.
+  const timeSet = new Set<number>();
+  for (const host of hosts) {
+    for (const t of host.history.time) timeSet.add(t);
+  }
+  const time = [...timeSet].sort((a, b) => a - b);
+  const timeIndex = new Map(time.map((t, i) => [t, i]));
+
+  const from = Math.min(...hosts.map((h) => Date.parse(h.history.from))) / 1000;
+  const to = Math.max(...hosts.map((h) => Date.parse(h.history.to))) / 1000;
+
+  const hues = MACHINE_HUES[scheme];
+  const series: ChartSeries[] = [];
+
+  for (let machineIdx = 0; machineIdx < hosts.length; machineIdx++) {
+    const host = hosts[machineIdx];
+    const hue = hues[machineIdx % hues.length];
+    const sensors = Object.keys(host.history.series)
+      .map(parseSensorKey)
+      .sort((a, b) => natural.compare(a.key, b.key));
+    const shades = machineShades(hue, sensors.length, scheme);
+
+    for (let sensorIdx = 0; sensorIdx < sensors.length; sensorIdx++) {
+      const sensor = sensors[sensorIdx];
+      const rawValues = host.history.series[sensor.key];
+      const hostTime = host.history.time;
+
+      const values: (number | null)[] = new Array(time.length).fill(null);
+      for (let i = 0; i < hostTime.length; i++) {
+        const idx = timeIndex.get(hostTime[i]);
+        if (idx !== undefined) values[idx] = rawValues[i];
+      }
+
+      series.push({
+        key: `${host.hostId}/${sensor.key}`,
+        label: `${host.displayName}: ${sensor.name}`,
+        color: shades[sensorIdx],
+        values,
+      });
+    }
+  }
+
+  return { time, series, from, to };
 }
 
 /**
