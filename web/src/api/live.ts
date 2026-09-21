@@ -108,7 +108,7 @@ export function useLiveUpdates(): LiveState {
       connection.start().then(() => {
         if (stopped) return;
         setState("live");
-        if (connectedBefore) catchUp();
+        catchUp();
         connectedBefore = true;
       }, retryLater);
     }

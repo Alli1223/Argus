@@ -36,15 +36,23 @@ public static class HostEndpoints
         ClaimsPrincipal user,
         ArgusDbContext db,
         TimeSeriesQueries series,
+        LatestMetricsCache metricsCache,
         IOptions<AgentOptions> agents,
         UpdateStatus updates,
         TimeProvider time,
         CancellationToken cancellationToken)
     {
         var hosts = await db.Hosts.AsNoTracking().VisibleTo(user).OrderBy(host => host.DisplayName).ToListAsync(cancellationToken);
-        var latest = await series.GetLatestAsync(hosts.Select(host => host.Id).ToList(), cancellationToken);
+        var hostIds = hosts.Select(host => host.Id).ToList();
+
+        // Read from cache; fall back to the database only for hosts not seen since startup.
+        var cached = metricsCache.Get(hostIds);
+        var missing = hostIds.Where(id => !cached.ContainsKey(id)).ToList();
+        var fromDb = missing.Count > 0 ? await series.GetLatestAsync(missing, cancellationToken) : [];
+        foreach (var (id, m) in fromDb) cached[id] = m;
+
         var now = time.GetUtcNow();
-        return hosts.Select(host => host.ToSummary(latest.GetValueOrDefault(host.Id), agents.Value, now, updates.Current.Latest)).ToList();
+        return hosts.Select(host => host.ToSummary(cached.GetValueOrDefault(host.Id), agents.Value, now, updates.Current.Latest)).ToList();
     }
 
     private static async Task<Results<Ok<HostDetail>, NotFound>> GetAsync(
@@ -52,6 +60,7 @@ public static class HostEndpoints
         ClaimsPrincipal user,
         ArgusDbContext db,
         TimeSeriesQueries series,
+        LatestMetricsCache metricsCache,
         IOptions<AgentOptions> agents,
         UpdateStatus updates,
         TimeProvider time,
@@ -63,8 +72,8 @@ public static class HostEndpoints
             return TypedResults.NotFound();
         }
 
-        var latest = await series.GetLatestAsync([host.Id], cancellationToken);
-        return TypedResults.Ok(host.ToDetail(latest.GetValueOrDefault(host.Id), agents.Value, time.GetUtcNow(), updates.Current.Latest));
+        var latest = metricsCache.Get(host.Id) ?? (await series.GetLatestAsync([host.Id], cancellationToken)).GetValueOrDefault(host.Id);
+        return TypedResults.Ok(host.ToDetail(latest, agents.Value, time.GetUtcNow(), updates.Current.Latest));
     }
 
     private static async Task<Results<Ok<HostDetail>, NotFound, ValidationProblem>> UpdateAsync(
