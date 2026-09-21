@@ -146,6 +146,7 @@ public static class AgentEndpoints
         MetricsBatch batch,
         ClaimsPrincipal principal,
         MetricsIngestor ingestor,
+        LatestMetricsCache metricsCache,
         IOptions<IngestOptions> ingestOptions,
         IOptions<AgentOptions> agentOptions,
         TimeProvider time,
@@ -185,7 +186,9 @@ public static class AgentEndpoints
         if (samples.Count > 0)
         {
             var newest = samples.MaxBy(sample => sample.Timestamp)!;
-            await live.HostMetricsAsync(principal.GetOwnerId(), new Live.LiveHostMetrics(hostId, LatestMetrics.FromSample(newest)));
+            var latestMetrics = LatestMetrics.FromSample(newest);
+            metricsCache.Set(hostId, latestMetrics);
+            await live.HostMetricsAsync(principal.GetOwnerId(), new Live.LiveHostMetrics(hostId, latestMetrics));
         }
 
         return TypedResults.Ok(new MetricsBatchResponse

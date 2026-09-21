@@ -92,7 +92,6 @@ export function useLiveUpdates(): LiveState {
     connection.on("AlertChanged", (update: LiveAlert) => applyAlert(client, update));
 
     let stopped = false;
-    let connectedBefore = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
 
     // Anything could have changed while the connection was down.
@@ -108,8 +107,7 @@ export function useLiveUpdates(): LiveState {
       connection.start().then(() => {
         if (stopped) return;
         setState("live");
-        if (connectedBefore) catchUp();
-        connectedBefore = true;
+        catchUp();
       }, retryLater);
     }
 

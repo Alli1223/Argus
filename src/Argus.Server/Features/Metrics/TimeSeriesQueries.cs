@@ -84,14 +84,16 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
             """, parameters, cancellationToken: cancellationToken));
 
         var disks = (await connection.QueryAsync<DiskRow>(new CommandDefinition("""
-            SELECT h.id AS host_id, max(f.used_bytes::float8 / NULLIF(f.used_bytes + f.available_bytes, 0) * 100) AS used_percent
-            FROM unnest(@ids) AS h(id)
-            CROSS JOIN LATERAL (
-                SELECT used_bytes, available_bytes FROM filesystem_metrics
-                WHERE host_id = h.id
-                  AND time = (SELECT max(time) FROM filesystem_metrics WHERE host_id = h.id AND time > now() - interval '1 day')
-            ) f
-            GROUP BY h.id
+            WITH latest AS (
+                SELECT DISTINCT ON (host_id) host_id, time
+                FROM filesystem_metrics
+                WHERE host_id = ANY(@ids) AND time > now() - interval '1 day'
+                ORDER BY host_id, time DESC
+            )
+            SELECT f.host_id, max(f.used_bytes::float8 / NULLIF(f.used_bytes + f.available_bytes, 0) * 100) AS used_percent
+            FROM latest l
+            JOIN filesystem_metrics f ON f.host_id = l.host_id AND f.time = l.time
+            GROUP BY f.host_id
             """, parameters, cancellationToken: cancellationToken))).ToDictionary(row => row.HostId, row => row.UsedPercent);
 
         return samples.ToDictionary(row => row.HostId, row => new LatestMetrics(
