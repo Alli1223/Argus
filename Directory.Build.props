@@ -9,7 +9,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
 
     <Product>Argus</Product>
-    <VersionPrefix>0.7.1</VersionPrefix>
+    <VersionPrefix>0.8.0</VersionPrefix>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 </Project>
