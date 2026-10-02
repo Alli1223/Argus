@@ -257,7 +257,12 @@ function GmailGuide() {
   const Icon = open ? IconChevronDown : IconChevronRight;
   return (
     <div>
-      <UnstyledButton onClick={toggle} fz="sm" fw={500} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <UnstyledButton
+        onClick={toggle}
+        fz="sm"
+        fw={500}
+        style={{ display: "flex", alignItems: "center", gap: 4 }}
+      >
         <Icon size={14} />
         Using Gmail?
       </UnstyledButton>
@@ -279,8 +284,11 @@ function GmailGuide() {
               .
             </List.Item>
             <List.Item>
-              Enable <Text span fw={500} c="inherit">2-Step Verification</Text> if it is not already on (required before
-              App Passwords appear).
+              Enable{" "}
+              <Text span fw={500} c="inherit">
+                2-Step Verification
+              </Text>{" "}
+              if it is not already on (required before App Passwords appear).
             </List.Item>
             <List.Item>
               Open{" "}
@@ -291,12 +299,38 @@ function GmailGuide() {
             </List.Item>
             <List.Item>
               Fill in the form below:{" "}
-              <Text span fw={500} c="inherit">Mail server</Text> = <Text span ff="monospace" c="inherit">smtp.gmail.com</Text>,{" "}
-              <Text span fw={500} c="inherit">Port</Text> = <Text span ff="monospace" c="inherit">587</Text>,{" "}
-              <Text span fw={500} c="inherit">Security</Text> = Automatic,{" "}
-              <Text span fw={500} c="inherit">Username</Text> = your Gmail address,{" "}
-              <Text span fw={500} c="inherit">Password</Text> = the 16-character app password,{" "}
-              <Text span fw={500} c="inherit">From address</Text> = your Gmail address.
+              <Text span fw={500} c="inherit">
+                Mail server
+              </Text>{" "}
+              ={" "}
+              <Text span ff="monospace" c="inherit">
+                smtp.gmail.com
+              </Text>
+              ,{" "}
+              <Text span fw={500} c="inherit">
+                Port
+              </Text>{" "}
+              ={" "}
+              <Text span ff="monospace" c="inherit">
+                587
+              </Text>
+              ,{" "}
+              <Text span fw={500} c="inherit">
+                Security
+              </Text>{" "}
+              = Automatic,{" "}
+              <Text span fw={500} c="inherit">
+                Username
+              </Text>{" "}
+              = your Gmail address,{" "}
+              <Text span fw={500} c="inherit">
+                Password
+              </Text>{" "}
+              = the 16-character app password,{" "}
+              <Text span fw={500} c="inherit">
+                From address
+              </Text>{" "}
+              = your Gmail address.
             </List.Item>
           </List>
         </Stack>
