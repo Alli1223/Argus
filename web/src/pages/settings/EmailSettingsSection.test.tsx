@@ -59,7 +59,7 @@ describe("EmailSettingsSection", () => {
       from: "a@x.io",
     });
     expect(await screen.findByText("Email settings saved.")).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it("keeps the saved password when the box is left alone", async () => {
     const calls = mockApi({

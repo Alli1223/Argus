@@ -266,7 +266,7 @@ function GmailGuide() {
         <Icon size={14} />
         Using Gmail?
       </UnstyledButton>
-      <Collapse in={open}>
+      <Collapse expanded={open}>
         <Stack gap="xs" mt="xs" pl="md">
           <Text fz="sm" c="dimmed">
             Google blocks ordinary passwords for SMTP. You need an{" "}
