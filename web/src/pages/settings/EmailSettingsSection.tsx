@@ -2,18 +2,22 @@ import {
   Alert,
   Anchor,
   Button,
+  Collapse,
   Group,
+  List,
   NumberInput,
   PasswordInput,
   Select,
   Stack,
   Text,
   TextInput,
+  UnstyledButton,
 } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconMail } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronRight, IconMail } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { useCurrentUser } from "../../api/auth";
@@ -148,6 +152,7 @@ function EmailSettingsForm({ settings }: { settings: EmailSettings }) {
     <form onSubmit={submit} noValidate>
       <Stack gap="md">
         <Status settings={settings} />
+        <GmailGuide />
 
         <Group align="flex-start" gap="md" grow wrap="wrap">
           <TextInput
@@ -244,6 +249,59 @@ function EmailSettingsForm({ settings }: { settings: EmailSettings }) {
         </Stack>
       </Stack>
     </form>
+  );
+}
+
+function GmailGuide() {
+  const [open, { toggle }] = useDisclosure(false);
+  const Icon = open ? IconChevronDown : IconChevronRight;
+  return (
+    <div>
+      <UnstyledButton onClick={toggle} fz="sm" fw={500} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <Icon size={14} />
+        Using Gmail?
+      </UnstyledButton>
+      <Collapse in={open}>
+        <Stack gap="xs" mt="xs" pl="md">
+          <Text fz="sm" c="dimmed">
+            Google blocks ordinary passwords for SMTP. You need an{" "}
+            <Anchor href="https://myaccount.google.com/apppasswords" target="_blank" fz="sm">
+              App Password
+            </Anchor>{" "}
+            — a separate 16-character code that lets Argus send email without your Google password.
+          </Text>
+          <List size="sm" spacing={4} c="dimmed">
+            <List.Item>
+              Sign in to your Google account and go to{" "}
+              <Anchor href="https://myaccount.google.com/security" target="_blank" fz="sm">
+                Security settings
+              </Anchor>
+              .
+            </List.Item>
+            <List.Item>
+              Enable <Text span fw={500} c="inherit">2-Step Verification</Text> if it is not already on (required before
+              App Passwords appear).
+            </List.Item>
+            <List.Item>
+              Open{" "}
+              <Anchor href="https://myaccount.google.com/apppasswords" target="_blank" fz="sm">
+                App Passwords
+              </Anchor>{" "}
+              and create one — name it anything, such as &ldquo;Argus&rdquo;. Copy the 16-character code.
+            </List.Item>
+            <List.Item>
+              Fill in the form below:{" "}
+              <Text span fw={500} c="inherit">Mail server</Text> = <Text span ff="monospace" c="inherit">smtp.gmail.com</Text>,{" "}
+              <Text span fw={500} c="inherit">Port</Text> = <Text span ff="monospace" c="inherit">587</Text>,{" "}
+              <Text span fw={500} c="inherit">Security</Text> = Automatic,{" "}
+              <Text span fw={500} c="inherit">Username</Text> = your Gmail address,{" "}
+              <Text span fw={500} c="inherit">Password</Text> = the 16-character app password,{" "}
+              <Text span fw={500} c="inherit">From address</Text> = your Gmail address.
+            </List.Item>
+          </List>
+        </Stack>
+      </Collapse>
+    </div>
   );
 }
 
