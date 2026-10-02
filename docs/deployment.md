@@ -22,7 +22,7 @@ publishes on GitHub's container registry.
 ```sh
 git clone https://github.com/Alli1223/Argus.git
 cd Argus
-git checkout v0.6.0    # the latest release, from https://github.com/Alli1223/Argus/releases
+git checkout v0.8.1    # the latest release, from https://github.com/Alli1223/Argus/releases
 cp deploy/.env.example deploy/.env
 ```
 
@@ -151,8 +151,8 @@ here for 0.6.0:
 
 ```sh
 git fetch --tags
-git checkout v0.6.0
-sed -i 's/^ARGUS_VERSION=.*/ARGUS_VERSION=0.6.0/' deploy/.env    # add the line if it is not there
+git checkout v0.8.1
+sed -i 's/^ARGUS_VERSION=.*/ARGUS_VERSION=0.8.1/' deploy/.env    # add the line if it is not there
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
