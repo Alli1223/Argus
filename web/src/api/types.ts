@@ -67,6 +67,8 @@ export interface LatestMetrics {
   netRxBytesPerSec: number | null;
   netTxBytesPerSec: number | null;
   uptimeSeconds: number;
+  diskReadBytesPerSec: number | null;
+  diskWriteBytesPerSec: number | null;
 }
 
 export interface HostSummary {

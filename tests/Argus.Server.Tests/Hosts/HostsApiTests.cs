@@ -5,6 +5,7 @@ using Argus.Server.Data;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Dashboard;
 using Argus.Server.Features.Hosts;
+using Argus.Server.Features.Metrics;
 using Argus.Server.Tests.Infrastructure;
 using Argus.Server.Tests.Metrics;
 using Microsoft.AspNetCore.Http;
@@ -35,6 +36,25 @@ public sealed class HostsApiTests(ArgusAppFixture app) : IClassFixture<ArgusAppF
         Assert.Equal(42, host.Latest!.CpuPercent, precision: 3);
         Assert.Equal(40, host.Latest.MemoryPercent, precision: 3);
         Assert.Equal(40 / 95.0 * 100, host.Latest.DiskUsedPercent!.Value, precision: 3);
+        Assert.Equal(1000, host.Latest.DiskReadBytesPerSec);
+        Assert.Equal(2000, host.Latest.DiskWriteBytesPerSec);
+    }
+
+    [Fact]
+    public async Task Latest_metrics_read_from_the_database_match_the_live_ones()
+    {
+        // After a restart the hosts list reads latest readings from the database instead of memory.
+        var owner = await app.CreateOwnerAsync("hosts-latest@example.com");
+        var (hostId, agent) = await app.RegisterHostAsync(owner, "hosts-latest-1");
+        await agent.SendSamplesAsync(MetricsIngestionTests.FullSample(DateTimeOffset.UtcNow));
+
+        var latest = await app.WithScopeAsync(async services =>
+            (await services.GetRequiredService<TimeSeriesQueries>().GetLatestAsync([hostId], Ct))[hostId]);
+
+        Assert.Equal(42, latest.CpuPercent, precision: 3);
+        Assert.Equal(1000, latest.DiskReadBytesPerSec);
+        Assert.Equal(2000, latest.DiskWriteBytesPerSec);
+        Assert.Equal(300, latest.NetRxBytesPerSec);
     }
 
     [Fact]

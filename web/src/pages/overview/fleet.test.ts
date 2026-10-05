@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FleetMetrics, HostSummary } from "../../api/types";
-import { MAX_HOST_LINES, cpuSeries, fleetNow, networkSeries, peak } from "./fleet";
+import { MAX_HOST_LINES, cpuSeries, diskSeries, fleetNow, networkSeries, peak } from "./fleet";
 
 const host = (
   cpu: number,
@@ -13,7 +13,14 @@ const host = (
     id: `${cpu}`,
     displayName: `host-${cpu}`,
     status: online ? "Online" : "Offline",
-    latest: { cpuPercent: cpu, memoryPercent: memory, netRxBytesPerSec: rx, netTxBytesPerSec: tx },
+    latest: {
+      cpuPercent: cpu,
+      memoryPercent: memory,
+      netRxBytesPerSec: rx,
+      netTxBytesPerSec: tx,
+      diskReadBytesPerSec: rx == null ? null : rx * 2,
+      diskWriteBytesPerSec: null,
+    },
   }) as HostSummary;
 
 const fleet = (hostCount: number): FleetMetrics => ({
@@ -23,7 +30,13 @@ const fleet = (hostCount: number): FleetMetrics => ({
     resolution: "raw",
     bucketSeconds: 60,
     time: [1, 2, 3],
-    series: { cpu: [10, 20, null], netRx: [5, null, 7], netTx: [1, 2, 3] },
+    series: {
+      cpu: [10, 20, null],
+      netRx: [5, null, 7],
+      netTx: [1, 2, 3],
+      diskRead: [100, 200, null],
+      diskWrite: [null, 50, 60],
+    },
   },
   hosts: Array.from({ length: hostCount }, (_, index) => ({
     hostId: `h${index}`,
@@ -36,7 +49,15 @@ describe("fleetNow", () => {
   it("averages usage and adds up traffic over the online systems only", () => {
     const now = fleetNow([host(20, 40, 1_000, 10), host(60, 80, 3_000, null), host(99, 99, 1e9, 1e9, false)]);
 
-    expect(now).toEqual({ reporting: 2, cpu: 40, memory: 60, received: 4_000, sent: 10 });
+    expect(now).toEqual({
+      reporting: 2,
+      cpu: 40,
+      memory: 60,
+      received: 4_000,
+      sent: 10,
+      diskRead: 8_000,
+      diskWrite: null,
+    });
   });
 
   it("has no readings when nothing is online", () => {
@@ -46,6 +67,8 @@ describe("fleetNow", () => {
       memory: null,
       received: null,
       sent: null,
+      diskRead: null,
+      diskWrite: null,
     });
   });
 });
@@ -83,5 +106,18 @@ describe("networkSeries", () => {
       ["Received", [5, null, 7]],
       ["Sent", [1, 2, 3]],
     ]);
+  });
+});
+
+describe("diskSeries", () => {
+  it("has total reads and writes, in colours of their own", () => {
+    const series = diskSeries(fleet(1), "light");
+
+    expect(series.map((line) => [line.label, line.values])).toEqual([
+      ["Read", [100, 200, null]],
+      ["Written", [null, 50, 60]],
+    ]);
+    const traffic = networkSeries(fleet(1), "light").map((line) => line.color);
+    expect(series.map((line) => line.color).some((color) => traffic.includes(color))).toBe(false);
   });
 });

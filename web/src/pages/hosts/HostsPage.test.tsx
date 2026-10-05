@@ -28,6 +28,8 @@ const host = (name: string, rx: number, tx: number, uptime: number, online = tru
     netRxBytesPerSec: rx,
     netTxBytesPerSec: tx,
     uptimeSeconds: uptime,
+    diskReadBytesPerSec: null,
+    diskWriteBytesPerSec: null,
   },
   agentUpdate: null,
 });

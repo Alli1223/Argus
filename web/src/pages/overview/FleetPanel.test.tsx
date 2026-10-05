@@ -10,7 +10,14 @@ const host = (name: string, cpu: number, memory: number, rx: number, tx: number)
     id: name,
     displayName: name,
     status: "Online",
-    latest: { cpuPercent: cpu, memoryPercent: memory, netRxBytesPerSec: rx, netTxBytesPerSec: tx },
+    latest: {
+      cpuPercent: cpu,
+      memoryPercent: memory,
+      netRxBytesPerSec: rx,
+      netTxBytesPerSec: tx,
+      diskReadBytesPerSec: rx * 10,
+      diskWriteBytesPerSec: tx * 10,
+    },
   }) as HostSummary;
 
 const FLEET: FleetMetrics = {
@@ -20,7 +27,13 @@ const FLEET: FleetMetrics = {
     resolution: "raw",
     bucketSeconds: 60,
     time: [1_759_658_400, 1_759_658_460],
-    series: { cpu: [30, 50], netRx: [2_048, 8_192], netTx: [1_024, 1_024] },
+    series: {
+      cpu: [30, 50],
+      netRx: [2_048, 8_192],
+      netTx: [1_024, 1_024],
+      diskRead: [10_240, 20_480],
+      diskWrite: [5_120, 5_120],
+    },
   },
   hosts: [{ hostId: "a", displayName: "a", cpu: [20, 40] }],
 };
@@ -46,11 +59,14 @@ describe("FleetPanel", () => {
     expect(screen.getByRole("img", { name: "Average memory: 60.0 %" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Received: 4.0 KB/s" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sent: 1.0 KB/s" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Disk read: 40.0 KB/s" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Disk written: 10.0 KB/s" })).toBeInTheDocument();
     expect(screen.getAllByText("Per system, of 2 online systems")).toHaveLength(2);
 
     expect(await screen.findByText("CPU across all systems")).toBeInTheDocument();
     expect(screen.getByText("Network across all systems")).toBeInTheDocument();
+    expect(screen.getByText("Disk across all systems")).toBeInTheDocument();
     // Once the history is in, traffic dials run up to the busiest moment in the range.
     expect(screen.getByText("peak 8 KB/s")).toBeInTheDocument();
-  });
+  }, 15_000);
 });

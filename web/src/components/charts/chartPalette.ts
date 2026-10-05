@@ -22,6 +22,16 @@ export const LOAD_COLORS: Record<ChartScheme, { load1: string; load5: string; lo
 };
 
 /**
+ * Disk activity is two steps of the palette's orange, so reads and writes read as one family apart from
+ * the meters' iris and the traffic colours. Writes take the deeper step in light mode, the base step in
+ * dark, where the lighter step is the read.
+ */
+export const DISK_COLORS: Record<ChartScheme, { read: string; write: string }> = {
+  light: { read: "#eb6834", write: "#a8461c" },
+  dark: { read: "#f39a6b", write: "#d95926" },
+};
+
+/**
  * Base hues for per-machine color families on the combined temperatures chart.
  * Eight machines; more wrap (same hue, different shading — rare in practice).
  */

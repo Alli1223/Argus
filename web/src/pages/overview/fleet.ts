@@ -1,6 +1,6 @@
 import type { FleetMetrics, HostSummary } from "../../api/types";
 import type { ChartSeries } from "../../components/charts/chartData";
-import { SERIES_COLORS, type ChartScheme } from "../../components/charts/chartPalette";
+import { DISK_COLORS, SERIES_COLORS, type ChartScheme } from "../../components/charts/chartPalette";
 import { trafficColors } from "../../components/watch/traffic";
 
 /** The most lines on the CPU chart: the average and seven systems, one per colour slot. */
@@ -15,6 +15,8 @@ export interface FleetNow {
   /** Totals across systems, in bytes per second. */
   received: number | null;
   sent: number | null;
+  diskRead: number | null;
+  diskWrite: number | null;
 }
 
 const average = (values: number[]) =>
@@ -34,6 +36,8 @@ export function fleetNow(hosts: HostSummary[]): FleetNow {
     memory: average(latest.map((reading) => reading.memoryPercent)),
     received: total(latest.map((reading) => reading.netRxBytesPerSec)),
     sent: total(latest.map((reading) => reading.netTxBytesPerSec)),
+    diskRead: total(latest.map((reading) => reading.diskReadBytesPerSec)),
+    diskWrite: total(latest.map((reading) => reading.diskWriteBytesPerSec)),
   };
 }
 
@@ -78,5 +82,19 @@ export function networkSeries(fleet: FleetMetrics, scheme: ChartScheme): ChartSe
   return [
     { key: "received", label: "Received", color: traffic.received, values: fleet.totals.series.netRx ?? [] },
     { key: "sent", label: "Sent", color: traffic.sent, values: fleet.totals.series.netTx ?? [] },
+  ];
+}
+
+/** Disk activity's colours: two steps of orange, apart from the meters and the traffic colours. */
+export function diskColors(scheme: ChartScheme) {
+  return DISK_COLORS[scheme];
+}
+
+/** Reads and writes of every system's disks together. */
+export function diskSeries(fleet: FleetMetrics, scheme: ChartScheme): ChartSeries[] {
+  const disk = diskColors(scheme);
+  return [
+    { key: "read", label: "Read", color: disk.read, values: fleet.totals.series.diskRead ?? [] },
+    { key: "write", label: "Written", color: disk.write, values: fleet.totals.series.diskWrite ?? [] },
   ];
 }
