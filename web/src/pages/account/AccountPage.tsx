@@ -18,17 +18,22 @@ import { useCurrentUser } from "../../api/auth";
 import type { CurrentUser } from "../../api/types";
 import { PageHeader } from "../../components/PageHeader";
 import { PASSWORD_MIN_LENGTH } from "../auth/accountValidation";
+import { ApiTokensPanel } from "./ApiTokensPanel";
 
 export function AccountPage() {
   const me = useCurrentUser();
 
   return (
     <>
-      <PageHeader title="Account" description="Your name, and the password you sign in with." />
+      <PageHeader
+        title="Account"
+        description="Your name, the password you sign in with, and tokens for other programs."
+      />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg" maw={960}>
         {me.data ? <ProfileForm user={me.data} /> : <Skeleton h={240} radius="sm" />}
         <PasswordForm />
       </SimpleGrid>
+      <ApiTokensPanel />
     </>
   );
 }
