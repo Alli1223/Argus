@@ -97,6 +97,7 @@ All paths start with `/api`.
 | `GET /containers` | Every host you can see that reports containers, with its containers. |
 | `GET /hosts/{id}/temperatures` | Each temperature sensor over time, in degrees Celsius. |
 | `GET /hosts/temperatures` | The temperature history of every host that reported temperatures in the range, by name: `hostId`, `displayName` and `history`. |
+| `GET /hosts/fleet/metrics` | Every host you can see merged into one history: `totals` has `cpu`, `memory` and `load1` averaged across the hosts reporting in each point, `netRx`, `netTx`, `diskRead` and `diskWrite` added up, and `hosts`, how many reported; `hosts` lists each host's `hostId`, `displayName` and own `cpu` on the same time axis. See [History queries](#history-queries). |
 | `GET /hosts/{id}/processes` | The busiest processes in the latest reading. |
 | `GET /hosts/{id}/services` | Services failing in the latest check, and when it was. |
 | `POST /hosts/{id}/agent-update` | Asks the host's agent to update to the latest release. `409` when there is nothing to update to. |

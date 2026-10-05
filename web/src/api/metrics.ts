@@ -3,6 +3,7 @@ import { refreshInterval, resolveRange, type TimeRange } from "../lib/timeRange"
 import { api, query } from "./client";
 import type {
   FilesystemSnapshot,
+  FleetMetrics,
   HostTemperatures,
   MetricSeries,
   ProcessSnapshot,
@@ -17,6 +18,7 @@ export const metricKeys = {
   network: (id: string, range: TimeRange): SeriesKey => ["hosts", "network", id, range],
   temperatures: (id: string, range: TimeRange): SeriesKey => ["hosts", "temperatures", id, range],
   fleetTemperatures: (range: TimeRange) => ["hosts", "fleet-temperatures", range] as const,
+  fleet: (range: TimeRange) => ["hosts", "fleet-metrics", range] as const,
   filesystems: (id: string) => ["hosts", "filesystems", id] as const,
   processes: (id: string) => ["hosts", "processes", id] as const,
   services: (id: string) => ["hosts", "services", id] as const,
@@ -97,5 +99,15 @@ export function useHostProcesses(id: string) {
     queryKey: metricKeys.processes(id),
     queryFn: async () => (await api.get<ProcessSnapshot | undefined>(`/api/hosts/${id}/processes`)) ?? null,
     refetchInterval: 30_000,
+  });
+}
+
+/** Every visible host's CPU, memory, load, traffic and disk I/O merged into one series. */
+export function useFleetMetrics(range: TimeRange) {
+  return useQuery({
+    queryKey: metricKeys.fleet(range),
+    queryFn: () => api.get<FleetMetrics>(`/api/hosts/fleet/metrics${rangeQuery(range)}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: refreshInterval(range),
   });
 }

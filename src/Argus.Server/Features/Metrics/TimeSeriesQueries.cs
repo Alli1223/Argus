@@ -156,6 +156,59 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
             });
     }
 
+    /// <summary>
+    /// Every host's CPU, memory, load, traffic and disk I/O on one time axis, merged: see
+    /// <see cref="FleetMerge"/>. <paramref name="names"/> gives the hosts and their display names.
+    /// </summary>
+    public async Task<FleetMetrics> GetFleetSeriesAsync(
+        IReadOnlyDictionary<Guid, string> names, SeriesRange range, TimeSpan collectionInterval, CancellationToken cancellationToken)
+    {
+        var (source, bucket) = SeriesResolution.Choose(range.To - range.From, range.Points, collectionInterval);
+        if (names.Count == 0)
+        {
+            return FleetMerge.Merge([], names, range, source, bucket);
+        }
+
+        var sql = source == SeriesSource.Raw
+            ? """
+              SELECT time_bucket_gapfill(@bucket, time, @from, @to) AS bucket, host_id,
+                     avg(cpu_usage_pct)::float8                                         AS cpu,
+                     avg(mem_used_bytes::float8 / NULLIF(mem_total_bytes, 0) * 100)     AS memory,
+                     avg(load_1)::float8                                                AS load_1,
+                     avg(net_rx_bps)::float8                                            AS net_rx,
+                     avg(net_tx_bps)::float8                                            AS net_tx,
+                     avg(disk_read_bps)::float8                                         AS disk_read,
+                     avg(disk_write_bps)::float8                                        AS disk_write
+              FROM host_metrics
+              WHERE host_id = ANY(@host_ids) AND time >= @from AND time < @to
+              GROUP BY 1, 2 ORDER BY 1
+              """
+            : $"""
+               SELECT time_bucket_gapfill(@bucket, bucket, @from, @to) AS bucket, host_id,
+                      avg(cpu_usage_pct)::float8                                         AS cpu,
+                      (avg(mem_used_bytes) / NULLIF(max(mem_total_bytes), 0) * 100)::float8 AS memory,
+                      avg(load_1)::float8                                                AS load_1,
+                      avg(net_rx_bps)::float8                                            AS net_rx,
+                      avg(net_tx_bps)::float8                                            AS net_tx,
+                      avg(disk_read_bps)::float8                                         AS disk_read,
+                      avg(disk_write_bps)::float8                                        AS disk_write
+               FROM {(source == SeriesSource.FiveMinutes ? "host_metrics_5m" : "host_metrics_1h")}
+               WHERE host_id = ANY(@host_ids) AND bucket >= @from AND bucket < @to
+               GROUP BY 1, 2 ORDER BY 1
+               """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<FleetQueryRow>(new CommandDefinition(
+            sql,
+            new { host_ids = names.Keys.ToArray(), bucket, from = range.From, to = range.To },
+            cancellationToken: cancellationToken));
+
+        return FleetMerge.Merge(
+            rows.Select(row => new FleetRow(
+                row.Bucket, row.HostId, row.Cpu, row.Memory, row.Load1, row.NetRx, row.NetTx, row.DiskRead, row.DiskWrite)),
+            names, range, source, bucket);
+    }
+
     /// <summary>The filesystems in the host's newest sample.</summary>
     public async Task<List<FilesystemSnapshot>> GetFilesystemsAsync(Guid hostId, CancellationToken cancellationToken)
     {
@@ -379,6 +432,19 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
         public double? NetRx { get; set; }
         public double? NetTx { get; set; }
         public double? Processes { get; set; }
+    }
+
+    private sealed class FleetQueryRow
+    {
+        public DateTime Bucket { get; set; }
+        public Guid HostId { get; set; }
+        public double? Cpu { get; set; }
+        public double? Memory { get; set; }
+        public double? Load1 { get; set; }
+        public double? NetRx { get; set; }
+        public double? NetTx { get; set; }
+        public double? DiskRead { get; set; }
+        public double? DiskWrite { get; set; }
     }
 
     private sealed class FilesystemRow

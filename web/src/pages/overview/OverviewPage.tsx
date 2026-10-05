@@ -1,4 +1,4 @@
-import { Anchor, Button, Group, Paper, SimpleGrid, Skeleton, Table, Text, Title } from "@mantine/core";
+import { Anchor, Box, Button, Group, Paper, SimpleGrid, Skeleton, Table, Text, Title } from "@mantine/core";
 import { IconCircleCheck, IconPlus } from "@tabler/icons-react";
 import { Link } from "react-router";
 import { useAlerts } from "../../api/alerts";
@@ -12,6 +12,7 @@ import { UsageMeter } from "../../components/UsageMeter";
 import { Watch, WatchLegend } from "../../components/watch/Watch";
 import { formatAgo } from "../../lib/format";
 import { useNow } from "../../lib/useNow";
+import { FleetPanel } from "./FleetPanel";
 
 export function OverviewPage() {
   const hosts = useHosts();
@@ -58,6 +59,12 @@ export function OverviewPage() {
         {hosts.isPending ? <Skeleton height={140} /> : <Watch hosts={hosts.data ?? []} now={now} />}
         <WatchLegend />
       </Paper>
+
+      {hosts.isSuccess && (
+        <Box mb="lg">
+          <FleetPanel hosts={hosts.data} />
+        </Box>
+      )}
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
         <FiringAlerts now={now} />
