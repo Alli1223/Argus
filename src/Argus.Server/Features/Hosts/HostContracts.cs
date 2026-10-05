@@ -22,7 +22,9 @@ public sealed record LatestMetrics(
     double? DiskUsedPercent,
     double? NetRxBytesPerSec,
     double? NetTxBytesPerSec,
-    long UptimeSeconds)
+    long UptimeSeconds,
+    double? DiskReadBytesPerSec,
+    double? DiskWriteBytesPerSec)
 {
     /// <summary>The same summary built straight from a sample as it arrives, for live updates.</summary>
     public static LatestMetrics FromSample(MetricSample sample) => new(
@@ -39,7 +41,9 @@ public sealed record LatestMetrics(
             .Max(),
         sample.Network?.RxBytesPerSec,
         sample.Network?.TxBytesPerSec,
-        sample.UptimeSeconds);
+        sample.UptimeSeconds,
+        sample.DiskIo?.ReadBytesPerSec,
+        sample.DiskIo?.WriteBytesPerSec);
 }
 
 public sealed record HostSummary(

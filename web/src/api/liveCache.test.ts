@@ -29,6 +29,8 @@ const latest: LatestMetrics = {
   netRxBytesPerSec: 1,
   netTxBytesPerSec: 2,
   uptimeSeconds: 100,
+  diskReadBytesPerSec: 10,
+  diskWriteBytesPerSec: 20,
 };
 
 describe("withMetrics", () => {

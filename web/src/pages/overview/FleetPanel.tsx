@@ -1,4 +1,13 @@
-import { Group, Paper, SimpleGrid, Skeleton, Text, Title, useComputedColorScheme } from "@mantine/core";
+import {
+  Group,
+  Paper,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  Text,
+  Title,
+  useComputedColorScheme,
+} from "@mantine/core";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { useFleetMetrics } from "../../api/metrics";
@@ -10,7 +19,7 @@ import { trafficColors } from "../../components/watch/traffic";
 import { formatBytes } from "../../lib/format";
 import { severityColor, severityOf } from "../../lib/severity";
 import { describeBucket, rangeFromParams, rangeToParams, type TimeRange } from "../../lib/timeRange";
-import { MAX_HOST_LINES, cpuSeries, fleetNow, networkSeries, peak } from "./fleet";
+import { MAX_HOST_LINES, cpuSeries, diskColors, diskSeries, fleetNow, networkSeries, peak } from "./fleet";
 
 /** "1.2 MB/s" as its number and its unit, for the middle of a dial. */
 function splitRate(bytesPerSecond: number | null): { value: string; unit: string } {
@@ -61,8 +70,8 @@ function rateGauge(
 }
 
 /**
- * Every system together: average CPU and memory and total traffic right now as dials, and CPU and
- * network over time as charts.
+ * Every system together: average CPU and memory and total traffic and disk activity right now as dials,
+ * and CPU, network and disk over time as charts.
  */
 export function FleetPanel({ hosts }: { hosts: HostSummary[] }) {
   const [params, setParams] = useSearchParams();
@@ -70,6 +79,7 @@ export function FleetPanel({ hosts }: { hosts: HostSummary[] }) {
   const fleet = useFleetMetrics(range);
   const scheme = useComputedColorScheme("light");
   const traffic = trafficColors(scheme);
+  const disk = diskColors(scheme);
   const now = fleetNow(hosts);
 
   const changeRange = (next: TimeRange) => setParams(rangeToParams(next), { replace: true });
@@ -95,19 +105,30 @@ export function FleetPanel({ hosts }: { hosts: HostSummary[] }) {
       </Group>
 
       <Paper className="argus-surface" radius="lg" p="lg" mb="md">
-        <SimpleGrid cols={{ base: 2, md: 4 }} spacing="lg">
+        <SimpleGrid cols={{ base: 2, sm: 3, xl: 6 }} spacing="lg">
           {percentGauge("Average CPU", now.cpu, `Per system, of ${systems}`)}
           {percentGauge("Average memory", now.memory, `Per system, of ${systems}`)}
           {rateGauge("Received", now.received, totals?.series.netRx, traffic.received, `Total of ${systems}`)}
           {rateGauge("Sent", now.sent, totals?.series.netTx, traffic.sent, `Total of ${systems}`)}
+          {rateGauge("Disk read", now.diskRead, totals?.series.diskRead, disk.read, `Total of ${systems}`)}
+          {rateGauge(
+            "Disk written",
+            now.diskWrite,
+            totals?.series.diskWrite,
+            disk.write,
+            `Total of ${systems}`,
+          )}
         </SimpleGrid>
       </Paper>
 
       {fleet.isPending ? (
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+        <Stack gap="md">
           <Skeleton h={296} radius="sm" />
-          <Skeleton h={296} radius="sm" />
-        </SimpleGrid>
+          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+            <Skeleton h={296} radius="sm" />
+            <Skeleton h={296} radius="sm" />
+          </SimpleGrid>
+        </Stack>
       ) : fleet.data ? (
         <FleetCharts fleet={fleet.data} scheme={scheme} refreshing={fleet.isPlaceholderData} onZoom={zoom} />
       ) : (
@@ -129,11 +150,13 @@ interface FleetChartsProps {
 function FleetCharts({ fleet, scheme, refreshing, onZoom }: FleetChartsProps) {
   const cpu = useMemo(() => cpuSeries(fleet, scheme), [fleet, scheme]);
   const network = useMemo(() => networkSeries(fleet, scheme), [fleet, scheme]);
+  const disk = useMemo(() => diskSeries(fleet, scheme), [fleet, scheme]);
   const from = Date.parse(fleet.totals.from) / 1000;
   const to = Date.parse(fleet.totals.to) / 1000;
 
+  // CPU has a line per system, so it gets the full width; network and disk share the row below.
   return (
-    <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+    <Stack gap="md">
       <TimeSeriesChart
         title="CPU across all systems"
         description={
@@ -150,17 +173,30 @@ function FleetCharts({ fleet, scheme, refreshing, onZoom }: FleetChartsProps) {
         refreshing={refreshing}
         onZoom={onZoom}
       />
-      <TimeSeriesChart
-        title="Network across all systems"
-        description="Traffic in and out of every system, added together"
-        time={fleet.totals.time}
-        series={network}
-        unit="bytesPerSecond"
-        from={from}
-        to={to}
-        refreshing={refreshing}
-        onZoom={onZoom}
-      />
-    </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+        <TimeSeriesChart
+          title="Network across all systems"
+          description="Traffic in and out of every system, added together"
+          time={fleet.totals.time}
+          series={network}
+          unit="bytesPerSecond"
+          from={from}
+          to={to}
+          refreshing={refreshing}
+          onZoom={onZoom}
+        />
+        <TimeSeriesChart
+          title="Disk across all systems"
+          description="Reads and writes of every system's disks, added together"
+          time={fleet.totals.time}
+          series={disk}
+          unit="bytesPerSecond"
+          from={from}
+          to={to}
+          refreshing={refreshing}
+          onZoom={onZoom}
+        />
+      </SimpleGrid>
+    </Stack>
   );
 }

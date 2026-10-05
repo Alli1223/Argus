@@ -74,7 +74,8 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
         var samples = await connection.QueryAsync<LatestRow>(new CommandDefinition("""
             SELECT h.id AS host_id, m.time, m.cpu_usage_pct::float8 AS cpu, m.mem_used_bytes AS mem_used,
                    m.mem_total_bytes AS mem_total, m.swap_used_bytes AS swap_used, m.swap_total_bytes AS swap_total,
-                   m.load_1::float8 AS load_1, m.net_rx_bps AS net_rx, m.net_tx_bps AS net_tx, m.uptime_seconds AS uptime
+                   m.load_1::float8 AS load_1, m.net_rx_bps AS net_rx, m.net_tx_bps AS net_tx, m.uptime_seconds AS uptime,
+                   m.disk_read_bps AS disk_read, m.disk_write_bps AS disk_write
             FROM unnest(@ids) AS h(id)
             CROSS JOIN LATERAL (
                 SELECT * FROM host_metrics
@@ -107,7 +108,9 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
             disks.GetValueOrDefault(row.HostId),
             row.NetRx,
             row.NetTx,
-            row.Uptime));
+            row.Uptime,
+            row.DiskRead,
+            row.DiskWrite));
     }
 
     public async Task<MetricSeries> GetHostSeriesAsync(Guid hostId, SeriesRange range, TimeSpan collectionInterval, CancellationToken cancellationToken)
@@ -405,6 +408,8 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
         public double? NetRx { get; set; }
         public double? NetTx { get; set; }
         public long Uptime { get; set; }
+        public double? DiskRead { get; set; }
+        public double? DiskWrite { get; set; }
     }
 
     private sealed class DiskRow
