@@ -18,6 +18,7 @@ public static class HostEndpoints
 
         hosts.MapGet("/", ListAsync);
         hosts.MapGet("/temperatures", GetFleetTemperaturesAsync);
+        hosts.MapGet("/fleet/metrics", GetFleetMetricsAsync);
         hosts.MapGet("/{id:guid}", GetAsync);
         hosts.MapPatch("/{id:guid}", UpdateAsync);
         hosts.MapDelete("/{id:guid}", DeleteAsync);
@@ -288,6 +289,28 @@ public static class HostEndpoints
             .Where(host => histories[host.Id].Series.Count > 0)
             .Select(host => new HostTemperatures(host.Id, host.DisplayName, histories[host.Id]))
             .ToList());
+    }
+
+    /// <summary>Every visible host's CPU, memory, load, traffic and disk I/O merged into one series.</summary>
+    private static async Task<Results<Ok<FleetMetrics>, ValidationProblem>> GetFleetMetricsAsync(
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        int? points,
+        ClaimsPrincipal user,
+        ArgusDbContext db,
+        TimeSeriesQueries series,
+        IOptions<AgentOptions> agents,
+        TimeProvider time,
+        CancellationToken cancellationToken)
+    {
+        if (SeriesRange.TryCreate(from, to, points, time.GetUtcNow(), out var range) is { } errors)
+        {
+            return TypedResults.ValidationProblem(errors);
+        }
+
+        var names = await db.Hosts.AsNoTracking().VisibleTo(user)
+            .ToDictionaryAsync(host => host.Id, host => host.DisplayName, cancellationToken);
+        return TypedResults.Ok(await series.GetFleetSeriesAsync(names, range, CollectionInterval(agents), cancellationToken));
     }
 
     private static async Task<Results<Ok<ProcessSnapshot>, NoContent, NotFound>> GetProcessesAsync(

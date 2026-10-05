@@ -370,6 +370,19 @@ export interface CreateEnrollmentToken {
   tags: string[];
 }
 
+/** Every visible host's history merged: see GET /api/hosts/fleet/metrics. */
+export interface FleetMetrics {
+  /** cpu, memory and load1 averaged across reporting hosts; netRx, netTx, diskRead and diskWrite summed; hosts counted. */
+  totals: MetricSeries;
+  hosts: FleetHostCpu[];
+}
+
+export interface FleetHostCpu {
+  hostId: string;
+  displayName: string;
+  cpu: (number | null)[];
+}
+
 export interface ApiTokenSummary {
   id: string;
   name: string;

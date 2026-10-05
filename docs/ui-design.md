@@ -13,7 +13,9 @@ blue-violet centre).
 1. **Status first.** The worst thing on screen is always the most visible thing. Colour is reserved
    for status and interaction; nothing is coloured for decoration.
 2. **One memorable element: the watch.** The fleet dashboard shows each host as an eye whose rings
-   carry CPU, memory and disk, with network traffic round its rim; offline hosts are closed eyes. Everything around it stays quiet.
+   carry CPU, memory and disk, with network traffic round its rim; offline hosts are closed eyes.
+   Under it, *All systems* puts the whole fleet together: dials for average CPU and memory per
+   system and total traffic in and out, then CPU and network charts over the chosen range. Everything around it stays quiet.
 3. **Density with rhythm.** Tables over card grids, tabular figures, semi-condensed type for data,
    left-aligned text, generous space only around the watch.
 4. **Plain words.** Sentence case everywhere; labels say what things are ("Add a system", not
@@ -80,6 +82,10 @@ Rules the charts follow:
 
 Meters (tables, the watch) use iris below 75 %, bronze from 75 % and crimson from 90 %, with the
 track a lighter step of the same hue and the number always shown beside the bar.
+
+The fleet dials on the overview follow the same rules: CPU and memory dials are meters, coloured by
+severity; the traffic dials use the rim's colours and run from zero to the busiest moment in the range
+on show, so they say how busy the fleet is against its own recent peak.
 
 The watch's rim is not a meter: traffic has no healthy or unhealthy level. Received runs down the
 left half and sent down the right, both from the top, in the charts' identity colours (slot 3
