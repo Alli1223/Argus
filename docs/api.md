@@ -19,6 +19,20 @@ curl -c cookies -H 'X-Argus-Csrf: 1' -H 'Content-Type: application/json' \
 curl -b cookies https://argus.example.com/api/hosts
 ```
 
+### API tokens
+
+Programs that only read, such as the [Home Assistant integration](https://github.com/Alli1223/argus-hass),
+can use an API token instead of a session. Create one under **Account → API tokens**; it is shown once.
+Send it as a bearer token:
+
+```sh
+curl -H 'Authorization: Bearer argus_at_…' https://argus.example.com/api/hosts
+```
+
+A token acts as the person who made it and sees what they see, but it only reads: any request other
+than `GET`, `HEAD` or `OPTIONS` made with one answers `403`. Revoking a token stops it at once; a token
+of someone whose account is disabled stops within a minute.
+
 People see and manage their own hosts. Administrators see every host and alert and manage user
 accounts. Alert rules and notification channels are personal, even for administrators.
 
@@ -48,6 +62,9 @@ All paths start with `/api`.
 | `GET /auth/me` | The signed-in person. |
 | `PUT /account/profile` | Changes your `displayName`. |
 | `POST /account/password` | Changes your password: `currentPassword`, `newPassword`. |
+| `GET /account/api-tokens` | Your API tokens, without their secrets. |
+| `POST /account/api-tokens` | Creates an API token: `name`. The answer holds the `token`, the only time it is shown. Needs a session. |
+| `DELETE /account/api-tokens/{id}` | Revokes one of your API tokens. |
 
 ### Users (administrators)
 

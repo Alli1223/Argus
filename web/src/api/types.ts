@@ -370,6 +370,21 @@ export interface CreateEnrollmentToken {
   tags: string[];
 }
 
+export interface ApiTokenSummary {
+  id: string;
+  name: string;
+  tokenPrefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  isActive: boolean;
+}
+
+export interface CreatedApiToken {
+  token: string;
+  summary: ApiTokenSummary;
+}
+
 export interface UserSummary {
   id: string;
   email: string;

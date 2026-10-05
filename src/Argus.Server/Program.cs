@@ -3,6 +3,7 @@ using Argus.Server.Data;
 using Argus.Server.Features.Account;
 using Argus.Server.Features.Agents;
 using Argus.Server.Features.Alerts;
+using Argus.Server.Features.ApiTokens;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Containers;
 using Argus.Server.Features.Dashboard;
@@ -43,6 +44,7 @@ builder.Services.AddDataProtection()
     .SetApplicationName("Argus")
     .PersistKeysToDbContext<ArgusDbContext>();
 builder.Services.AddArgusAuth();
+builder.Services.AddArgusApiTokens();
 builder.Services.AddArgusAgents();
 builder.Services.AddArgusMetrics();
 builder.Services.AddArgusAlerts();
@@ -76,6 +78,7 @@ app.UseArgusWebApp();
 app.UseCsrfProtection();
 
 app.UseAuthentication();
+app.UseApiTokensReadOnly();
 app.UseRateLimiter();
 app.UseAuthorization();
 
@@ -91,6 +94,7 @@ var api = app.MapGroup("/api");
 api.MapInfoEndpoints();
 api.MapAuthEndpoints();
 api.MapAccountEndpoints();
+api.MapApiTokenEndpoints();
 api.MapUserEndpoints();
 api.MapEnrollmentEndpoints();
 api.MapHostEndpoints();
