@@ -36,7 +36,7 @@ import { formatAgo, formatDuration, formatRate } from "../../lib/format";
 import { agentUpdateState, outdatedAgents } from "../../lib/updates";
 import { useNow } from "../../lib/useNow";
 
-type SortKey = "name" | "status" | "cpu" | "memory" | "disk" | "lastSeen";
+type SortKey = "name" | "status" | "cpu" | "memory" | "disk" | "received" | "sent" | "uptime" | "lastSeen";
 type StatusFilter = "all" | "Online" | "Offline";
 
 const sortValue: Record<SortKey, (host: HostSummary) => string | number | null> = {
@@ -45,6 +45,10 @@ const sortValue: Record<SortKey, (host: HostSummary) => string | number | null> 
   cpu: (host) => host.latest?.cpuPercent ?? null,
   memory: (host) => host.latest?.memoryPercent ?? null,
   disk: (host) => host.latest?.diskUsedPercent ?? null,
+  received: (host) => host.latest?.netRxBytesPerSec ?? null,
+  sent: (host) => host.latest?.netTxBytesPerSec ?? null,
+  // An offline host's last uptime is history; it sorts with the hosts that have none.
+  uptime: (host) => (host.status === "Online" ? (host.latest?.uptimeSeconds ?? null) : null),
   lastSeen: (host) => (host.lastSeenAt ? Date.parse(host.lastSeenAt) : null),
 };
 
@@ -182,7 +186,7 @@ export function HostsPage() {
       </Group>
 
       <Box className="argus-surface" style={{ borderRadius: "var(--mantine-radius-sm)", overflowX: "auto" }}>
-        <Table miw={960}>
+        <Table miw={1040}>
           <Table.Thead>
             <Table.Tr>
               <SortableHeader sortKey="name" sort={sort} onSort={toggleSort}>
@@ -200,8 +204,15 @@ export function HostsPage() {
               <SortableHeader sortKey="disk" sort={sort} onSort={toggleSort}>
                 Fullest disk
               </SortableHeader>
-              <Table.Th>Network</Table.Th>
-              <Table.Th>Uptime</Table.Th>
+              <SortableHeader sortKey="received" sort={sort} onSort={toggleSort}>
+                Received
+              </SortableHeader>
+              <SortableHeader sortKey="sent" sort={sort} onSort={toggleSort}>
+                Sent
+              </SortableHeader>
+              <SortableHeader sortKey="uptime" sort={sort} onSort={toggleSort}>
+                Uptime
+              </SortableHeader>
               <SortableHeader sortKey="lastSeen" sort={sort} onSort={toggleSort}>
                 Last report
               </SortableHeader>
@@ -211,7 +222,7 @@ export function HostsPage() {
             {hosts.isPending &&
               Array.from({ length: 4 }, (_, index) => (
                 <Table.Tr key={index}>
-                  <Table.Td colSpan={8}>
+                  <Table.Td colSpan={9}>
                     <Skeleton height={28} />
                   </Table.Td>
                 </Table.Tr>
@@ -221,7 +232,7 @@ export function HostsPage() {
             ))}
             {hosts.isSuccess && rows.length === 0 && filtered && (
               <Table.Tr>
-                <Table.Td colSpan={8}>
+                <Table.Td colSpan={9}>
                   <Group gap="sm" py="md" justify="center">
                     <Text c="dimmed">No hosts match these filters.</Text>
                     <Button
@@ -288,15 +299,15 @@ function HostRow({ host, now }: { host: HostSummary; now: number }) {
         <UsageMeter value={latest?.diskUsedPercent} label={`${host.displayName} fullest disk`} />
       </Table.Td>
       <Table.Td>
-        <Group gap={10} wrap="nowrap" className="argus-data" fz="sm">
-          <Group gap={2} wrap="nowrap" aria-label="Received">
-            <IconArrowDown size={13} aria-hidden />
-            {formatRate(latest?.netRxBytesPerSec)}
-          </Group>
-          <Group gap={2} wrap="nowrap" aria-label="Sent">
-            <IconArrowUp size={13} aria-hidden />
-            {formatRate(latest?.netTxBytesPerSec)}
-          </Group>
+        <Group gap={2} wrap="nowrap" className="argus-data" fz="sm">
+          <IconArrowDown size={13} aria-hidden />
+          {formatRate(latest?.netRxBytesPerSec)}
+        </Group>
+      </Table.Td>
+      <Table.Td>
+        <Group gap={2} wrap="nowrap" className="argus-data" fz="sm">
+          <IconArrowUp size={13} aria-hidden />
+          {formatRate(latest?.netTxBytesPerSec)}
         </Group>
       </Table.Td>
       <Table.Td className="argus-data">{formatDuration(latest?.uptimeSeconds)}</Table.Td>
