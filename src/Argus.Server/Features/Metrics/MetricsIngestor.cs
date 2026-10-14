@@ -41,6 +41,11 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
             batch.BatchCommands.Add(TemperatureMetrics(hostId, samples));
         }
 
+        if (samples.Any(sample => sample.Ups.Count > 0))
+        {
+            batch.BatchCommands.Add(UpsMetrics(hostId, samples));
+        }
+
         if (samples.Any(sample => sample.ContainerUsage is { Count: > 0 }))
         {
             batch.BatchCommands.Add(ContainerMetrics(hostId, samples));
@@ -186,6 +191,39 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
                 Param("device", rows.Select(r => r.Reading.Device).ToArray()),
                 Param("sensor", rows.Select(r => r.Reading.Sensor).ToArray()),
                 Param("celsius", rows.Select(r => (float)r.Reading.Celsius).ToArray()),
+            },
+        };
+    }
+
+    /// <summary>One row per UPS per sample. The status flags are split out too, so alerts and charts need no parsing.</summary>
+    private static NpgsqlBatchCommand UpsMetrics(Guid hostId, IReadOnlyList<MetricSample> samples)
+    {
+        var rows = samples.SelectMany(s => s.Ups, (s, ups) => (s.Timestamp, Ups: ups)).ToList();
+        return new NpgsqlBatchCommand("""
+            INSERT INTO ups_metrics (
+                host_id, time, ups, model, status, on_battery, low_battery,
+                battery_charge_pct, battery_runtime_seconds, load_pct, input_voltage, output_voltage, battery_voltage)
+            SELECT @host_id, * FROM unnest(
+                @time::timestamptz[], @ups::text[], @model::text[], @status::text[], @on_battery::boolean[], @low_battery::boolean[],
+                @charge::real[], @runtime::real[], @load::real[], @input::real[], @output::real[], @battery::real[])
+            ON CONFLICT DO NOTHING
+            """)
+        {
+            Parameters =
+            {
+                Param("host_id", hostId),
+                Param("time", rows.Select(r => r.Timestamp).ToArray()),
+                Param("ups", rows.Select(r => r.Ups.Name).ToArray()),
+                Param("model", rows.Select(r => r.Ups.Model).ToArray()),
+                Param("status", rows.Select(r => r.Ups.Status).ToArray()),
+                Param("on_battery", rows.Select(r => UpsStatus.OnBattery(r.Ups.Status)).ToArray()),
+                Param("low_battery", rows.Select(r => UpsStatus.LowBattery(r.Ups.Status)).ToArray()),
+                Param("charge", rows.Select(r => Real(r.Ups.BatteryChargePercent)).ToArray()),
+                Param("runtime", rows.Select(r => Real(r.Ups.BatteryRuntimeSeconds)).ToArray()),
+                Param("load", rows.Select(r => Real(r.Ups.LoadPercent)).ToArray()),
+                Param("input", rows.Select(r => Real(r.Ups.InputVoltage)).ToArray()),
+                Param("output", rows.Select(r => Real(r.Ups.OutputVoltage)).ToArray()),
+                Param("battery", rows.Select(r => Real(r.Ups.BatteryVoltage)).ToArray()),
             },
         };
     }

@@ -132,6 +132,24 @@ public static class MetricsBatchValidator
             .DistinctBy(reading => (reading.Device, reading.Sensor))
             .Take(AgentLimits.MaxTemperaturesPerSample)
             .ToList(),
+        // One reading per UPS: the database keys readings by host, UPS and time.
+        Ups = sample.Ups
+            .Where(ups => !string.IsNullOrWhiteSpace(ups.Name))
+            .DistinctBy(ups => ups.Name.Trim())
+            .Take(AgentLimits.MaxUpsPerSample)
+            .Select(ups => new UpsMetrics
+            {
+                Name = Clip(ups.Name.Trim(), NameLength),
+                Model = ClipOptional(ups.Model, NameLength),
+                Status = Clip((ups.Status ?? "").Trim().ToUpperInvariant(), StateLength * 2),
+                BatteryChargePercent = Percent(Finite(ups.BatteryChargePercent)),
+                BatteryRuntimeSeconds = Finite(ups.BatteryRuntimeSeconds) is { } runtime ? Math.Max(0, runtime) : null,
+                LoadPercent = Finite(ups.LoadPercent) is { } load ? Math.Max(0, load) : null,
+                InputVoltage = Finite(ups.InputVoltage) is { } input ? Math.Max(0, input) : null,
+                OutputVoltage = Finite(ups.OutputVoltage) is { } output ? Math.Max(0, output) : null,
+                BatteryVoltage = Finite(ups.BatteryVoltage) is { } battery ? Math.Max(0, battery) : null,
+            })
+            .ToList(),
         Containers = sample.Containers is { } report ? Clean(report) : null,
         ContainerUsage = sample.ContainerUsage?
             .Where(usage => !string.IsNullOrWhiteSpace(usage.Name))
@@ -203,6 +221,8 @@ public static class MetricsBatchValidator
     private static double Percent(double value) => double.IsFinite(value) ? Math.Clamp(value, 0, 100) : 0;
 
     private static double? Percent(double? value) => value is { } v ? Percent(v) : null;
+
+    private static double? Finite(double? value) => value is { } v && double.IsFinite(v) ? v : null;
 
     private static double Rate(double value) => double.IsFinite(value) ? Math.Max(0, value) : 0;
 

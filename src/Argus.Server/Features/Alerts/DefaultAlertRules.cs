@@ -19,6 +19,12 @@ public static class DefaultAlertRules
         // containers people stopped, so they are quiet on hosts without Docker and on healthy ones.
         Rule(ownerId, now, "Container down", AlertMetric.ContainerDown, 0, AlertSeverity.Warning, TimeSpan.FromMinutes(2)),
         Rule(ownerId, now, "Container restart loop", AlertMetric.ContainerRestarts, 3, AlertSeverity.Warning, TimeSpan.FromMinutes(10)),
+
+        // Quiet on hosts without a UPS. Losing line power matters at once; the charge must stay low for a
+        // minute, so one odd reading does not count. The thresholds are Netdata's.
+        Rule(ownerId, now, "UPS on battery", AlertMetric.UpsOnBattery, 0, AlertSeverity.Warning, TimeSpan.Zero),
+        Rule(ownerId, now, "UPS battery low", AlertMetric.UpsBatteryCharge, 75, AlertSeverity.Warning, TimeSpan.FromMinutes(1), AlertOperator.Below),
+        Rule(ownerId, now, "UPS battery critical", AlertMetric.UpsBatteryCharge, 40, AlertSeverity.Critical, TimeSpan.FromMinutes(1), AlertOperator.Below),
     ];
 
     private static AlertRule Rule(
@@ -28,12 +34,13 @@ public static class DefaultAlertRules
         AlertMetric metric,
         double threshold,
         AlertSeverity severity,
-        TimeSpan? duration = null) => new()
+        TimeSpan? duration = null,
+        AlertOperator op = AlertOperator.Above) => new()
     {
         OwnerId = ownerId,
         Name = name,
         Metric = metric,
-        Operator = AlertOperator.Above,
+        Operator = op,
         Threshold = threshold,
         DurationSeconds = (int)(duration ?? Sustained).TotalSeconds,
         Severity = severity,

@@ -27,6 +27,8 @@ public static class HostEndpoints
         hosts.MapGet("/{id:guid}/filesystems/history", GetFilesystemHistoryAsync);
         hosts.MapGet("/{id:guid}/network", GetNetworkHistoryAsync);
         hosts.MapGet("/{id:guid}/temperatures", GetTemperatureHistoryAsync);
+        hosts.MapGet("/{id:guid}/ups", GetUpsAsync);
+        hosts.MapGet("/{id:guid}/ups/history", GetUpsHistoryAsync);
         hosts.MapGet("/{id:guid}/processes", GetProcessesAsync);
         hosts.MapGet("/{id:guid}/services", GetServicesAsync);
 
@@ -259,6 +261,42 @@ public static class HostEndpoints
 
         var histories = await series.GetTemperatureHistoryAsync([id], range, CollectionInterval(agents), cancellationToken);
         return TypedResults.Ok(histories[id]);
+    }
+
+    private static async Task<Results<Ok<List<UpsSnapshot>>, NotFound>> GetUpsAsync(
+        Guid id, ClaimsPrincipal user, ArgusDbContext db, TimeSeriesQueries series, CancellationToken cancellationToken)
+    {
+        if (!await db.Hosts.VisibleTo(user).AnyAsync(host => host.Id == id, cancellationToken))
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(await series.GetUpsAsync(id, cancellationToken));
+    }
+
+    private static async Task<Results<Ok<MetricSeries>, NotFound, ValidationProblem>> GetUpsHistoryAsync(
+        Guid id,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        int? points,
+        ClaimsPrincipal user,
+        ArgusDbContext db,
+        TimeSeriesQueries series,
+        IOptions<AgentOptions> agents,
+        TimeProvider time,
+        CancellationToken cancellationToken)
+    {
+        if (!await db.Hosts.VisibleTo(user).AnyAsync(host => host.Id == id, cancellationToken))
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (SeriesRange.TryCreate(from, to, points, time.GetUtcNow(), out var range) is { } errors)
+        {
+            return TypedResults.ValidationProblem(errors);
+        }
+
+        return TypedResults.Ok(await series.GetUpsHistoryAsync(id, range, CollectionInterval(agents), cancellationToken));
     }
 
     /// <summary>The temperature history of every visible host that reported temperatures in the range, by name.</summary>

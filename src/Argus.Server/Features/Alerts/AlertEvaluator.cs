@@ -361,7 +361,7 @@ public sealed class AlertEvaluator(
             .ToList();
     }
 
-    /// <summary>Window aggregates per host (and mount point). The value expressions are fixed per metric.</summary>
+    /// <summary>Window aggregates per host (and mount point or UPS). The value expressions are fixed per metric.</summary>
     private static string StatsSql(AlertMetric metric)
     {
         var source = metric.IsPerFilesystem()
@@ -370,6 +370,13 @@ public sealed class AlertEvaluator(
                FROM filesystem_metrics f
                WHERE f.host_id = ANY(@host_ids) AND f.time > @window_start AND f.time <= @now
                  AND (@resource::text IS NULL OR f.mount_point = @resource)
+               """
+            : metric.IsUps()
+            ? $"""
+               SELECT u.host_id, u.ups AS resource_key, u.time, {ValueExpression(metric)} AS value
+               FROM ups_metrics u
+               WHERE u.host_id = ANY(@host_ids) AND u.time > @window_start AND u.time <= @now
+                 AND (@resource::text IS NULL OR u.ups = @resource)
                """
             : $"""
                SELECT m.host_id, ''::text AS resource_key, m.time, {ValueExpression(metric)} AS value
@@ -405,6 +412,13 @@ public sealed class AlertEvaluator(
         AlertMetric.NetworkTransmit => "m.net_tx_bps",
         AlertMetric.DiskUsage => "f.used_bytes::float8 / NULLIF(f.used_bytes + f.available_bytes, 0) * 100",
         AlertMetric.InodeUsage => "f.inodes_used::float8 / NULLIF(f.inodes_total, 0) * 100",
+
+        // On battery is a state, read as 1 or 0 against a threshold of 0, so it fires once every reading in
+        // the window is on battery and clears once every recent one is back on line power.
+        AlertMetric.UpsOnBattery => "u.on_battery::int::float8",
+        AlertMetric.UpsBatteryCharge => "u.battery_charge_pct::float8",
+        AlertMetric.UpsBatteryRuntime => "u.battery_runtime_seconds::float8",
+        AlertMetric.UpsLoad => "u.load_pct::float8",
         _ => throw new ArgumentOutOfRangeException(nameof(metric), metric, "Not a sampled metric."),
     };
 

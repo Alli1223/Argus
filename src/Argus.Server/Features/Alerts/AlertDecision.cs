@@ -181,6 +181,11 @@ public static class AlertDecision
             return $"{resourceKey} keeps restarting on {hostName}";
         }
 
+        if (rule.Metric == AlertMetric.UpsOnBattery)
+        {
+            return $"UPS {resourceKey} on {hostName} is on battery";
+        }
+
         if (rule.Condition == AlertCondition.Anomaly)
         {
             return $"{rule.Metric.Label()} on {hostName} unusually {(rule.Operator == AlertOperator.Above ? "high" : "low")}";
@@ -188,7 +193,9 @@ public static class AlertDecision
 
         var subject = rule.Metric.IsPerFilesystem() && resourceKey.Length > 0
             ? $"{rule.Metric.Label()} on {hostName} {resourceKey}"
-            : $"{rule.Metric.Label()} on {hostName}";
+            : rule.Metric.IsUps() && resourceKey.Length > 0
+                ? $"{rule.Metric.Label()} of {resourceKey} on {hostName}"
+                : $"{rule.Metric.Label()} on {hostName}";
         var direction = rule.Operator == AlertOperator.Above ? "above" : "below";
         return $"{subject} {direction} {FormatThreshold(rule.Metric, rule.Threshold)}";
     }
@@ -198,6 +205,9 @@ public static class AlertDecision
         _ when metric.IsPercentage() => threshold.ToString("0.#", CultureInfo.InvariantCulture) + "%",
         AlertMetric.NetworkReceive or AlertMetric.NetworkTransmit => FormatRate(threshold),
         AlertMetric.ContainerRestarts => threshold == 1 ? "1 restart" : threshold.ToString("0", CultureInfo.InvariantCulture) + " restarts",
+        AlertMetric.UpsBatteryRuntime => threshold < 60
+            ? threshold.ToString("0", CultureInfo.InvariantCulture) + " s"
+            : (threshold / 60).ToString("0.#", CultureInfo.InvariantCulture) + " min",
         _ => threshold.ToString("0.##", CultureInfo.InvariantCulture),
     };
 

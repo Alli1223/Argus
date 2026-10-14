@@ -27,6 +27,21 @@ public sealed record FilesystemSnapshot(
     long? InodesUsed,
     DateTimeOffset Time);
 
+/// <summary>A UPS as it was in the host's newest reading of it. Readings the UPS does not give are null.</summary>
+public sealed record UpsSnapshot(
+    string Name,
+    string? Model,
+    string Status,
+    bool OnBattery,
+    bool LowBattery,
+    double? BatteryChargePercent,
+    double? BatteryRuntimeSeconds,
+    double? LoadPercent,
+    double? InputVoltage,
+    double? OutputVoltage,
+    double? BatteryVoltage,
+    DateTimeOffset Time);
+
 public sealed record ProcessSnapshot(DateTimeOffset CapturedAt, IReadOnlyList<ProcessMetrics> Processes);
 
 /// <summary>A host's services: when the agent last checked (null if never) and what was failing then.</summary>
@@ -315,6 +330,65 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
             range, source, bucket));
     }
 
+    /// <summary>Each UPS the host reported in the last day, as of its newest reading.</summary>
+    public async Task<List<UpsSnapshot>> GetUpsAsync(Guid hostId, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<UpsRow>(new CommandDefinition("""
+            SELECT DISTINCT ON (ups)
+                   ups AS name, model, status, on_battery, low_battery,
+                   battery_charge_pct::float8 AS battery_charge, battery_runtime_seconds::float8 AS battery_runtime,
+                   load_pct::float8 AS load, input_voltage::float8 AS input_voltage, output_voltage::float8 AS output_voltage,
+                   battery_voltage::float8 AS battery_voltage, time
+            FROM ups_metrics
+            WHERE host_id = @host_id AND time > now() - interval '1 day'
+            ORDER BY ups, time DESC
+            """, new { host_id = hostId }, cancellationToken: cancellationToken));
+
+        return rows.Select(row => new UpsSnapshot(
+            row.Name, row.Model, row.Status, row.OnBattery, row.LowBattery, row.BatteryCharge, row.BatteryRuntime, row.Load,
+            row.InputVoltage, row.OutputVoltage, row.BatteryVoltage, Utc(row.Time))).ToList();
+    }
+
+    /// <summary>
+    /// Each UPS over time, keyed <c>charge:{ups}</c>, <c>runtime:{ups}</c>, <c>load:{ups}</c> and
+    /// <c>onBattery:{ups}</c> (1 for points where it ran on battery at all, else 0).
+    /// </summary>
+    public async Task<MetricSeries> GetUpsHistoryAsync(Guid hostId, SeriesRange range, TimeSpan collectionInterval, CancellationToken cancellationToken)
+    {
+        var (source, bucket) = SeriesResolution.ChooseRawOrHourly(range.To - range.From, range.Points, collectionInterval);
+        var sql = source == SeriesSource.Raw
+            ? """
+              WITH readings AS (
+                  SELECT time_bucket_gapfill(@bucket, time, @from, @to) AS bucket, ups,
+                         avg(battery_charge_pct)::float8 AS charge, avg(battery_runtime_seconds)::float8 AS runtime,
+                         avg(load_pct)::float8 AS load, max(on_battery::int)::float8 AS on_battery
+                  FROM ups_metrics
+                  WHERE host_id = @host_id AND time >= @from AND time < @to
+                  GROUP BY 1, 2)
+              """
+            : """
+              WITH readings AS (
+                  SELECT time_bucket_gapfill(@bucket, bucket, @from, @to) AS bucket, ups,
+                         avg(battery_charge_pct) AS charge, avg(battery_runtime_seconds) AS runtime,
+                         avg(load_pct) AS load, max(on_battery)::float8 AS on_battery
+                  FROM ups_metrics_1h
+                  WHERE host_id = @host_id AND bucket >= @from AND bucket < @to
+                  GROUP BY 1, 2)
+              """;
+
+        return await PivotAsync(sql + """
+            SELECT bucket, 'charge:' || ups AS key, charge AS value FROM readings
+            UNION ALL
+            SELECT bucket, 'runtime:' || ups AS key, runtime AS value FROM readings
+            UNION ALL
+            SELECT bucket, 'load:' || ups AS key, load AS value FROM readings
+            UNION ALL
+            SELECT bucket, 'onBattery:' || ups AS key, on_battery AS value FROM readings
+            ORDER BY 1
+            """, hostId, range, source, bucket, cancellationToken);
+    }
+
     public async Task<ProcessSnapshot?> GetProcessesAsync(Guid hostId, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -353,6 +427,7 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
             DELETE FROM filesystem_metrics WHERE host_id = @host_id;
             DELETE FROM network_metrics WHERE host_id = @host_id;
             DELETE FROM temperature_metrics WHERE host_id = @host_id;
+            DELETE FROM ups_metrics WHERE host_id = @host_id;
             DELETE FROM container_metrics WHERE host_id = @host_id;
             DELETE FROM container_events WHERE host_id = @host_id;
             """, new { host_id = hostId }, cancellationToken: cancellationToken));
@@ -479,6 +554,22 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
         public string Device { get; set; } = "";
         public string Sensor { get; set; } = "";
         public double? Value { get; set; }
+    }
+
+    private sealed class UpsRow
+    {
+        public string Name { get; set; } = "";
+        public string? Model { get; set; }
+        public string Status { get; set; } = "";
+        public bool OnBattery { get; set; }
+        public bool LowBattery { get; set; }
+        public double? BatteryCharge { get; set; }
+        public double? BatteryRuntime { get; set; }
+        public double? Load { get; set; }
+        public double? InputVoltage { get; set; }
+        public double? OutputVoltage { get; set; }
+        public double? BatteryVoltage { get; set; }
+        public DateTime Time { get; set; }
     }
 
     private sealed class ProcessRow
