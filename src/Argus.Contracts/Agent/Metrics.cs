@@ -50,6 +50,12 @@ public sealed record MetricSample
     public IReadOnlyList<TemperatureMetrics> Temperatures { get; init; } = [];
 
     /// <summary>
+    /// Uninterruptible power supplies the machine's Network UPS Tools server (upsd) knows; empty where
+    /// there is none the agent can reach.
+    /// </summary>
+    public IReadOnlyList<UpsMetrics> Ups { get; init; } = [];
+
+    /// <summary>
     /// The machine's Docker containers, running or not. Only on samples where they changed, or at least
     /// a minute after the last report; null on other samples and from agents that do not watch Docker.
     /// </summary>
@@ -188,6 +194,36 @@ public sealed record TemperatureMetrics
     public required string Sensor { get; init; }
 
     public required double Celsius { get; init; }
+}
+
+/// <summary>One UPS as Network UPS Tools reports it. Readings the UPS does not give are null.</summary>
+public sealed record UpsMetrics
+{
+    /// <summary>The name upsd knows the UPS by, such as "ups".</summary>
+    public required string Name { get; init; }
+
+    /// <summary>Maker and model, such as "APC Back-UPS ES 700G".</summary>
+    public string? Model { get; init; }
+
+    /// <summary>
+    /// NUT's status flags, space separated: OL (on line power), OB (on battery), LB (low battery),
+    /// CHRG, DISCHRG, RB (replace battery), OVER (overloaded), BYPASS and others.
+    /// </summary>
+    public required string Status { get; init; }
+
+    public double? BatteryChargePercent { get; init; }
+
+    /// <summary>How long the battery would last at the present load.</summary>
+    public double? BatteryRuntimeSeconds { get; init; }
+
+    /// <summary>Share of the UPS's capacity in use.</summary>
+    public double? LoadPercent { get; init; }
+
+    public double? InputVoltage { get; init; }
+
+    public double? OutputVoltage { get; init; }
+
+    public double? BatteryVoltage { get; init; }
 }
 
 /// <summary>The containers on a machine, or why the agent could not list them.</summary>

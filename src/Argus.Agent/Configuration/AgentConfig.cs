@@ -27,6 +27,12 @@ public sealed class AgentConfig
     /// </summary>
     public bool DriveTemperatures { get; set; }
 
+    /// <summary>
+    /// The Network UPS Tools server (upsd) to read UPSes from, as <c>host</c> or <c>host:port</c>. Its
+    /// default is the machine's own; empty stops the agent looking for a UPS.
+    /// </summary>
+    public string? UpsServer { get; set; } = "localhost:3493";
+
     /// <summary>Docker's socket. The agent watches containers when it exists and the agent may use it.</summary>
     public string DockerSocket { get; set; } = "/var/run/docker.sock";
 

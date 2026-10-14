@@ -76,6 +76,7 @@ internal static class AgentCommands
             PlatformCollectors.CreateMetricsSource(loggers, config),
             new ProcessCollector(),
             PlatformCollectors.CreateTemperatureSource(loggers, config),
+            PlatformCollectors.CreateUpsSource(loggers, config, TimeProvider.System),
             PlatformCollectors.CreateContainerSource(loggers, config, TimeProvider.System),
             PlatformCollectors.CreateServiceStatusSource(loggers),
             TimeProvider.System);
