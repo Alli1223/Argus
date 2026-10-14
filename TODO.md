@@ -256,6 +256,14 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Smoke test runs the agent from its image and checks it reports the machine, not the container
 - [ ] Agents in containers cannot update themselves; the image has to be pulled
 
+## Phase 22 — UPS
+
+- [x] Agent: UPSes from Network UPS Tools' upsd (`UpsServer`, the machine's own by default), quiet where there is none
+- [x] Server: `ups_metrics` hypertable with compression, an hourly rollup and retention; validation and ingestion
+- [x] `GET /api/hosts/{id}/ups` and `GET /api/hosts/{id}/ups/history`
+- [x] Alert rules: UPS on battery, battery charge, runtime left and load, per UPS; on-battery and charge rules for every account
+- [x] Web: a UPS section and chart on the host page, and the UPS metrics in the rule editor
+
 ---
 
 ## Future ideas (not scheduled)

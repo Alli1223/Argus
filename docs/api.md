@@ -96,6 +96,8 @@ All paths start with `/api`.
 | `GET /hosts/{id}/containers/{name}/logs` | The container's newest log `lines` (`time`, `stream` of `stdout` or `stderr`, `text`), read through its agent: `tail` lines, 200 by default and at most 5000. `truncated` says whether older lines were left out. Same errors as above. |
 | `GET /containers` | Every host you can see that reports containers, with its containers. |
 | `GET /hosts/{id}/temperatures` | Each temperature sensor over time, in degrees Celsius. |
+| `GET /hosts/{id}/ups` | Each UPS the host reported in the last day, as of its newest reading: `name`, `model`, NUT's `status` flags, `onBattery`, `lowBattery`, `batteryChargePercent`, `batteryRuntimeSeconds`, `loadPercent` and voltages. |
+| `GET /hosts/{id}/ups/history` | Each UPS over time, keyed `charge:{ups}`, `runtime:{ups}`, `load:{ups}` and `onBattery:{ups}` (1 where it ran on battery). |
 | `GET /hosts/temperatures` | The temperature history of every host that reported temperatures in the range, by name: `hostId`, `displayName` and `history`. |
 | `GET /hosts/fleet/metrics` | Every host you can see merged into one history: `totals` has `cpu`, `memory` and `load1` averaged across the hosts reporting in each point, `netRx`, `netTx`, `diskRead` and `diskWrite` added up, and `hosts`, how many reported; `hosts` lists each host's `hostId`, `displayName` and own `cpu` on the same time axis. See [History queries](#history-queries). |
 | `GET /hosts/{id}/processes` | The busiest processes in the latest reading. |
@@ -146,10 +148,12 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
 
 - `metric` is one of `CpuUsage`, `MemoryUsage`, `SwapUsage`, `LoadPerCore`, `DiskIoUtilization`,
   `NetworkReceive`, `NetworkTransmit`, `DiskUsage`, `InodeUsage`, `HostOffline`, `ServiceFailed`,
-  `ContainerDown` or `ContainerRestarts`. Percentages are 0–100, network rates bytes per second.
+  `ContainerDown`, `ContainerRestarts`, `UpsOnBattery`, `UpsBatteryCharge`, `UpsBatteryRuntime` or
+  `UpsLoad`. Percentages are 0–100, network rates bytes per second and UPS runtimes seconds.
 - `DiskUsage` and `InodeUsage` rules can be narrowed to one mount point, `ServiceFailed` rules to
-  one service, and container rules to one container by name, with `resourceFilter`.
-- `HostOffline`, `ServiceFailed` and `ContainerDown` have no threshold: they fire once the state has
+  one service, container rules to one container by name, and UPS rules to one UPS by the name NUT
+  gives it, with `resourceFilter`.
+- `HostOffline`, `ServiceFailed`, `ContainerDown` and `UpsOnBattery` have no threshold: they fire once the state has
   lasted the duration. A container is down when it is restarting, dead, unhealthy or has crashed; a
   rule that names the container also counts it down when it was stopped, paused or never started.
 - `ContainerRestarts` fires when Docker restarted a container more than `threshold` times (a whole
