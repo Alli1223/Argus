@@ -29,6 +29,29 @@ const rule: AlertRule = {
 };
 
 describe("describeRule", () => {
+  it("describes UPS rules", () => {
+    expect(describeRule({ ...rule, metric: "UpsOnBattery", durationSeconds: 0 })).toBe("Any UPS on battery");
+    expect(
+      describeRule({
+        ...rule,
+        metric: "UpsBatteryCharge",
+        operator: "Below",
+        threshold: 40,
+        durationSeconds: 60,
+      }),
+    ).toBe("UPS battery charge below 40% for 1 minute");
+    expect(
+      describeRule({
+        ...rule,
+        metric: "UpsBatteryRuntime",
+        operator: "Below",
+        threshold: 300,
+        resourceFilter: "ups",
+        durationSeconds: 0,
+      }),
+    ).toBe("UPS battery runtime below 5m on ups");
+  });
+
   it("describes container rules", () => {
     expect(describeRule({ ...rule, metric: "ContainerDown", durationSeconds: 120 })).toBe(
       "Any container down for 2 minutes",
@@ -80,6 +103,12 @@ describe("describeScope", () => {
 });
 
 describe("thresholds", () => {
+  it("are typed in minutes for UPS runtimes and kept in seconds", () => {
+    expect(thresholdToInput("UpsBatteryRuntime", 300)).toBe(5);
+    expect(inputToThreshold("UpsBatteryRuntime", 2.5)).toBe(150);
+    expect(thresholdSuffix("UpsBatteryRuntime")).toBe(" min");
+  });
+
   it("are typed in MB/s for byte rates and kept in bytes", () => {
     expect(thresholdSuffix("NetworkTransmit")).toBe(" MB/s");
     expect(thresholdToInput("NetworkTransmit", 25 * 1024 ** 2)).toBe(25);

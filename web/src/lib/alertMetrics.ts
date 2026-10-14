@@ -1,5 +1,5 @@
 import type { AlertMetric, AlertSeverity } from "../api/types";
-import { formatPercent, formatRate } from "./format";
+import { formatDuration, formatPercent, formatRate } from "./format";
 
 /** The status colour of each severity. It always comes with an icon or the severity's name. */
 export const SEVERITY_COLORS: Record<AlertSeverity, string> = {
@@ -23,9 +23,13 @@ export const METRIC_LABELS: Record<AlertMetric, string> = {
   ServiceFailed: "Service failed",
   ContainerDown: "Container down",
   ContainerRestarts: "Container restarts",
+  UpsOnBattery: "UPS on battery",
+  UpsBatteryCharge: "UPS battery charge",
+  UpsBatteryRuntime: "UPS battery runtime",
+  UpsLoad: "UPS load",
 };
 
-type MetricUnit = "percent" | "bytesPerSecond" | "perCore" | "restarts" | "none";
+type MetricUnit = "percent" | "bytesPerSecond" | "perCore" | "restarts" | "seconds" | "none";
 
 export const METRIC_UNITS: Record<AlertMetric, MetricUnit> = {
   CpuUsage: "percent",
@@ -41,9 +45,13 @@ export const METRIC_UNITS: Record<AlertMetric, MetricUnit> = {
   ServiceFailed: "none",
   ContainerDown: "none",
   ContainerRestarts: "restarts",
+  UpsOnBattery: "none",
+  UpsBatteryCharge: "percent",
+  UpsBatteryRuntime: "seconds",
+  UpsLoad: "percent",
 };
 
-/** A reading or threshold of a metric: "93.2%", "12.0 MB/s", "1.50 per core", "4 restarts". */
+/** A reading or threshold of a metric: "93.2%", "12.0 MB/s", "1.50 per core", "4 restarts", "5m". */
 export function formatMetricValue(metric: AlertMetric, value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "–";
   switch (METRIC_UNITS[metric]) {
@@ -55,6 +63,8 @@ export function formatMetricValue(metric: AlertMetric, value: number | null | un
       return `${value.toFixed(2)} per core`;
     case "restarts":
       return `${Math.round(value)} ${Math.round(value) === 1 ? "restart" : "restarts"}`;
+    case "seconds":
+      return formatDuration(value);
     default:
       return "–";
   }

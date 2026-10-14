@@ -16,7 +16,11 @@ export type AlertMetric =
   | "HostOffline"
   | "ServiceFailed"
   | "ContainerDown"
-  | "ContainerRestarts";
+  | "ContainerRestarts"
+  | "UpsOnBattery"
+  | "UpsBatteryCharge"
+  | "UpsBatteryRuntime"
+  | "UpsLoad";
 export type AlertOperator = "Above" | "Below";
 /** A fixed threshold, or the host's usual level (the threshold then counts standard deviations). */
 export type AlertCondition = "Threshold" | "Anomaly";
@@ -330,6 +334,24 @@ export interface ProcessMetrics {
 export interface ProcessSnapshot {
   capturedAt: string;
   processes: ProcessMetrics[];
+}
+
+/** A UPS as of the host's newest reading of it. Readings the UPS does not give are null. */
+export interface UpsSnapshot {
+  /** The name the machine's UPS server (NUT's upsd) knows it by. */
+  name: string;
+  model: string | null;
+  /** NUT's status flags, space separated, such as "OL CHRG" or "OB DISCHRG LB". */
+  status: string;
+  onBattery: boolean;
+  lowBattery: boolean;
+  batteryChargePercent: number | null;
+  batteryRuntimeSeconds: number | null;
+  loadPercent: number | null;
+  inputVoltage: number | null;
+  outputVoltage: number | null;
+  batteryVoltage: number | null;
+  time: string;
 }
 
 export interface ServiceFailure {

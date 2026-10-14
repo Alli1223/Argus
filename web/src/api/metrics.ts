@@ -8,6 +8,7 @@ import type {
   MetricSeries,
   ProcessSnapshot,
   ServiceStatus,
+  UpsSnapshot,
 } from "./types";
 
 type SeriesKey = readonly [scope: "hosts", kind: string, id: string, range: TimeRange];
@@ -17,11 +18,13 @@ export const metricKeys = {
   filesystemHistory: (id: string, range: TimeRange): SeriesKey => ["hosts", "filesystem-history", id, range],
   network: (id: string, range: TimeRange): SeriesKey => ["hosts", "network", id, range],
   temperatures: (id: string, range: TimeRange): SeriesKey => ["hosts", "temperatures", id, range],
+  upsHistory: (id: string, range: TimeRange): SeriesKey => ["hosts", "ups-history", id, range],
   fleetTemperatures: (range: TimeRange) => ["hosts", "fleet-temperatures", range] as const,
   fleet: (range: TimeRange) => ["hosts", "fleet-metrics", range] as const,
   filesystems: (id: string) => ["hosts", "filesystems", id] as const,
   processes: (id: string) => ["hosts", "processes", id] as const,
   services: (id: string) => ["hosts", "services", id] as const,
+  ups: (id: string) => ["hosts", "ups", id] as const,
 };
 
 const iso = (seconds: number) => new Date(seconds * 1000).toISOString();
@@ -65,6 +68,11 @@ export function useTemperatureHistory(id: string, range: TimeRange) {
   return useSeries(metricKeys.temperatures(id, range), `/api/hosts/${id}/temperatures`);
 }
 
+/** Each UPS over time, keyed `charge:{ups}`, `runtime:{ups}`, `load:{ups}` and `onBattery:{ups}`. */
+export function useUpsHistory(id: string, range: TimeRange) {
+  return useSeries(metricKeys.upsHistory(id, range), `/api/hosts/${id}/ups/history`);
+}
+
 /** The temperature history of every host that reported temperatures in the range, by name. */
 export function useFleetTemperatures(range: TimeRange) {
   return useQuery({
@@ -90,6 +98,15 @@ export function useHostServices(id: string) {
     queryKey: metricKeys.services(id),
     queryFn: () => api.get<ServiceStatus>(`/api/hosts/${id}/services`),
     refetchInterval: 60_000,
+  });
+}
+
+/** Each UPS the host reported in the last day, as of its newest reading. */
+export function useHostUps(id: string) {
+  return useQuery({
+    queryKey: metricKeys.ups(id),
+    queryFn: () => api.get<UpsSnapshot[]>(`/api/hosts/${id}/ups`),
+    refetchInterval: 15_000,
   });
 }
 
