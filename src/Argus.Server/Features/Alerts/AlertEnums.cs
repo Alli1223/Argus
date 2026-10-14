@@ -41,6 +41,18 @@ public enum AlertMetric
 
     /// <summary>Docker restarted a container more times than the threshold within the rule's duration.</summary>
     ContainerRestarts,
+
+    /// <summary>A UPS is running on its battery because line power is gone; evaluated per UPS.</summary>
+    UpsOnBattery,
+
+    /// <summary>A UPS's battery charge, percent; evaluated per UPS.</summary>
+    UpsBatteryCharge,
+
+    /// <summary>How long a UPS's battery would last at the present load, seconds; evaluated per UPS.</summary>
+    UpsBatteryRuntime,
+
+    /// <summary>Share of a UPS's capacity in use, percent; evaluated per UPS.</summary>
+    UpsLoad,
 }
 
 /// <summary>How a rule decides that a reading is a problem.</summary>
@@ -79,13 +91,20 @@ public static class AlertMetrics
 
     public static bool IsContainer(this AlertMetric metric) => metric is AlertMetric.ContainerDown or AlertMetric.ContainerRestarts;
 
-    /// <summary>Metrics evaluated per resource (a mount point, a service or a container), which a rule may narrow to one.</summary>
+    /// <summary>Metrics read from a host's UPSes, evaluated once per UPS.</summary>
+    public static bool IsUps(this AlertMetric metric) =>
+        metric is AlertMetric.UpsOnBattery or AlertMetric.UpsBatteryCharge or AlertMetric.UpsBatteryRuntime or AlertMetric.UpsLoad;
+
+    /// <summary>
+    /// Metrics evaluated per resource (a mount point, a service, a container or a UPS), which a rule may
+    /// narrow to one.
+    /// </summary>
     public static bool IsPerResource(this AlertMetric metric) =>
-        metric.IsPerFilesystem() || metric == AlertMetric.ServiceFailed || metric.IsContainer();
+        metric.IsPerFilesystem() || metric == AlertMetric.ServiceFailed || metric.IsContainer() || metric.IsUps();
 
     /// <summary>States rather than measurements: no threshold or direction, only how long they last.</summary>
     public static bool IsState(this AlertMetric metric) =>
-        metric is AlertMetric.HostOffline or AlertMetric.ServiceFailed or AlertMetric.ContainerDown;
+        metric is AlertMetric.HostOffline or AlertMetric.ServiceFailed or AlertMetric.ContainerDown or AlertMetric.UpsOnBattery;
 
     /// <summary>
     /// Alerts that end when their resource stops being observed, such as a service no longer failing or a
@@ -98,7 +117,8 @@ public static class AlertMetrics
 
     public static bool IsPercentage(this AlertMetric metric) =>
         metric is AlertMetric.CpuUsage or AlertMetric.MemoryUsage or AlertMetric.SwapUsage
-            or AlertMetric.DiskIoUtilization or AlertMetric.DiskUsage or AlertMetric.InodeUsage;
+            or AlertMetric.DiskIoUtilization or AlertMetric.DiskUsage or AlertMetric.InodeUsage
+            or AlertMetric.UpsBatteryCharge or AlertMetric.UpsLoad;
 
     public static string Label(this AlertMetric metric) => metric switch
     {
@@ -115,6 +135,10 @@ public static class AlertMetrics
         AlertMetric.ServiceFailed => "Service failed",
         AlertMetric.ContainerDown => "Container down",
         AlertMetric.ContainerRestarts => "Container restarts",
+        AlertMetric.UpsOnBattery => "UPS on battery",
+        AlertMetric.UpsBatteryCharge => "UPS battery charge",
+        AlertMetric.UpsBatteryRuntime => "UPS battery runtime",
+        AlertMetric.UpsLoad => "UPS load",
         _ => metric.ToString(),
     };
 }

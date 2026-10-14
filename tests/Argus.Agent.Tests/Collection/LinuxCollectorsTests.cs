@@ -85,6 +85,7 @@ public class LinuxCollectorsTests
             new LinuxMetricsSource(NullLogger<LinuxMetricsSource>.Instance),
             new ProcessCollector(),
             new LinuxTemperatures(includeDrives: false),
+            new NoUps(),
             new NoContainers(),
             new NoServiceStatus(),
             TimeProvider.System);

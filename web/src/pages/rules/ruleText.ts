@@ -9,17 +9,22 @@ export const isFilesystemMetric = (metric: AlertMetric) => metric === "DiskUsage
 export const isServiceMetric = (metric: AlertMetric) => metric === "ServiceFailed";
 export const isContainerMetric = (metric: AlertMetric) =>
   metric === "ContainerDown" || metric === "ContainerRestarts";
+export const isUpsMetric = (metric: AlertMetric) => metric.startsWith("Ups");
 
-/** What a rule can be narrowed to: a mount point, a service or a container, or nothing. */
-export function resourceKind(metric: AlertMetric): "filesystem" | "service" | "container" | null {
+/** What a rule can be narrowed to: a mount point, a service, a container or a UPS, or nothing. */
+export function resourceKind(metric: AlertMetric): "filesystem" | "service" | "container" | "ups" | null {
   if (isFilesystemMetric(metric)) return "filesystem";
   if (isServiceMetric(metric)) return "service";
+  if (isUpsMetric(metric)) return "ups";
   return isContainerMetric(metric) ? "container" : null;
 }
 
 /** States rather than measurements: no threshold or direction, only how long they last. */
 export const isStateMetric = (metric: AlertMetric) =>
-  metric === "HostOffline" || metric === "ServiceFailed" || metric === "ContainerDown";
+  metric === "HostOffline" ||
+  metric === "ServiceFailed" ||
+  metric === "ContainerDown" ||
+  metric === "UpsOnBattery";
 
 /** Host-wide measurements, which anomaly rules can compare with each host's usual level. */
 export const supportsAnomaly = (metric: AlertMetric) =>
@@ -52,6 +57,7 @@ export function describeRule(rule: RuleCondition): string {
   if (rule.metric === "HostOffline") return `Not reporting${lasting}`;
   if (rule.metric === "ServiceFailed") return `${rule.resourceFilter ?? "Any service"} failed${lasting}`;
   if (rule.metric === "ContainerDown") return `${rule.resourceFilter ?? "Any container"} down${lasting}`;
+  if (rule.metric === "UpsOnBattery") return `${rule.resourceFilter ?? "Any UPS"} on battery${lasting}`;
   if (rule.metric === "ContainerRestarts") {
     const times = rule.threshold === 1 ? "once" : `${rule.threshold} times`;
     return `${rule.resourceFilter ?? "Any container"} restarted more than ${times} in ${describeBucket(rule.durationSeconds)}`;
@@ -102,14 +108,19 @@ export function ruleToRequest(rule: AlertRule): AlertRuleRequest {
   };
 }
 
-// Thresholds are typed in friendly units: percent, MB/s or per core. Byte rates are stored in bytes.
+// Thresholds are typed in friendly units: percent, MB/s, per core or minutes. Byte rates are stored in
+// bytes and runtimes in seconds.
 
 export function thresholdToInput(metric: AlertMetric, threshold: number): number {
-  return METRIC_UNITS[metric] === "bytesPerSecond" ? threshold / MB : threshold;
+  const unit = METRIC_UNITS[metric];
+  if (unit === "seconds") return threshold / 60;
+  return unit === "bytesPerSecond" ? threshold / MB : threshold;
 }
 
 export function inputToThreshold(metric: AlertMetric, input: number): number {
-  return METRIC_UNITS[metric] === "bytesPerSecond" ? input * MB : input;
+  const unit = METRIC_UNITS[metric];
+  if (unit === "seconds") return Math.round(input * 60);
+  return unit === "bytesPerSecond" ? input * MB : input;
 }
 
 export function thresholdSuffix(metric: AlertMetric): string {
@@ -117,12 +128,15 @@ export function thresholdSuffix(metric: AlertMetric): string {
   if (unit === "percent") return "%";
   if (unit === "bytesPerSecond") return " MB/s";
   if (unit === "restarts") return " restarts";
+  if (unit === "seconds") return " min";
   return unit === "perCore" ? " per core" : "";
 }
 
 /** A sensible starting threshold, in input units, for when a rule switches to another kind of metric. */
 export function defaultThreshold(metric: AlertMetric): number {
+  if (metric === "UpsBatteryCharge") return 40;
   const unit = METRIC_UNITS[metric];
+  if (unit === "seconds") return 5;
   if (unit === "percent") return 90;
   if (unit === "bytesPerSecond") return 100;
   if (unit === "restarts") return 3;

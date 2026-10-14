@@ -5,12 +5,13 @@ namespace Argus.Agent.Collection;
 
 /// <summary>
 /// Assembles complete samples from the platform's metrics source, the process collector, temperatures,
-/// containers and service checks.
+/// UPSes, containers and service checks.
 /// </summary>
 internal sealed class SampleCollector(
     ISystemMetricsSource system,
     ProcessCollector processes,
     ITemperatureSource temperatures,
+    IUpsSource ups,
     IContainerSource containers,
     IServiceStatusSource services,
     TimeProvider time)
@@ -56,6 +57,7 @@ internal sealed class SampleCollector(
             Filesystems = reading.Filesystems,
             Interfaces = reading.Interfaces,
             Temperatures = temperatures.Collect(),
+            Ups = ups.Collect(),
             Containers = containerReading.Report,
             ContainerUsage = containerReading.Usage,
             TopProcesses = TopProcessCount > 0 ? topProcesses : null,

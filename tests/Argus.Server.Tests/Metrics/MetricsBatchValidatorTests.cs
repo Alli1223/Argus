@@ -95,6 +95,27 @@ public class MetricsBatchValidatorTests
     }
 
     [Fact]
+    public void Ups_readings_keep_one_per_named_ups_with_believable_values()
+    {
+        var sample = Sample(Now) with
+        {
+            Ups =
+            [
+                new UpsMetrics { Name = " ups ", Status = "ob dischrg", BatteryChargePercent = 140, BatteryRuntimeSeconds = double.NaN, LoadPercent = -3 },
+                new UpsMetrics { Name = "ups", Status = "OL", BatteryChargePercent = 100 },
+                new UpsMetrics { Name = " ", Status = "OL" },
+            ],
+        };
+
+        var ups = Assert.Single(Assert.Single(MetricsBatchValidator.Sanitize([sample], Now, MaxAge, MaxSkew, out _)).Ups);
+
+        Assert.Equal(("ups", "OB DISCHRG"), (ups.Name, ups.Status));
+        Assert.Equal(100, ups.BatteryChargePercent);
+        Assert.Null(ups.BatteryRuntimeSeconds);
+        Assert.Equal(0, ups.LoadPercent);
+    }
+
+    [Fact]
     public void Containers_are_named_once_with_states_argus_knows()
     {
         var sample = Sample(Now) with

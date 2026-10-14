@@ -177,7 +177,7 @@ public static class AlertRuleEndpoints
 
         if (!metric.IsPerResource() && !string.IsNullOrWhiteSpace(request.ResourceFilter))
         {
-            errors["resourceFilter"] = ["Only disk, inode, service and container rules can be narrowed to one mount point, service or container."];
+            errors["resourceFilter"] = ["Only disk, inode, service, container and UPS rules can be narrowed to one mount point, service, container or UPS."];
         }
 
         string? tag = null;

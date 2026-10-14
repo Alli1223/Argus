@@ -1,5 +1,6 @@
 import {
   Alert,
+  Badge,
   Box,
   Group,
   SimpleGrid,
@@ -20,7 +21,9 @@ import {
   useHostProcesses,
   useHostServices,
   useNetworkHistory,
+  useHostUps,
   useTemperatureHistory,
+  useUpsHistory,
 } from "../../api/metrics";
 import { SERIES_COLORS } from "../../components/charts/chartPalette";
 import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
@@ -29,6 +32,14 @@ import { Sparkline } from "../../components/Sparkline";
 import { UsageMeter } from "../../components/UsageMeter";
 import { formatAgo, formatBytes, formatDuration, formatPercent } from "../../lib/format";
 import { temperatureCharts } from "../../lib/temperatures";
+import {
+  chargeSeverity,
+  describeUpsFlags,
+  UPS_STATE_COLORS,
+  UPS_STATE_LABELS,
+  upsCharts,
+  upsState,
+} from "../../lib/ups";
 import type { TimeRange } from "../../lib/timeRange";
 import { describeTrend, interfaceCharts } from "./hostResources";
 import { describeServices } from "./hostServices";
@@ -309,6 +320,128 @@ export function TemperaturesSection({
         ))}
       </SimpleGrid>
     </Box>
+  );
+}
+
+/** Battery charge and load of each UPS over time. Hosts without a UPS skip this. */
+export function UpsChartsSection({
+  hostId,
+  range,
+  onZoom,
+}: {
+  hostId: string;
+  range: TimeRange;
+  onZoom: (from: number, to: number) => void;
+}) {
+  const scheme = useComputedColorScheme("light");
+  const history = useUpsHistory(hostId, range);
+  const charts = useMemo(() => (history.data ? upsCharts(history.data, scheme) : []), [history.data, scheme]);
+
+  if (!history.data || charts.length === 0) return null;
+
+  const from = Date.parse(history.data.from) / 1000;
+  const to = Date.parse(history.data.to) / 1000;
+  return (
+    <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mt="md">
+      {charts.map(({ key, ...chart }) => (
+        <TimeSeriesChart
+          key={key}
+          {...chart}
+          time={history.data.time}
+          unit="percent"
+          max={100}
+          from={from}
+          to={to}
+          refreshing={history.isPlaceholderData}
+          onZoom={onZoom}
+        />
+      ))}
+    </SimpleGrid>
+  );
+}
+
+const volts = (value: number | null) => (value == null ? "–" : `${Math.round(value)} V`);
+
+/**
+ * The host's uninterruptible power supplies as of their newest reading, from the machine's UPS server
+ * (Network UPS Tools). Hosts without a UPS skip this.
+ */
+export function UpsSection({ hostId, now }: { hostId: string; now: number }) {
+  const ups = useHostUps(hostId);
+  const rows = [...(ups.data ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+  if (rows.length === 0) return null;
+
+  const newest = rows.reduce((latest, row) => (row.time > latest ? row.time : latest), rows[0].time);
+  return (
+    <Section
+      title={rows.length === 1 ? "UPS" : "UPSes"}
+      mt="xl"
+      action={
+        <Text fz="xs" c="dimmed">
+          As of {formatAgo(newest, now)}
+        </Text>
+      }
+    >
+      <Table miw={720}>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>UPS</Table.Th>
+            <Table.Th>State</Table.Th>
+            <Table.Th>Battery</Table.Th>
+            <Table.Th ta="right">Runtime left</Table.Th>
+            <Table.Th ta="right">Load</Table.Th>
+            <Table.Th ta="right">Input</Table.Th>
+            <Table.Th ta="right">Output</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {rows.map((row) => {
+            const state = upsState(row);
+            const flags = describeUpsFlags(row.status);
+            return (
+              <Table.Tr key={row.name}>
+                <Table.Td>
+                  <Text fz="sm" fw={600}>
+                    {row.name}
+                  </Text>
+                  {row.model && (
+                    <Text fz="xs" c="dimmed">
+                      {row.model}
+                    </Text>
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  <Badge color={UPS_STATE_COLORS[state]} variant="light" title={row.status}>
+                    {UPS_STATE_LABELS[state]}
+                  </Badge>
+                  {flags && (
+                    <Text fz="xs" c="dimmed" mt={2}>
+                      {flags}
+                    </Text>
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  {row.batteryChargePercent == null ? (
+                    "–"
+                  ) : (
+                    <UsageMeter
+                      value={row.batteryChargePercent}
+                      label={`${row.name} battery charge`}
+                      width={96}
+                      severity={chargeSeverity(row.batteryChargePercent)}
+                    />
+                  )}
+                </Table.Td>
+                <Table.Td ta="right">{formatDuration(row.batteryRuntimeSeconds)}</Table.Td>
+                <Table.Td ta="right">{formatPercent(row.loadPercent)}</Table.Td>
+                <Table.Td ta="right">{volts(row.inputVoltage)}</Table.Td>
+                <Table.Td ta="right">{volts(row.outputVoltage)}</Table.Td>
+              </Table.Tr>
+            );
+          })}
+        </Table.Tbody>
+      </Table>
+    </Section>
   );
 }
 

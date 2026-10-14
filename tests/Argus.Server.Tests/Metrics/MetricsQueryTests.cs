@@ -137,6 +137,37 @@ public sealed class MetricsQueryTests(ArgusAppFixture app) : IClassFixture<Argus
         Assert.Equal(HttpStatusCode.BadRequest, (await owner.GetAsync("/api/hosts/temperatures?points=5", Ct)).StatusCode);
     }
 
+    [Theory]
+    [InlineData(1, "raw")]
+    [InlineData(24 * 30, "1h")]
+    public async Task Ups_status_is_the_newest_reading_and_its_history_is_kept_per_ups(int hours, string resolution)
+    {
+        var owner = await app.CreateOwnerAsync($"series-u-{hours}@example.com");
+        var (hostId, agent) = await app.RegisterHostAsync(owner, $"series-u-{hours}");
+        var stranger = await app.CreateOwnerAsync($"series-u-{hours}-stranger@example.com");
+        var now = DateTimeOffset.UtcNow;
+        MetricSample Reading(DateTimeOffset time, string status, double charge) => MetricsIngestionTests.FullSample(time) with
+        {
+            Ups = [new UpsMetrics { Name = "ups", Model = "Back-UPS ES 700G", Status = status, BatteryChargePercent = charge, BatteryRuntimeSeconds = 600, LoadPercent = 25, InputVoltage = 0 }],
+        };
+        await agent.SendSamplesAsync(Reading(now.AddMinutes(-3), "OL", 100), Reading(now.AddMinutes(-1), "OB DISCHRG LB", 16));
+
+        var ups = Assert.Single((await owner.GetJsonAsync<List<UpsSnapshot>>($"/api/hosts/{hostId}/ups"))!);
+        Assert.Equal(("ups", "Back-UPS ES 700G", "OB DISCHRG LB", true, true), (ups.Name, ups.Model, ups.Status, ups.OnBattery, ups.LowBattery));
+        Assert.Equal((16d, 600d, 25d, 0d), (ups.BatteryChargePercent, ups.BatteryRuntimeSeconds, ups.LoadPercent, ups.InputVoltage));
+        Assert.Null(ups.OutputVoltage);
+
+        var series = await owner.GetJsonAsync<MetricSeries>(
+            $"/api/hosts/{hostId}/ups/history?from={Iso(now.AddHours(-hours))}&to={Iso(now.AddMinutes(1))}&points=30");
+        Assert.Equal(resolution, series!.Resolution);
+        Assert.Equal(["charge:ups", "load:ups", "onBattery:ups", "runtime:ups"], series.Series.Keys.Order());
+        Assert.Contains(series.Series["onBattery:ups"], value => value == 1);
+        Assert.All(series.Series.Values, values => Assert.Equal(series.Time.Count, values.Length));
+
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/api/hosts/{hostId}/ups", Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/api/hosts/{hostId}/ups/history", Ct)).StatusCode);
+    }
+
     [Fact]
     public async Task Hosts_without_process_data_answer_no_content()
     {

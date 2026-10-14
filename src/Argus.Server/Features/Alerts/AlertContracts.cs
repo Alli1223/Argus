@@ -52,7 +52,7 @@ public sealed record AlertRuleRequest
     [MaxLength(HostTags.MaxLength)]
     public string? Tag { get; init; }
 
-    /// <summary>For disk and inode rules: a single mount point.</summary>
+    /// <summary>For per-resource rules: a single mount point, service, container or UPS.</summary>
     [MaxLength(256)]
     public string? ResourceFilter { get; init; }
 

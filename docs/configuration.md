@@ -173,6 +173,7 @@ starting with `ARGUS_` override the file: `ARGUS_SERVERURL`, `ARGUS_ENROLLMENTTO
 | `ContainerActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus read its containers' logs and start, stop and restart them; see [Containers](#containers). |
 | `DockerSocket` | `/var/run/docker.sock` | a path | Docker's socket. On Linux the agent lists containers whenever the socket exists and it may use it; see [Containers](#containers). |
 | `HostRoot` | none | a path | Where the machine's own filesystem is mounted when the agent runs in a container, such as `/host`; see [The agent in a container](#the-agent-in-a-container). |
+| `UpsServer` | `localhost:3493` | `host` or `host:port`, or empty | The Network UPS Tools server (upsd) to read UPSes from; see [UPS](#ups). Empty stops the agent looking. |
 | `DriveTemperatures` | `false` | `true` or `false` | Also reads the temperatures of SATA drives on Linux (the `drivetemp` driver). Off by default: on some drives, reading the temperature resets the spin-down timer, so drives meant to sleep would stay awake. NVMe drives are always read. |
 
 ### The agent in a container
@@ -211,6 +212,24 @@ The agent runs as root in the container, because reading another machine's `/pro
 socket are root's to do. It cannot update itself there: the image is the version, so upgrade it as any
 other container, with `docker pull` and a fresh `docker run`, or through whatever the NAS offers.
 Services are not watched, as a machine without systemd has none to watch.
+
+### UPS
+
+The agent reads uninterruptible power supplies from Network UPS Tools (NUT), which most NAS systems
+run when a UPS is plugged in by USB, and which Linux machines get from the `nut` package. It asks the
+machine's own UPS server, `upsd`, on port 3493 every reading: each UPS's state (on line power, on
+battery, low battery, battery to replace), its charge, the runtime left, its load and its voltages.
+Reading them needs no login. Where no `upsd` answers the agent tries again a minute later, so machines
+without a UPS cost nothing. The agent in a container reaches the machine's `upsd` through
+`--network host`.
+
+To read a UPS server elsewhere, such as the NAS a UPS is plugged into from another machine, set
+`UpsServer` to its address; the NAS must allow that machine to connect (on Synology, **Permitted
+DiskStation devices** under **UPS**).
+
+Every account starts with three UPS rules, which stay quiet on hosts without a UPS: a warning when a
+UPS runs on its battery, a warning when its charge stays below 75% for a minute and a critical alert
+below 40%. Rules on the runtime left and on the load can be added under **Rules**.
 
 ### Containers
 

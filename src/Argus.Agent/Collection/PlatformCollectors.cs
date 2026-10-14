@@ -62,6 +62,12 @@ internal static class PlatformCollectors
     /// <summary>Where this agent finds the machine's files: under a root of its own when containerized.</summary>
     private static HostPaths Paths(AgentConfig config) => new(config.HostRoot);
 
+    /// <summary>UPSes from upsd, on any system, unless the agent was told not to look.</summary>
+    public static IUpsSource CreateUpsSource(ILoggerFactory loggers, AgentConfig config, TimeProvider time) =>
+        string.IsNullOrWhiteSpace(config.UpsServer)
+            ? new NoUps()
+            : new NutUps(config.UpsServer, time, loggers.CreateLogger<NutUps>());
+
     public static ITemperatureSource CreateTemperatureSource(ILoggerFactory loggers, AgentConfig config)
     {
         if (OperatingSystem.IsLinux())

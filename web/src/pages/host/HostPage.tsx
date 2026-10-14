@@ -37,6 +37,8 @@ import {
   ProcessesSection,
   ServicesSection,
   TemperaturesSection,
+  UpsChartsSection,
+  UpsSection,
 } from "./HostResources";
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -90,6 +92,7 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
     <>
       <HostHeader host={host} />
       <NowPanel host={host} now={now} />
+      <UpsSection hostId={host.id} now={now} />
       <ServicesSection hostId={host.id} now={now} />
       <ContainersSection hostId={host.id} now={now} />
       <ProcessesSection hostId={host.id} now={now} />
@@ -115,6 +118,7 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
       ) : (
         <HostCharts host={host} metrics={metrics.data} refreshing={metrics.isPlaceholderData} onZoom={zoom} />
       )}
+      <UpsChartsSection hostId={host.id} range={range} onZoom={zoom} />
       <TemperaturesSection hostId={host.id} range={range} onZoom={zoom} />
       <FilesystemsSection hostId={host.id} range={range} />
       <InterfacesSection hostId={host.id} range={range} onZoom={zoom} />
