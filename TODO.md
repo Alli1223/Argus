@@ -214,10 +214,11 @@ committed when it is done. New tasks discovered along the way are added in the r
 ## Phase 17 — Temperatures
 
 - [x] Agent: temperature sensors from hwmon on Linux (thermal zones where there are none; SATA drives only when `DriveTemperatures` is on, since reading them can keep drives awake) and ACPI thermal zones on Windows
+- [x] Windows: graphics adapter temperatures (the adapter performance data Task Manager shows) and drive temperatures (the storage drivers' query; SATA only with `DriveTemperatures`)
 - [x] Server: `temperature_metrics` hypertable with compression, an hourly rollup and retention; validation and ingestion
 - [x] `GET /api/hosts/{id}/temperatures` and `GET /api/hosts/temperatures` (every visible host)
 - [x] Web: temperature charts on the host page and a Temperatures page for all hosts, with the chart palette extended to eight validated slots
-- [ ] Check the Windows thermal zone counters on a real Windows machine
+- [ ] Check the Windows thermal zone, graphics adapter and drive temperatures on a real Windows machine
 
 ## Phase 18 — Server updates from the web app
 

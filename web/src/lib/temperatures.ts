@@ -27,9 +27,9 @@ interface Sensor {
 // What kind of hardware a device is, from its driver's name; the first match wins.
 const DEVICE_KINDS: [pattern: RegExp, kind: string][] = [
   [/^(coretemp|k8temp|k10temp|zenpower|x86_pkg_temp|cpu[_-]?thermal|soc[_-]?thermal)/i, "Processor"],
-  [/^((amdgpu|radeon|nouveau|i915|xe)\b|gpu[_-]?thermal)/i, "Graphics"],
+  [/^((amdgpu|radeon|nouveau|i915|xe)\b|gpu[_-]?thermal|gpu\d+$)/i, "Graphics"],
   [/^nvme\d/i, "NVMe drive"],
-  [/^sd[a-z]+$/i, "Drive"],
+  [/^(sd[a-z]+|disk\d+)$/i, "Drive"],
   [/^(pch_|chipset)/i, "Chipset"],
   [/^(iwlwifi|mt7|ath\d|brcm|rtw)/i, "Wi-Fi"],
   [/^(nct\d|it87|w83|f71|asus|gigabyte)/i, "Motherboard"],
