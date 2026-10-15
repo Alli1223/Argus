@@ -77,7 +77,7 @@ internal static class PlatformCollectors
 
         if (OperatingSystem.IsWindows())
         {
-            return new WindowsTemperatures(loggers.CreateLogger<WindowsTemperatures>());
+            return new WindowsTemperatures(config.DriveTemperatures, loggers.CreateLogger<WindowsTemperatures>());
         }
 
         return new NoTemperatures();

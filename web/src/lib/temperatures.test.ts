@@ -37,6 +37,8 @@ describe("describeDevice", () => {
     expect(describeDevice("nvme0")).toBe("NVMe drive");
     expect(describeDevice("sda")).toBe("Drive");
     expect(describeDevice("amdgpu 0000:03:00.0")).toBe("Graphics");
+    expect(describeDevice("gpu0")).toBe("Graphics");
+    expect(describeDevice("disk1")).toBe("Drive");
     expect(describeDevice("dell_smm")).toBeUndefined();
   });
 });

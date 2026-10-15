@@ -22,7 +22,7 @@ public sealed class AgentConfig
     public int BufferCapacity { get; set; } = 2880;
 
     /// <summary>
-    /// Also reads SATA drive temperatures (the Linux drivetemp driver). Off by default: on some drives,
+    /// Also reads SATA drive temperatures (the drivetemp driver on Linux, the storage drivers on Windows). Off by default: on some drives,
     /// reading the temperature resets the spin-down timer, so drives meant to sleep stay awake.
     /// </summary>
     public bool DriveTemperatures { get; set; }
