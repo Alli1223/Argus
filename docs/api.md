@@ -95,6 +95,10 @@ All paths start with `/api`.
 | `POST /hosts/{id}/containers/{name}/start`, `/stop`, `/restart` | Starts, stops or restarts the container through its host's agent. Answers `204` once done; `409` when the machine does not allow container actions or its agent is not connected; `502` with Docker's reason when it refused; `504` when the agent did not answer in time. |
 | `GET /hosts/{id}/containers/{name}/logs` | The container's newest log `lines` (`time`, `stream` of `stdout` or `stderr`, `text`), read through its agent: `tail` lines, 200 by default and at most 5000. `truncated` says whether older lines were left out. Same errors as above. |
 | `GET /containers` | Every host you can see that reports containers, with its containers. |
+| `GET /hosts/{id}/power` | What Argus can do about the host's power: `powerActionsEnabled` (its agent allows shutting down and restarting), `listening` (its agent is connected), the `macAddresses` and `networks` its agent reported, the `wakeMacAddress` and `wakeAddress` set by hand, `wakeRelays` (how many other agents would send a Wake-on-LAN packet), and its latest power actions as `history`. |
+| `PUT /hosts/{id}/power/settings` | Sets `wakeMacAddress` and `wakeAddress`; empty values go back to what the agent reported. |
+| `POST /hosts/{id}/power/shutdown`, `/restart` | Shuts the machine down or restarts it through its agent. Answers the recorded action once the agent has started; `409` when the machine does not allow power actions or its agent is not connected; `502` with the agent's reason when it could not; `504` when it did not answer in time. |
+| `POST /hosts/{id}/power/wake` | Sends a Wake-on-LAN packet for the machine through other connected agents. `409` when Argus knows no hardware address for it or no other agent is connected. |
 | `GET /hosts/{id}/temperatures` | Each temperature sensor over time, in degrees Celsius. |
 | `GET /hosts/{id}/ups` | Each UPS the host reported in the last day, as of its newest reading: `name`, `model`, NUT's `status` flags, `onBattery`, `lowBattery`, `batteryChargePercent`, `batteryRuntimeSeconds`, `loadPercent` and voltages. |
 | `GET /hosts/{id}/ups/history` | Each UPS over time, keyed `charge:{ups}`, `runtime:{ups}`, `load:{ups}` and `onBattery:{ups}` (1 where it ran on battery). |
@@ -148,8 +152,10 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
 
 - `metric` is one of `CpuUsage`, `MemoryUsage`, `SwapUsage`, `LoadPerCore`, `DiskIoUtilization`,
   `NetworkReceive`, `NetworkTransmit`, `DiskUsage`, `InodeUsage`, `HostOffline`, `ServiceFailed`,
-  `ContainerDown`, `ContainerRestarts`, `UpsOnBattery`, `UpsBatteryCharge`, `UpsBatteryRuntime` or
-  `UpsLoad`. Percentages are 0–100, network rates bytes per second and UPS runtimes seconds.
+  `ContainerDown`, `ContainerRestarts`, `UpsOnBattery`, `UpsBatteryCharge`, `UpsBatteryRuntime`,
+  `UpsLoad`, `UpsChargeOnBattery` or `UpsRuntimeOnBattery`. Percentages are 0–100, network rates bytes
+  per second and UPS runtimes seconds. The last two count only readings taken on battery, and resolve
+  once the UPS is back on line power.
 - `DiskUsage` and `InodeUsage` rules can be narrowed to one mount point, `ServiceFailed` rules to
   one service, container rules to one container by name, and UPS rules to one UPS by the name NUT
   gives it, with `resourceFilter`.
@@ -158,6 +164,9 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
   rule that names the container also counts it down when it was stopped, paused or never started.
 - `ContainerRestarts` fires when Docker restarted a container more than `threshold` times (a whole
   number) within `durationSeconds`, at least 60.
+- `shutdownHostIds` lists your hosts to shut down when one of the rule's alerts fires, and with
+  `wakeOnResolve` they are woken with Wake-on-LAN when it resolves. Their agents must allow power
+  actions.
 - `condition` is `Threshold` (the default) or `Anomaly`. Anomaly rules work on the host-wide
   metrics, compare with each host's usual level over the past week, and take the threshold as a
   number of standard deviations (1–10) and a duration of at least 5 minutes.
@@ -246,7 +255,7 @@ they register (`Authorization: Bearer argus_ak_…`), not with a session.
 | --- | --- |
 | `POST /api/agent/v1/register` | Exchanges an enrollment token (`argus_et_…`) and a description of the machine for a host id and key. |
 | `POST /api/agent/v1/metrics` | Sends a batch of up to 500 readings. The answer carries the settings the agent should use. |
-| `GET /api/agent/v1/commands` | Waits up to 20 seconds for commands for the agent: container start, stop, restart and logs. Only agents that allow container actions ask. `204` when none came. |
+| `GET /api/agent/v1/commands` | Waits up to 20 seconds for commands for the agent: container start, stop, restart and logs, shutdown and restart, and Wake-on-LAN for another machine. Agents say which they carry out in their inventory's `commands`. `204` when none came. |
 | `POST /api/agent/v1/commands/results` | The agent's answer to a command. |
 | `PUT /api/agent/v1/inventory` | Updates what the machine is. |
 | `GET /api/agent/v1/update/offer` | The update the agent was asked to install: its `version`, `sha256` and `size`. `204` when there is none. Metrics responses carry the same offer as `update`. |

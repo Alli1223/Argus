@@ -53,6 +53,15 @@ public enum AlertMetric
 
     /// <summary>Share of a UPS's capacity in use, percent; evaluated per UPS.</summary>
     UpsLoad,
+
+    /// <summary>
+    /// A UPS's battery charge while it runs on battery, percent; evaluated per UPS. A UPS on line power has no
+    /// reading, so a battery still charging after an outage never counts: this is the one to shut machines down on.
+    /// </summary>
+    UpsChargeOnBattery,
+
+    /// <summary>A UPS's battery runtime while it runs on battery, seconds; evaluated per UPS.</summary>
+    UpsRuntimeOnBattery,
 }
 
 /// <summary>How a rule decides that a reading is a problem.</summary>
@@ -93,7 +102,12 @@ public static class AlertMetrics
 
     /// <summary>Metrics read from a host's UPSes, evaluated once per UPS.</summary>
     public static bool IsUps(this AlertMetric metric) =>
-        metric is AlertMetric.UpsOnBattery or AlertMetric.UpsBatteryCharge or AlertMetric.UpsBatteryRuntime or AlertMetric.UpsLoad;
+        metric is AlertMetric.UpsOnBattery or AlertMetric.UpsBatteryCharge or AlertMetric.UpsBatteryRuntime or AlertMetric.UpsLoad
+            || metric.IsOnBatteryOnly();
+
+    /// <summary>UPS readings that only count while the UPS runs on battery, and clear once it is back on line power.</summary>
+    public static bool IsOnBatteryOnly(this AlertMetric metric) =>
+        metric is AlertMetric.UpsChargeOnBattery or AlertMetric.UpsRuntimeOnBattery;
 
     /// <summary>
     /// Metrics evaluated per resource (a mount point, a service, a container or a UPS), which a rule may
@@ -118,7 +132,7 @@ public static class AlertMetrics
     public static bool IsPercentage(this AlertMetric metric) =>
         metric is AlertMetric.CpuUsage or AlertMetric.MemoryUsage or AlertMetric.SwapUsage
             or AlertMetric.DiskIoUtilization or AlertMetric.DiskUsage or AlertMetric.InodeUsage
-            or AlertMetric.UpsBatteryCharge or AlertMetric.UpsLoad;
+            or AlertMetric.UpsBatteryCharge or AlertMetric.UpsLoad or AlertMetric.UpsChargeOnBattery;
 
     public static string Label(this AlertMetric metric) => metric switch
     {
@@ -139,6 +153,8 @@ public static class AlertMetrics
         AlertMetric.UpsBatteryCharge => "UPS battery charge",
         AlertMetric.UpsBatteryRuntime => "UPS battery runtime",
         AlertMetric.UpsLoad => "UPS load",
+        AlertMetric.UpsChargeOnBattery => "UPS charge on battery",
+        AlertMetric.UpsRuntimeOnBattery => "UPS runtime on battery",
         _ => metric.ToString(),
     };
 }

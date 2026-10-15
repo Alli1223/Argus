@@ -21,8 +21,7 @@ public static class AgentApi
 
     /// <summary>
     /// Commands waiting for this agent (<see cref="AgentCommandBatch"/>): the server holds the request open
-    /// for up to <see cref="AgentLimits.CommandWaitSeconds"/> until there is one. Only agents that allow
-    /// container actions ask.
+    /// for up to <see cref="AgentLimits.CommandWaitSeconds"/> until there is one.
     /// </summary>
     public const string Commands = BasePath + "/commands";
 
@@ -57,5 +56,6 @@ public static class AgentLimits
     public const int MaxTopProcesses = 50;
     public const int MaxFailedServices = 100;
     public const int MaxIpAddresses = 32;
+    public const int MaxNetworkInterfaces = 32;
     public const int MaxNameLength = 256;
 }

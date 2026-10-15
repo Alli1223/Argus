@@ -62,6 +62,13 @@ public static class AlertDecision
         return new Verdict(Fire: fresh && covered && breaching, Clear: cleared, Value: stats.Average);
     }
 
+    /// <summary>
+    /// For readings that only count on battery: once every recent reading is back on line power, the alert
+    /// clears, which would otherwise wait for readings that never come.
+    /// </summary>
+    public static Verdict ClearOnLinePower(Verdict verdict, bool? recentlyOnLinePower) =>
+        recentlyOnLinePower == true ? verdict with { Fire = false, Clear = true } : verdict;
+
     /// <summary>A host is offline once it has been silent for the rule's duration.</summary>
     public static Verdict EvaluateOffline(DateTimeOffset? lastSeen, TimeSpan duration, DateTimeOffset now)
     {
@@ -186,6 +193,13 @@ public static class AlertDecision
             return $"UPS {resourceKey} on {hostName} is on battery";
         }
 
+        if (rule.Metric.IsOnBatteryOnly())
+        {
+            var measure = rule.Metric == AlertMetric.UpsChargeOnBattery ? "charge" : "runtime";
+            var side = rule.Operator == AlertOperator.Above ? "above" : "below";
+            return $"UPS {resourceKey} on {hostName} is on battery with {measure} {side} {FormatThreshold(rule.Metric, rule.Threshold)}";
+        }
+
         if (rule.Condition == AlertCondition.Anomaly)
         {
             return $"{rule.Metric.Label()} on {hostName} unusually {(rule.Operator == AlertOperator.Above ? "high" : "low")}";
@@ -205,7 +219,7 @@ public static class AlertDecision
         _ when metric.IsPercentage() => threshold.ToString("0.#", CultureInfo.InvariantCulture) + "%",
         AlertMetric.NetworkReceive or AlertMetric.NetworkTransmit => FormatRate(threshold),
         AlertMetric.ContainerRestarts => threshold == 1 ? "1 restart" : threshold.ToString("0", CultureInfo.InvariantCulture) + " restarts",
-        AlertMetric.UpsBatteryRuntime => threshold < 60
+        AlertMetric.UpsBatteryRuntime or AlertMetric.UpsRuntimeOnBattery => threshold < 60
             ? threshold.ToString("0", CultureInfo.InvariantCulture) + " s"
             : (threshold / 60).ToString("0.#", CultureInfo.InvariantCulture) + " min",
         _ => threshold.ToString("0.##", CultureInfo.InvariantCulture),

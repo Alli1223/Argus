@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Argus.Agent.Collection;
+using Argus.Agent.Commands;
 using Argus.Agent.Configuration;
 using Argus.Agent.State;
 using Argus.Agent.Transport;
@@ -137,6 +139,51 @@ internal static class AgentCommands
 
         var applier = new UpdateApplier(ArgusClient.Create(config), service, logger, UpdateApplier.DefaultSettleTime);
         return await applier.ApplyAsync(state.AgentKey, program, cancellationToken);
+    }
+
+    /// <summary>
+    /// Powers off or reboots the machine as the agent asked, on Linux: run as root by the systemd unit that
+    /// install.sh adds with --power-actions, when the agent leaves its request file.
+    /// </summary>
+    public static async Task<int> ApplyPowerAsync(CancellationToken cancellationToken)
+    {
+        var file = AgentPaths.LinuxPowerRequestFile;
+        if (!File.Exists(file))
+        {
+            return 0;
+        }
+
+        // Take the request first, so it is never carried out twice, nor again after the machine comes back.
+        string text;
+        DateTime written;
+        try
+        {
+            text = await File.ReadAllTextAsync(file, cancellationToken);
+            written = File.GetLastWriteTimeUtc(file);
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+
+        if (PowerRequests.Parse(text) is not { } action)
+        {
+            await Console.Error.WriteLineAsync($"Ignoring a power request that is neither poweroff nor reboot: {text.Trim()}");
+            return 1;
+        }
+
+        if (DateTime.UtcNow - written > PowerRequests.MaxAge)
+        {
+            await Console.Error.WriteLineAsync($"Ignoring a {PowerRequests.Format(action)} request from {written:u}: it is too old");
+            return 0;
+        }
+
+        Console.WriteLine($"Argus asked to {PowerRequests.Format(action)} this machine");
+        var start = new ProcessStartInfo("systemctl") { UseShellExecute = false };
+        start.ArgumentList.Add(PowerRequests.Format(action));
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("systemctl could not be started.");
+        await process.WaitForExitAsync(cancellationToken);
+        return process.ExitCode;
     }
 
     private static bool Validate(AgentConfig config, string? configFile)

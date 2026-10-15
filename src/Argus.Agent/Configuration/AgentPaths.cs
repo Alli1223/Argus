@@ -25,6 +25,15 @@ public static class AgentPaths
     /// <summary>The systemd unit that watches for update requests, which install.sh adds.</summary>
     public const string LinuxUpdaterUnit = "/etc/systemd/system/argus-agent-update.path";
 
+    /// <summary>
+    /// On Linux, the agent asks to power the machine off or restart it by writing "poweroff" or "reboot" here;
+    /// a root systemd unit watching for it, which install.sh adds with --power-actions, does it.
+    /// </summary>
+    public const string LinuxPowerRequestFile = "/var/lib/argus-agent/power-requested";
+
+    /// <summary>The systemd unit that watches for power requests.</summary>
+    public const string LinuxPowerUnit = "/etc/systemd/system/argus-agent-power.path";
+
     public static string DefaultStateDirectory =>
         OperatingSystem.IsWindows() ? WindowsDataDirectory : "/var/lib/argus-agent";
 }

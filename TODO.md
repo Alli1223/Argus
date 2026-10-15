@@ -264,6 +264,15 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Alert rules: UPS on battery, battery charge, runtime left and load, per UPS; on-battery and charge rules for every account
 - [x] Web: a UPS section and chart on the host page, and the UPS metrics in the rule editor
 
+## Phase 23 — Power
+
+- [x] Agent: shut down and restart on machines that allow it (`PowerActions`, `--power-actions`): a root systemd unit on Linux, `shutdown.exe` on Windows, the init system from the container
+- [x] Agent: report network cards' hardware addresses and networks, and send Wake-on-LAN packets for the server
+- [x] Agents say which commands they carry out, and all of them keep a request for commands open
+- [x] `GET/PUT/POST /api/hosts/{id}/power…`: shut down, restart and wake, with a history of each time
+- [x] Alert rules shut hosts down when they fire and wake them when they resolve; UPS charge and runtime on battery as metrics
+- [x] Web: a Power menu and section on the host page, actions in the rule editor, and a box in the install commands
+
 ---
 
 ## Future ideas (not scheduled)

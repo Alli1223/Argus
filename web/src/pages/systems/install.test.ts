@@ -30,6 +30,16 @@ describe("installCommands", () => {
     expect(commands.windows).not.toContain("docker");
   });
 
+  it("allows shutting down and restarting on every platform", () => {
+    const commands = installCommands("https://argus.example.com", "argus_et_abc", {
+      docker: true,
+      powerActions: true,
+    });
+    expect(commands.linux).toMatch(/ --token argus_et_abc --docker --power-actions$/);
+    expect(commands.windows).toMatch(/ -Token argus_et_abc -PowerActions$/);
+    expect(commands.docker).toContain("  -e ARGUS_POWERACTIONS=true \\\n");
+  });
+
   it("allows container actions, which include watching Docker", () => {
     const commands = installCommands("https://argus.example.com", "argus_et_abc", {
       docker: true,

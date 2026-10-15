@@ -1,0 +1,15 @@
+[Unit]
+Description=Powers off or restarts this machine for Argus
+
+[Service]
+Type=oneshot
+# Runs as root: the agent itself may not power the machine off. It removes the request before acting on
+# it, and ignores requests more than two minutes old.
+ExecStart=/opt/argus-agent/argus-agent apply-power
+
+NoNewPrivileges=yes
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelModules=yes
+LockPersonality=yes

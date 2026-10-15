@@ -30,6 +30,7 @@ import { useNow } from "../../lib/useNow";
 import classes from "./HostPage.module.css";
 import { hostCharts } from "./hostCharts";
 import { HostHeader } from "./HostHeader";
+import { PowerSection } from "./PowerControls";
 import {
   ContainersSection,
   FilesystemsSection,
@@ -96,6 +97,7 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
       <ServicesSection hostId={host.id} now={now} />
       <ContainersSection hostId={host.id} now={now} />
       <ProcessesSection hostId={host.id} now={now} />
+      <PowerSection hostId={host.id} now={now} />
 
       <Title order={2} fz={17} mt="xl" mb="sm">
         History

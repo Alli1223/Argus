@@ -20,7 +20,9 @@ export type AlertMetric =
   | "UpsOnBattery"
   | "UpsBatteryCharge"
   | "UpsBatteryRuntime"
-  | "UpsLoad";
+  | "UpsLoad"
+  | "UpsChargeOnBattery"
+  | "UpsRuntimeOnBattery";
 export type AlertOperator = "Above" | "Below";
 /** A fixed threshold, or the host's usual level (the threshold then counts standard deviations). */
 export type AlertCondition = "Threshold" | "Anomaly";
@@ -447,6 +449,10 @@ export interface AlertRule {
   tag: string | null;
   resourceFilter: string | null;
   enabled: boolean;
+  /** Hosts shut down when one of the rule's alerts fires. */
+  shutdownHostIds: string[];
+  /** Whether those hosts are woken again when the alert resolves. */
+  wakeOnResolve: boolean;
   firingAlerts: number;
   createdAt: string;
   updatedAt: string;
@@ -464,6 +470,8 @@ export interface AlertRuleRequest {
   tag: string | null;
   resourceFilter: string | null;
   enabled: boolean;
+  shutdownHostIds: string[];
+  wakeOnResolve: boolean;
 }
 
 export interface Alert {
@@ -589,4 +597,43 @@ export interface EmailSettingsRequest {
   password?: string | null;
   from: string;
   fromName: string;
+}
+
+export type PowerActionKind = "Shutdown" | "Restart" | "Wake";
+
+/** One time Argus shut a host down, restarted it or woke it. */
+export interface PowerActionInfo {
+  id: string;
+  kind: PowerActionKind;
+  /** The user who asked; null when an alert rule did. */
+  requestedBy: string | null;
+  ruleId: string | null;
+  ruleName: string | null;
+  reason: string;
+  succeeded: boolean;
+  /** What went wrong, or for wakes which machines sent the packet. */
+  detail: string | null;
+  at: string;
+}
+
+/** What Argus can do about a host's power, and what it has done. */
+export interface HostPower {
+  /** Whether the host's agent allows shutting down and restarting. */
+  powerActionsEnabled: boolean;
+  /** Whether the host's agent is connected for commands. */
+  listening: boolean;
+  /** Hardware addresses the agent reported. */
+  macAddresses: string[];
+  /** The host's IPv4 addresses with prefix lengths. */
+  networks: string[];
+  wakeMacAddress: string | null;
+  wakeAddress: string | null;
+  /** How many of the owner's other agents would send a Wake-on-LAN packet. */
+  wakeRelays: number;
+  history: PowerActionInfo[];
+}
+
+export interface PowerSettingsRequest {
+  wakeMacAddress: string | null;
+  wakeAddress: string | null;
 }

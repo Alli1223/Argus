@@ -10,7 +10,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { ErrorScreen } from "../../components/Screens";
 import { SeverityLabel } from "../../components/SeverityLabel";
 import { RuleEditor } from "./RuleEditor";
-import { describeRule, describeScope, ruleToRequest } from "./ruleText";
+import { describeActions, describeRule, describeScope, ruleToRequest } from "./ruleText";
 
 export function RulesPage() {
   const rules = useAlertRules();
@@ -136,6 +136,11 @@ function RuleRow({ rule, onEdit }: { rule: AlertRule; onEdit: () => void }) {
         <Text fz="xs" c="dimmed">
           {describeRule(rule)}
         </Text>
+        {rule.shutdownHostIds.length > 0 && (
+          <Text fz="xs" c="crimson">
+            {describeActions(rule)}
+          </Text>
+        )}
       </Table.Td>
       <Table.Td>{describeScope(rule)}</Table.Td>
       <Table.Td>

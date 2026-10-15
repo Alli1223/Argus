@@ -12,9 +12,10 @@ esac
 
 [ "$(id -u)" -eq 0 ] || { echo "argus-agent uninstall: run this as root, for example with sudo" >&2; exit 1; }
 
-systemctl disable --now argus-agent-update.path argus-agent >/dev/null 2>&1 || true
+systemctl disable --now argus-agent-update.path argus-agent-power.path argus-agent >/dev/null 2>&1 || true
 rm -f /etc/systemd/system/argus-agent.service /etc/systemd/system/argus-agent-update.service \
-  /etc/systemd/system/argus-agent-update.path
+  /etc/systemd/system/argus-agent-update.path /etc/systemd/system/argus-agent-power.service \
+  /etc/systemd/system/argus-agent-power.path
 rm -rf /etc/systemd/system/argus-agent.service.d
 systemctl daemon-reload
 rm -rf /opt/argus-agent

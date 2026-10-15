@@ -17,6 +17,8 @@ public sealed record AlertRuleResponse(
     string? Tag,
     string? ResourceFilter,
     bool Enabled,
+    IReadOnlyList<Guid> ShutdownHostIds,
+    bool WakeOnResolve,
     int FiringAlerts,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
@@ -57,6 +59,13 @@ public sealed record AlertRuleRequest
     public string? ResourceFilter { get; init; }
 
     public bool Enabled { get; init; } = true;
+
+    /// <summary>Your hosts to shut down when one of the rule's alerts fires. Their agents must allow power actions.</summary>
+    [MaxLength(AlertRuleConfiguration.MaxShutdownHosts)]
+    public List<Guid> ShutdownHostIds { get; init; } = [];
+
+    /// <summary>Wake the hosts in <see cref="ShutdownHostIds"/> with Wake-on-LAN when the alert resolves.</summary>
+    public bool WakeOnResolve { get; init; }
 }
 
 public sealed record AlertResponse(

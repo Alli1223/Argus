@@ -171,6 +171,7 @@ starting with `ARGUS_` override the file: `ARGUS_SERVERURL`, `ARGUS_ENROLLMENTTO
 | `CollectionIntervalSeconds` | from the server | 5–3600 | Takes readings on this machine at a different pace from the server's setting. |
 | `BufferCapacity` | `2880` | 10–100000 | How many readings the agent holds while the server is unreachable: 12 hours at the default pace. |
 | `ContainerActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus read its containers' logs and start, stop and restart them; see [Containers](#containers). |
+| `PowerActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus, and their alert rules, shut it down and restart it; see [Power](#power). |
 | `DockerSocket` | `/var/run/docker.sock` | a path | Docker's socket. On Linux the agent lists containers whenever the socket exists and it may use it; see [Containers](#containers). |
 | `HostRoot` | none | a path | Where the machine's own filesystem is mounted when the agent runs in a container, such as `/host`; see [The agent in a container](#the-agent-in-a-container). |
 | `UpsServer` | `localhost:3493` | `host` or `host:port`, or empty | The Network UPS Tools server (upsd) to read UPSes from; see [UPS](#ups). Empty stops the agent looking. |
@@ -205,6 +206,8 @@ Each part earns its place:
 - `--network host` gives the machine's addresses and its own network counters.
 - The Docker socket is what lists containers, and `ARGUS_CONTAINERACTIONS=true` allows their logs and
   start, stop and restart. Leave both out to watch the machine only.
+- `-e ARGUS_POWERACTIONS=true`, which is not in the example, would let Argus shut the machine down and
+  restart it; see [Power](#power).
 - The named volume keeps the agent's identity, so a restarted container is the same host in Argus and
   not a new one.
 
@@ -231,6 +234,40 @@ Every account starts with three UPS rules, which stay quiet on hosts without a U
 UPS runs on its battery, a warning when its charge stays below 75% for a minute and a critical alert
 below 40%. Rules on the runtime left and on the load can be added under **Rules**.
 
+To shut machines down when a UPS runs low, add a rule on **UPS charge on battery** (or **UPS runtime
+on battery**), such as below 40%, and choose the machines under **Shut down when it fires**. These two
+count only readings taken on battery, so a battery that is still low while it charges after an outage
+shuts nothing down, and their alert resolves as soon as line power is back. With **Wake them when it
+resolves**, Argus then wakes the same machines with Wake-on-LAN. The machines' agents must allow power
+actions; see [Power](#power). The NAS the UPS is plugged into usually shuts itself down through NUT
+when the battery is nearly empty, so set the rule's threshold above that point.
+
+### Power
+
+Shutting a machine down and restarting it from Argus is off unless the machine itself allows it, as
+with container actions. Install with `--power-actions` (`-PowerActions` on Windows, or
+`-e ARGUS_POWERACTIONS=true` for the agent's container), or run the install command again with it.
+Whoever can see the machine in Argus can then shut it down or restart it from its page, and alert
+rules can shut it down; each time is listed in the machine's **Power** section.
+
+- On Linux the agent runs unprivileged, so `--power-actions` adds two root systemd units,
+  `argus-agent-power.path` and `argus-agent-power.service`. The agent writes `poweroff` or `reboot`
+  to `/var/lib/argus-agent/power-requested`, and the units run `systemctl` for it. Requests older than
+  two minutes are ignored.
+- On Windows the service runs `shutdown.exe`, which gives five seconds' notice.
+- The agent's container asks the machine's init system directly, which needs `--pid host`: systemd
+  and BusyBox init by signal, SysV init through `/run/initctl`. On machines with AppArmor, Docker's
+  profile stops containers signalling the machine; add `--security-opt apparmor=unconfined` there.
+
+Waking a machine needs its network card to have Wake-on-LAN switched on, in the BIOS and in the
+operating system. Agents report each network card's hardware address, so Argus knows it once the
+machine has reported. The Argus server usually sits behind Docker's own network, where broadcasts do
+not reach the machines, so the packet is sent by the agents of your other machines instead: up to
+three that are connected, preferring those on the same network. Every agent from 0.11 does this; it
+needs no setting, as the packet can only ask a sleeping machine to start. A machine's **Wake-on-LAN
+settings** can give another hardware address, or an address to send the packet to, such as the
+network's broadcast address.
+
 ### Containers
 
 On Linux, the agent lists Docker's containers, with their state, health and restarts and what each
@@ -247,8 +284,8 @@ Reading containers' logs and starting, stopping and restarting them from Argus i
 machine itself allows it, so that an Argus login alone never controls a machine's containers. Install
 with `--container-actions` (which includes `--docker`), or run the install command again with it; it
 adds `/etc/systemd/system/argus-agent.service.d/container-actions.conf`, which sets
-`ARGUS_CONTAINERACTIONS=true`. The agent then keeps a request open with the server for commands, and
-carries out only these: start, stop (Docker gives the container 10 seconds) and restart a container by
+`ARGUS_CONTAINERACTIONS=true`. The agent, which keeps a request open with the server for commands,
+then carries out these for containers: start, stop (Docker gives the container 10 seconds) and restart a container by
 name, and read its newest log lines. Logs pass through the server without being stored. Whoever asked for
 a start, stop or restart is noted in the container's events.
 

@@ -44,6 +44,7 @@ internal sealed class WindowsSystemInfoSource : ISystemInfoSource
             MemoryTotalBytes = (long)memory.TotalPhys,
             BootTime = BootTime(),
             IpAddresses = NetworkAddresses.Collect(),
+            NetworkInterfaces = NetworkAddresses.CollectInterfaces(),
         };
     }
 

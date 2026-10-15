@@ -5,8 +5,7 @@ using Argus.Contracts.Agent;
 namespace Argus.Server.Features.Containers;
 
 /// <summary>
-/// Hands commands to agents and their answers back to whoever asked. Agents that allow container actions
-/// keep a request open (<see cref="WaitForCommandsAsync"/>); a command given to one waits for its answer
+/// Hands commands to agents and their answers back to whoever asked. Agents keep a request open (<see cref="WaitForCommandsAsync"/>); a command given to one waits for its answer
 /// for a while, and one that gives up waiting is never handed out, so a stop nobody is waiting for any
 /// more does not happen later. Commands live only in memory: Argus runs as one server.
 /// </summary>
@@ -28,7 +27,10 @@ public sealed class AgentCommandBroker(TimeProvider time)
     private readonly ConcurrentDictionary<Guid, HostQueue> _hosts = new();
     private readonly ConcurrentDictionary<string, (Guid HostId, TaskCompletionSource<AgentCommandResult> Answer)> _waiting = new();
 
-    /// <summary>Whether the host's agent is asking for commands, which it only does when it allows container actions.</summary>
+    /// <summary>
+    /// Whether the host's agent is asking for commands. Agents before 0.11 only do when they allow container
+    /// actions; later ones always do.
+    /// </summary>
     public bool IsListening(Guid hostId) =>
         _hosts.TryGetValue(hostId, out var queue)
         && time.GetUtcNow() - new DateTimeOffset(Interlocked.Read(ref queue.LastRequestTicks), TimeSpan.Zero) < ListeningGrace;

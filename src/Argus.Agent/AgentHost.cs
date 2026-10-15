@@ -61,6 +61,9 @@ internal static class AgentHost
             services.GetRequiredService<ILoggerFactory>(), agentConfig, services.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(services =>
             new ContainerCommands(agentConfig, services.GetRequiredService<ILogger<ContainerCommands>>()));
+        builder.Services.AddSingleton(_ => PowerControls.Create(agentConfig));
+        builder.Services.AddSingleton<PowerCommands>();
+        builder.Services.AddSingleton<WakeOnLan>();
         builder.Services.AddSingleton<ProcessCollector>();
         builder.Services.AddSingleton<SampleCollector>();
         builder.Services.AddSingleton(new SampleBuffer(agentConfig.BufferCapacity));

@@ -136,6 +136,7 @@ public static class AgentEndpoints
 
         var now = time.GetUtcNow();
         host.ApplyInventory(report.SystemInfo, report.AgentVersion, now);
+        host.AgentCommands = report.Commands.Distinct().Select(kind => kind.ToString()).ToList();
         host.LastSeenAt = now;
         await db.SaveChangesAsync(cancellationToken);
 

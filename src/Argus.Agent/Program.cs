@@ -31,10 +31,13 @@ var applyUpdate = new Command("apply-update", "Install the update the server off
 applyUpdate.SetAction((parsed, cancellationToken) => AgentCommands.ApplyUpdateAsync(
     parsed.GetValue(configOption), parsed.GetValue(targetOption), cancellationToken));
 
+var applyPower = new Command("apply-power", "Power off or reboot the machine as the agent asked (the power unit runs this as root)");
+applyPower.SetAction((_, cancellationToken) => AgentCommands.ApplyPowerAsync(cancellationToken));
+
 var version = new Command("version", "Print the agent version");
 version.SetAction(_ => Console.WriteLine(AgentInfo.Version));
 
-var root = new RootCommand("Argus monitoring agent") { run, register, collect, applyUpdate, version };
+var root = new RootCommand("Argus monitoring agent") { run, register, collect, applyUpdate, applyPower, version };
 root.Options.Add(configOption);
 
 // The host handles Ctrl+C and service stop requests itself (and needs time for a final flush).

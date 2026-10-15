@@ -61,7 +61,7 @@ public sealed class ContainerActionTests(ArgusAppFixture app) : IClassFixture<Ar
     };
 
     /// <summary>An agent that takes commands for a while, answering each with <paramref name="answer"/>, and keeps what it was asked.</summary>
-    private static (Task Loop, List<AgentCommand> Received, CancellationTokenSource Stop) Listen(
+    internal static (Task Loop, List<AgentCommand> Received, CancellationTokenSource Stop) Listen(
         HttpClient agent, Func<AgentCommand, AgentCommandResult> answer)
     {
         var received = new List<AgentCommand>();

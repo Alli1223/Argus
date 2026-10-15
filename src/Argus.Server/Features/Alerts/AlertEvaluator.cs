@@ -236,7 +236,10 @@ public sealed class AlertEvaluator(
                 anomaly
                     ? AlertDecision.EvaluateAnomaly(
                         rule.Operator, rule.Threshold, rule.Metric, duration, row.ToStats(), baselines.GetValueOrDefault(row.HostId), now, tolerance)
-                    : AlertDecision.Evaluate(rule.Operator, rule.Threshold, duration, row.ToStats(), now, tolerance)))
+                    : rule.Metric.IsOnBatteryOnly()
+                        ? AlertDecision.ClearOnLinePower(
+                            AlertDecision.Evaluate(rule.Operator, rule.Threshold, duration, row.ToStats(), now, tolerance), row.RecentOnLinePower)
+                        : AlertDecision.Evaluate(rule.Operator, rule.Threshold, duration, row.ToStats(), now, tolerance)))
             .ToList();
     }
 
@@ -366,20 +369,20 @@ public sealed class AlertEvaluator(
     {
         var source = metric.IsPerFilesystem()
             ? $"""
-               SELECT f.host_id, f.mount_point AS resource_key, f.time, {ValueExpression(metric)} AS value
+               SELECT f.host_id, f.mount_point AS resource_key, f.time, {ValueExpression(metric)} AS value, NULL::boolean AS on_line_power
                FROM filesystem_metrics f
                WHERE f.host_id = ANY(@host_ids) AND f.time > @window_start AND f.time <= @now
                  AND (@resource::text IS NULL OR f.mount_point = @resource)
                """
             : metric.IsUps()
             ? $"""
-               SELECT u.host_id, u.ups AS resource_key, u.time, {ValueExpression(metric)} AS value
+               SELECT u.host_id, u.ups AS resource_key, u.time, {ValueExpression(metric)} AS value, NOT u.on_battery AS on_line_power
                FROM ups_metrics u
                WHERE u.host_id = ANY(@host_ids) AND u.time > @window_start AND u.time <= @now
                  AND (@resource::text IS NULL OR u.ups = @resource)
                """
             : $"""
-               SELECT m.host_id, ''::text AS resource_key, m.time, {ValueExpression(metric)} AS value
+               SELECT m.host_id, ''::text AS resource_key, m.time, {ValueExpression(metric)} AS value, NULL::boolean AS on_line_power
                FROM host_metrics m
                JOIN hosts h ON h.id = m.host_id
                WHERE m.host_id = ANY(@host_ids) AND m.time > @window_start AND m.time <= @now
@@ -395,7 +398,8 @@ public sealed class AlertEvaluator(
                    avg(value)                                               AS average,
                    (count(value) FILTER (WHERE time > @recent_start))::int  AS recent_samples,
                    min(value) FILTER (WHERE time > @recent_start)           AS recent_min,
-                   max(value) FILTER (WHERE time > @recent_start)           AS recent_max
+                   max(value) FILTER (WHERE time > @recent_start)           AS recent_max,
+                   bool_and(on_line_power) FILTER (WHERE time > @recent_start) AS recent_on_line_power
             FROM ({source}) s
             GROUP BY host_id, resource_key
             """;
@@ -419,6 +423,10 @@ public sealed class AlertEvaluator(
         AlertMetric.UpsBatteryCharge => "u.battery_charge_pct::float8",
         AlertMetric.UpsBatteryRuntime => "u.battery_runtime_seconds::float8",
         AlertMetric.UpsLoad => "u.load_pct::float8",
+
+        // Only readings on battery count, so these never fire on a battery still charging after an outage.
+        AlertMetric.UpsChargeOnBattery => "CASE WHEN u.on_battery THEN u.battery_charge_pct::float8 END",
+        AlertMetric.UpsRuntimeOnBattery => "CASE WHEN u.on_battery THEN u.battery_runtime_seconds::float8 END",
         _ => throw new ArgumentOutOfRangeException(nameof(metric), metric, "Not a sampled metric."),
     };
 
@@ -455,6 +463,7 @@ public sealed class AlertEvaluator(
         public int RecentSamples { get; set; }
         public double? RecentMin { get; set; }
         public double? RecentMax { get; set; }
+        public bool? RecentOnLinePower { get; set; }
 
         public WindowStats ToStats() => new(
             Samples, Utc(FirstTime), Utc(LastTime), MinValue, MaxValue, Average, RecentSamples, RecentMin, RecentMax);

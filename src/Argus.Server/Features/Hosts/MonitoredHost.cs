@@ -45,6 +45,21 @@ public sealed class MonitoredHost
 
     public List<string> IpAddresses { get; set; } = [];
 
+    /// <summary>The hardware addresses of the machine's network cards, which Wake-on-LAN packets name.</summary>
+    public List<string> MacAddresses { get; set; } = [];
+
+    /// <summary>The machine's IPv4 addresses with their prefix length, such as 192.168.1.20/24: the networks it is on.</summary>
+    public List<string> Networks { get; set; } = [];
+
+    /// <summary>The commands the agent says it carries out (<see cref="AgentCommandKind"/> names).</summary>
+    public List<string> AgentCommands { get; set; } = [];
+
+    /// <summary>A hardware address to wake the machine by, instead of those its agent reported.</summary>
+    public string? WakeMacAddress { get; set; }
+
+    /// <summary>An address to send Wake-on-LAN packets to, such as the network's broadcast address.</summary>
+    public string? WakeAddress { get; set; }
+
     public string AgentVersion { get; set; } = "";
 
     public List<string> Tags { get; set; } = [];
@@ -92,6 +107,18 @@ public sealed class MonitoredHost
         IpAddresses = info.IpAddresses
             .Take(AgentLimits.MaxIpAddresses)
             .Select(address => Clip(address, MonitoredHostConfiguration.AddressLength))
+            .ToList();
+        var interfaces = info.NetworkInterfaces.Take(AgentLimits.MaxNetworkInterfaces).ToList();
+        MacAddresses = interfaces
+            .Select(nic => Power.PowerAddresses.NormalizeMac(nic.MacAddress))
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+        Networks = interfaces
+            .SelectMany(nic => nic.Addresses)
+            .Select(address => Clip(address, MonitoredHostConfiguration.AddressLength))
+            .Distinct()
+            .Take(AgentLimits.MaxIpAddresses)
             .ToList();
         AgentVersion = Clip(agentVersion, MonitoredHostConfiguration.VersionLength);
 
@@ -143,6 +170,8 @@ internal sealed class MonitoredHostConfiguration : IEntityTypeConfiguration<Moni
         host.Property(h => h.AgentUpdateError).HasMaxLength(ErrorLength);
         host.Property(h => h.Notes).HasMaxLength(4000);
         host.Property(h => h.AgentKeyHash).HasMaxLength(64);
+        host.Property(h => h.WakeMacAddress).HasMaxLength(AddressLength);
+        host.Property(h => h.WakeAddress).HasMaxLength(AddressLength);
 
         host.HasIndex(h => h.AgentKeyHash).IsUnique();
         host.HasIndex(h => new { h.OwnerId, h.MachineId }).IsUnique();

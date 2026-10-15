@@ -1,0 +1,11 @@
+[Unit]
+Description=Watches for Argus requests to power off or restart this machine
+
+[Path]
+# The agent writes "poweroff" or "reboot" here when Argus asks it to. install.sh adds this unit only with
+# --power-actions.
+PathExists=/var/lib/argus-agent/power-requested
+Unit=argus-agent-power.service
+
+[Install]
+WantedBy=multi-user.target

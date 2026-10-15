@@ -30,6 +30,7 @@ internal sealed class LinuxSystemInfoSource(HostPaths? paths = null) : ISystemIn
             MemoryTotalBytes = ProcParsers.ParseMeminfo(LinuxFiles.ReadOrEmpty(_paths.InProc("meminfo"))).TotalBytes,
             BootTime = uptime.Length > 0 ? BootTime(ProcParsers.ParseUptimeSeconds(uptime)) : null,
             IpAddresses = NetworkAddresses.Collect(),
+            NetworkInterfaces = NetworkAddresses.CollectInterfaces(),
         };
     }
 

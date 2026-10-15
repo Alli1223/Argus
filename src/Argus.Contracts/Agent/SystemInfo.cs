@@ -36,4 +36,18 @@ public sealed record SystemInfo
     public DateTimeOffset? BootTime { get; init; }
 
     public IReadOnlyList<string> IpAddresses { get; init; } = [];
+
+    /// <summary>The machine's network interfaces, which Wake-on-LAN needs to reach it while it is off.</summary>
+    public IReadOnlyList<NetworkInterfaceInfo> NetworkInterfaces { get; init; } = [];
+}
+
+public sealed record NetworkInterfaceInfo
+{
+    public required string Name { get; init; }
+
+    /// <summary>The hardware address, as <c>aa:bb:cc:dd:ee:ff</c>.</summary>
+    public required string MacAddress { get; init; }
+
+    /// <summary>The interface's IPv4 addresses with their prefix length, such as <c>192.168.1.20/24</c>.</summary>
+    public IReadOnlyList<string> Addresses { get; init; } = [];
 }
