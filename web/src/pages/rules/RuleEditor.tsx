@@ -2,8 +2,10 @@ import {
   Alert,
   Autocomplete,
   Button,
+  Divider,
   Group,
   Modal,
+  MultiSelect,
   NumberInput,
   SegmentedControl,
   Select,
@@ -16,6 +18,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useId } from "react";
 import { useSaveAlertRule } from "../../api/alerts";
+import { useCurrentUser } from "../../api/auth";
 import { useHosts } from "../../api/hosts";
 import type {
   AlertCondition,
@@ -33,6 +36,7 @@ import {
   defaultThreshold,
   inputToThreshold,
   isFilesystemMetric,
+  isOnBatteryMetric,
   isPercentMetric,
   isServiceMetric,
   isStateMetric,
@@ -61,6 +65,8 @@ interface RuleValues {
   tag: string;
   resourceFilter: string;
   enabled: boolean;
+  shutdownHostIds: string[];
+  wakeOnResolve: boolean;
 }
 
 const METRIC_OPTIONS = (Object.keys(METRIC_LABELS) as AlertMetric[]).map((metric) => ({
@@ -98,6 +104,8 @@ function initialValues(rule: AlertRule | null): RuleValues {
       tag: "",
       resourceFilter: "",
       enabled: true,
+      shutdownHostIds: [],
+      wakeOnResolve: false,
     };
   }
   return {
@@ -113,6 +121,8 @@ function initialValues(rule: AlertRule | null): RuleValues {
     tag: rule.tag ?? "",
     resourceFilter: rule.resourceFilter ?? "",
     enabled: rule.enabled,
+    shutdownHostIds: rule.shutdownHostIds,
+    wakeOnResolve: rule.wakeOnResolve,
   };
 }
 
@@ -134,6 +144,8 @@ function toRequest(values: RuleValues): AlertRuleRequest {
     tag: values.scope === "tag" ? (normalizeTags([values.tag])[0] ?? null) : null,
     resourceFilter: narrowable && filter !== "" ? filter : null,
     enabled: values.enabled,
+    shutdownHostIds: values.shutdownHostIds,
+    wakeOnResolve: values.shutdownHostIds.length > 0 && values.wakeOnResolve,
   };
 }
 
@@ -157,6 +169,7 @@ export function RuleEditor({ rule, opened, onClose }: RuleEditorProps) {
 function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => void }) {
   const save = useSaveAlertRule();
   const hosts = useHosts();
+  const me = useCurrentUser();
   const ids = useId();
   const form = useForm<RuleValues>({
     initialValues: initialValues(rule),
@@ -206,6 +219,10 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
   const anomaly = isAnomaly(values);
   const hostOptions = (hosts.data ?? []).map((host) => ({ value: host.id, label: host.displayName }));
   const tagOptions = [...new Set((hosts.data ?? []).flatMap((host) => host.tags))].sort();
+  // Rules act on their owner's own hosts, even for administrators who see everyone's.
+  const ownHostOptions = (hosts.data ?? [])
+    .filter((host) => !me.data || host.ownerId === me.data.id)
+    .map((host) => ({ value: host.id, label: host.displayName }));
 
   // A sensitivity carries over to another metric an anomaly rule can watch; otherwise a different kind
   // of metric gets a threshold that makes sense for it.
@@ -213,17 +230,19 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
     if (!next) return;
     const metric = next as AlertMetric;
     const keepsSensitivity = isAnomaly({ metric, condition: values.condition });
+    // A UPS's battery is a worry when it runs low, not high.
+    const batteryLow =
+      metric !== values.metric &&
+      (metric === "UpsBatteryCharge" || metric === "UpsBatteryRuntime" || isOnBatteryMetric(metric));
     const keepsThreshold =
-      values.condition === "Threshold" && thresholdSuffix(metric) === thresholdSuffix(values.metric);
+      !batteryLow &&
+      values.condition === "Threshold" &&
+      thresholdSuffix(metric) === thresholdSuffix(values.metric);
     form.setValues({
       metric,
       condition: keepsSensitivity ? "Anomaly" : "Threshold",
       threshold: keepsSensitivity || keepsThreshold ? values.threshold : defaultThreshold(metric),
-      // A UPS's battery is a worry when it runs low, not high.
-      operator:
-        metric !== values.metric && (metric === "UpsBatteryCharge" || metric === "UpsBatteryRuntime")
-          ? "Below"
-          : values.operator,
+      operator: batteryLow ? "Below" : values.operator,
       durationMinutes:
         metric === "HostOffline" && Number(values.durationMinutes) < 1
           ? 5
@@ -456,6 +475,28 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
         )}
         {values.scope === "tag" && (
           <Autocomplete label="Tag" placeholder="prod" data={tagOptions} {...form.getInputProps("tag")} />
+        )}
+
+        <Divider label="Actions" labelPosition="left" />
+        <MultiSelect
+          label="Shut down when it fires"
+          description={
+            isOnBatteryMetric(values.metric)
+              ? "Argus asks each machine's agent to power it off, once per alert. Their agents must allow power actions."
+              : "Argus asks each machine's agent to power it off, once per alert. Their agents must allow power actions. For a UPS, watch its charge or runtime on battery, so a battery still charging after an outage shuts nothing down."
+          }
+          placeholder={values.shutdownHostIds.length === 0 ? "No machines" : undefined}
+          data={ownHostOptions}
+          searchable
+          clearable
+          {...form.getInputProps("shutdownHostIds")}
+        />
+        {values.shutdownHostIds.length > 0 && (
+          <Switch
+            label="Wake them when it resolves"
+            description="Sends Wake-on-LAN through your other machines' agents once the condition clears, such as when line power is back."
+            {...form.getInputProps("wakeOnResolve", { type: "checkbox" })}
+          />
         )}
 
         <Switch

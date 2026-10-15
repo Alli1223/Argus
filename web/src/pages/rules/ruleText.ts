@@ -10,6 +10,9 @@ export const isServiceMetric = (metric: AlertMetric) => metric === "ServiceFaile
 export const isContainerMetric = (metric: AlertMetric) =>
   metric === "ContainerDown" || metric === "ContainerRestarts";
 export const isUpsMetric = (metric: AlertMetric) => metric.startsWith("Ups");
+/** UPS readings that only count while it runs on battery: the ones to shut machines down on. */
+export const isOnBatteryMetric = (metric: AlertMetric) =>
+  metric === "UpsChargeOnBattery" || metric === "UpsRuntimeOnBattery";
 
 /** What a rule can be narrowed to: a mount point, a service, a container or a UPS, or nothing. */
 export function resourceKind(metric: AlertMetric): "filesystem" | "service" | "container" | "ups" | null {
@@ -58,6 +61,11 @@ export function describeRule(rule: RuleCondition): string {
   if (rule.metric === "ServiceFailed") return `${rule.resourceFilter ?? "Any service"} failed${lasting}`;
   if (rule.metric === "ContainerDown") return `${rule.resourceFilter ?? "Any container"} down${lasting}`;
   if (rule.metric === "UpsOnBattery") return `${rule.resourceFilter ?? "Any UPS"} on battery${lasting}`;
+  if (isOnBatteryMetric(rule.metric)) {
+    const measure = rule.metric === "UpsChargeOnBattery" ? "charge" : "runtime";
+    const direction = rule.operator === "Above" ? "above" : "below";
+    return `${rule.resourceFilter ?? "Any UPS"} on battery with ${measure} ${direction} ${formatThreshold(rule.metric, rule.threshold)}${lasting}`;
+  }
   if (rule.metric === "ContainerRestarts") {
     const times = rule.threshold === 1 ? "once" : `${rule.threshold} times`;
     return `${rule.resourceFilter ?? "Any container"} restarted more than ${times} in ${describeBucket(rule.durationSeconds)}`;
@@ -78,6 +86,14 @@ export function describeScope(rule: Pick<AlertRule, "hostId" | "hostName" | "tag
   return "All hosts";
 }
 
+/** What a rule does besides alerting: "Shuts down 2 machines, and wakes them after". */
+export function describeActions(rule: Pick<AlertRule, "shutdownHostIds" | "wakeOnResolve">): string {
+  const count = rule.shutdownHostIds.length;
+  if (count === 0) return "";
+  const machines = count === 1 ? "1 machine" : `${count} machines`;
+  return `Shuts down ${machines}${rule.wakeOnResolve ? `, and wakes ${count === 1 ? "it" : "them"} after` : ""}`;
+}
+
 /** The request that saves a rule as it stands, for example to switch it on or off. */
 export function ruleToRequest(rule: AlertRule): AlertRuleRequest {
   const {
@@ -92,6 +108,8 @@ export function ruleToRequest(rule: AlertRule): AlertRuleRequest {
     tag,
     resourceFilter,
     enabled,
+    shutdownHostIds,
+    wakeOnResolve,
   } = rule;
   return {
     name,
@@ -105,6 +123,8 @@ export function ruleToRequest(rule: AlertRule): AlertRuleRequest {
     tag,
     resourceFilter,
     enabled,
+    shutdownHostIds,
+    wakeOnResolve,
   };
 }
 
@@ -134,7 +154,7 @@ export function thresholdSuffix(metric: AlertMetric): string {
 
 /** A sensible starting threshold, in input units, for when a rule switches to another kind of metric. */
 export function defaultThreshold(metric: AlertMetric): number {
-  if (metric === "UpsBatteryCharge") return 40;
+  if (metric === "UpsBatteryCharge" || metric === "UpsChargeOnBattery") return 40;
   const unit = METRIC_UNITS[metric];
   if (unit === "seconds") return 5;
   if (unit === "percent") return 90;

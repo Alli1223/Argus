@@ -47,6 +47,12 @@ public sealed class AlertRule
 
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Hosts to shut down when one of the rule's alerts fires, such as on a UPS running low.</summary>
+    public List<Guid> ShutdownHostIds { get; set; } = [];
+
+    /// <summary>Wake <see cref="ShutdownHostIds"/> with Wake-on-LAN again when the alert resolves.</summary>
+    public bool WakeOnResolve { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
@@ -54,6 +60,8 @@ public sealed class AlertRule
 
 internal sealed class AlertRuleConfiguration : IEntityTypeConfiguration<AlertRule>
 {
+    public const int MaxShutdownHosts = 100;
+
     public void Configure(EntityTypeBuilder<AlertRule> rule)
     {
         rule.ToTable("alert_rules");

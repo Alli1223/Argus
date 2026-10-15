@@ -48,6 +48,12 @@ public sealed class AgentConfig
     /// </summary>
     public bool ContainerActions { get; set; }
 
+    /// <summary>
+    /// Lets people who can see this machine in Argus shut it down and restart it, and alert rules shut it
+    /// down when a UPS runs low. Off by default, for the same reason as <see cref="ContainerActions"/>.
+    /// </summary>
+    public bool PowerActions { get; set; }
+
     public string ResolvedStateDirectory =>
         string.IsNullOrWhiteSpace(StateDirectory) ? AgentPaths.DefaultStateDirectory : StateDirectory;
 

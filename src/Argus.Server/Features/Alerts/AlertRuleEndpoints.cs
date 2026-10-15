@@ -121,6 +121,8 @@ public static class AlertRuleEndpoints
             rule.Tag,
             rule.ResourceFilter,
             rule.Enabled,
+            rule.ShutdownHostIds,
+            rule.WakeOnResolve,
             db.Alerts.Count(alert => alert.RuleId == rule.Id && alert.Status == AlertStatus.Firing),
             rule.CreatedAt,
             rule.UpdatedAt));
@@ -202,6 +204,17 @@ public static class AlertRuleEndpoints
             errors["hostId"] = ["Choose one of your own hosts."];
         }
 
+        var targets = request.ShutdownHostIds.Distinct().ToList();
+        if (targets.Count > 0 && await db.Hosts.CountAsync(h => targets.Contains(h.Id) && h.OwnerId == ownerId, cancellationToken) != targets.Count)
+        {
+            errors["shutdownHostIds"] = ["Choose your own hosts to shut down."];
+        }
+
+        if (request.WakeOnResolve && targets.Count == 0)
+        {
+            errors["wakeOnResolve"] = ["Choose hosts to shut down, which are the ones woken again."];
+        }
+
         return (errors.Count == 0 ? null : errors, tag);
     }
 
@@ -221,6 +234,8 @@ public static class AlertRuleEndpoints
         rule.Tag = tag;
         rule.ResourceFilter = NormalizeFilter(request.ResourceFilter);
         rule.Enabled = request.Enabled;
+        rule.ShutdownHostIds = request.ShutdownHostIds.Distinct().ToList();
+        rule.WakeOnResolve = request.WakeOnResolve && rule.ShutdownHostIds.Count > 0;
         rule.UpdatedAt = now;
     }
 

@@ -286,11 +286,12 @@ function InstallCommands({ token }: { token: string }) {
   const [platform, setPlatform] = useState<"linux" | "windows" | "docker">("linux");
   const [docker, setDocker] = useState(false);
   const [containerActions, setContainerActions] = useState(false);
+  const [powerActions, setPowerActions] = useState(false);
 
   if (info.isPending) return <Skeleton h={96} />;
 
   const server = serverAddress(info.data?.publicUrl, window.location.origin);
-  const commands = installCommands(server, token, { docker, containerActions });
+  const commands = installCommands(server, token, { docker, containerActions, powerActions });
   return (
     <Stack gap="sm">
       <SegmentedControl
@@ -311,27 +312,35 @@ function InstallCommands({ token }: { token: string }) {
         {platform === "docker" &&
           "For machines with Docker but no systemd, such as a NAS. The agent watches the machine from a container, which Docker restarts with the machine."}
       </Text>
-      {platform !== "windows" && (
-        <Stack gap="xs">
-          <Checkbox
-            checked={docker || containerActions}
-            disabled={containerActions}
-            onChange={(event) => setDocker(event.currentTarget.checked)}
-            label="Watch Docker containers"
-            description={
-              platform === "docker"
-                ? "The container is given Docker's socket, which lets it do anything root could on the machine."
-                : "The agent joins the docker group to read Docker, which lets it do anything root could on the machine."
-            }
-          />
-          <Checkbox
-            checked={containerActions}
-            onChange={(event) => setContainerActions(event.currentTarget.checked)}
-            label="Allow container logs and start, stop and restart"
-            description="Anyone who can see this machine in Argus can then read its containers' logs and stop them."
-          />
-        </Stack>
-      )}
+      <Stack gap="xs">
+        {platform !== "windows" && (
+          <>
+            <Checkbox
+              checked={docker || containerActions}
+              disabled={containerActions}
+              onChange={(event) => setDocker(event.currentTarget.checked)}
+              label="Watch Docker containers"
+              description={
+                platform === "docker"
+                  ? "The container is given Docker's socket, which lets it do anything root could on the machine."
+                  : "The agent joins the docker group to read Docker, which lets it do anything root could on the machine."
+              }
+            />
+            <Checkbox
+              checked={containerActions}
+              onChange={(event) => setContainerActions(event.currentTarget.checked)}
+              label="Allow container logs and start, stop and restart"
+              description="Anyone who can see this machine in Argus can then read its containers' logs and stop them."
+            />
+          </>
+        )}
+        <Checkbox
+          checked={powerActions}
+          onChange={(event) => setPowerActions(event.currentTarget.checked)}
+          label="Allow shutting down and restarting"
+          description="Anyone who can see this machine in Argus, and their alert rules, can then power it off, such as when a UPS runs low."
+        />
+      </Stack>
       <CommandBlock command={commands[platform]} />
       <Text fz="xs" c="dimmed">
         The command contains the token, which Argus shows only once. Copy it before you leave this page.

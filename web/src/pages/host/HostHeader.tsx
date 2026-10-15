@@ -8,6 +8,7 @@ import { useDeleteHost } from "../../api/hosts";
 import type { HostDetail } from "../../api/types";
 import { HostStatusBadge, PlatformIcon } from "../../components/HostBits";
 import { HostSettings } from "./HostSettings";
+import { PowerMenu } from "./PowerControls";
 
 /** The host's name, status, what it runs and its notes, with its settings. */
 export function HostHeader({ host }: { host: HostDetail }) {
@@ -84,9 +85,12 @@ export function HostHeader({ host }: { host: HostDetail }) {
           </Text>
         )}
       </Stack>
-      <Button variant="default" leftSection={<IconSettings size={16} />} onClick={settings.open}>
-        Settings
-      </Button>
+      <Group gap="sm">
+        <PowerMenu host={host} />
+        <Button variant="default" leftSection={<IconSettings size={16} />} onClick={settings.open}>
+          Settings
+        </Button>
+      </Group>
       <HostSettings host={host} opened={settingsOpen} onClose={settings.close} onDelete={confirmDelete} />
     </Group>
   );

@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { AlertRule } from "../../api/types";
+import type { AlertRule, HostSummary } from "../../api/types";
 import { mockApi } from "../../test/api";
 import { renderWithApp } from "../../test/render";
 import { RuleEditor } from "./RuleEditor";
@@ -19,6 +19,8 @@ const diskRule: AlertRule = {
   tag: null,
   resourceFilter: "/var",
   enabled: true,
+  shutdownHostIds: [],
+  wakeOnResolve: false,
   firingAlerts: 0,
   createdAt: "2026-09-16T12:00:00Z",
   updatedAt: "2026-09-16T12:00:00Z",
@@ -77,6 +79,41 @@ describe("RuleEditor", () => {
         threshold: 3,
         durationSeconds: 300,
         resourceFilter: "worker",
+      }),
+    );
+  });
+
+  it("shuts the owner's machines down when a UPS runs low on battery, and wakes them after", async () => {
+    const hosts = [
+      { id: "h1", displayName: "desktop", ownerId: "me", tags: [] },
+      { id: "h2", displayName: "someone-elses", ownerId: "other", tags: [] },
+    ] as unknown as HostSummary[];
+    const calls = mockApi({
+      "GET /api/hosts": hosts,
+      "GET /api/auth/me": { id: "me", email: "me@example.com" },
+      "POST /api/alert-rules": (body) => ({ ...diskRule, ...(body as object), id: "r4" }),
+    });
+    const { user } = renderWithApp(<RuleEditor rule={null} opened onClose={() => {}} />);
+
+    await user.type(screen.getByLabelText(/^Name/), "Power cut");
+    await user.click(screen.getByLabelText("Watch", { selector: "input" }));
+    await user.click(await screen.findByRole("option", { name: "UPS charge on battery" }));
+    expect(screen.getByRole("radio", { name: "Below" })).toBeChecked();
+    expect(screen.getByLabelText("Threshold")).toHaveValue("40%");
+
+    await user.click(screen.getByLabelText("Shut down when it fires", { selector: "input" }));
+    await user.click(await screen.findByRole("option", { name: "desktop" }));
+    expect(screen.queryByRole("option", { name: "someone-elses" })).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText(/Wake them when it resolves/));
+    await user.click(screen.getByRole("button", { name: "Create rule" }));
+
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === "POST")?.body).toMatchObject({
+        metric: "UpsChargeOnBattery",
+        operator: "Below",
+        threshold: 40,
+        shutdownHostIds: ["h1"],
+        wakeOnResolve: true,
       }),
     );
   });

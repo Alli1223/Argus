@@ -17,6 +17,10 @@
 
 .PARAMETER Binary
     Install this argus-agent.exe instead of downloading it from the server.
+
+.PARAMETER PowerActions
+    Also let people who can see this computer in Argus, and their alert rules, shut it down and
+    restart it. Reinstalling without it leaves this as it is.
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -24,7 +28,9 @@ param(
 
     [string] $Token,
 
-    [string] $Binary
+    [string] $Binary,
+
+    [switch] $PowerActions
 )
 
 $ErrorActionPreference = 'Stop'
@@ -81,6 +87,13 @@ if ($Token -or -not (Test-Path $configPath)) {
     Write-Host "==> Writing $configPath"
     $config = [ordered]@{ ServerUrl = $Server; EnrollmentToken = $Token } | ConvertTo-Json
     [IO.File]::WriteAllText($configPath, $config)
+}
+
+if ($PowerActions) {
+    Write-Host '==> Letting Argus shut down and restart this computer'
+    $settings = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+    $settings | Add-Member -NotePropertyName PowerActions -NotePropertyValue $true -Force
+    [IO.File]::WriteAllText($configPath, ($settings | ConvertTo-Json))
 }
 
 if (-not $existing) {

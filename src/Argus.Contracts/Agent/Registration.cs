@@ -29,6 +29,12 @@ public sealed record InventoryReport
     public required string AgentVersion { get; init; }
 
     public required SystemInfo SystemInfo { get; init; }
+
+    /// <summary>
+    /// The commands this agent carries out, which depend on its settings. Agents older than the field
+    /// send none, and the server gives them none beyond container actions.
+    /// </summary>
+    public IReadOnlyList<AgentCommandKind> Commands { get; init; } = [];
 }
 
 /// <summary>Settings the server pushes to agents in registration, inventory and metrics responses.</summary>

@@ -195,6 +195,11 @@ namespace Argus.Server.Data.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("severity");
 
+                    b.PrimitiveCollection<List<Guid>>("ShutdownHostIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("shutdown_host_ids");
+
                     b.Property<string>("Tag")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -207,6 +212,10 @@ namespace Argus.Server.Data.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<bool>("WakeOnResolve")
+                        .HasColumnType("boolean")
+                        .HasColumnName("wake_on_resolve");
 
                     b.HasKey("Id")
                         .HasName("pk_alert_rules");
@@ -451,6 +460,11 @@ namespace Argus.Server.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.PrimitiveCollection<List<string>>("AgentCommands")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("agent_commands");
+
                     b.Property<string>("AgentKeyHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -534,6 +548,11 @@ namespace Argus.Server.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
 
+                    b.PrimitiveCollection<List<string>>("MacAddresses")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("mac_addresses");
+
                     b.Property<string>("MachineId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -543,6 +562,11 @@ namespace Argus.Server.Data.Migrations
                     b.Property<long>("MemoryTotalBytes")
                         .HasColumnType("bigint")
                         .HasColumnName("memory_total_bytes");
+
+                    b.PrimitiveCollection<List<string>>("Networks")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("networks");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(4000)
@@ -573,6 +597,16 @@ namespace Argus.Server.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("tags");
+
+                    b.Property<string>("WakeAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("wake_address");
+
+                    b.Property<string>("WakeMacAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("wake_mac_address");
 
                     b.HasKey("Id")
                         .HasName("pk_hosts");
@@ -732,6 +766,63 @@ namespace Argus.Server.Data.Migrations
                         .HasFilter("status = 'Pending'");
 
                     b.ToTable("notification_deliveries", (string)null);
+                });
+
+            modelBuilder.Entity("Argus.Server.Features.Power.PowerAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("detail");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("host_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("RequestedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("requested_by");
+
+                    b.Property<Guid?>("RuleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rule_id");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("boolean")
+                        .HasColumnName("succeeded");
+
+                    b.HasKey("Id")
+                        .HasName("pk_power_actions");
+
+                    b.HasIndex("RuleId")
+                        .HasDatabaseName("ix_power_actions_rule_id");
+
+                    b.HasIndex("HostId", "At")
+                        .HasDatabaseName("ix_power_actions_host_id_at");
+
+                    b.ToTable("power_actions", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -1046,6 +1137,26 @@ namespace Argus.Server.Data.Migrations
                         .HasConstraintName("fk_notification_deliveries_notification_channels_channel_id");
 
                     b.Navigation("Channel");
+                });
+
+            modelBuilder.Entity("Argus.Server.Features.Power.PowerAction", b =>
+                {
+                    b.HasOne("Argus.Server.Features.Hosts.MonitoredHost", "Host")
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_power_actions_hosts_host_id");
+
+                    b.HasOne("Argus.Server.Features.Alerts.AlertRule", "Rule")
+                        .WithMany()
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_power_actions_alert_rules_rule_id");
+
+                    b.Navigation("Host");
+
+                    b.Navigation("Rule");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

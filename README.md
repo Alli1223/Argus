@@ -13,7 +13,10 @@ sends notifications; and a web app shows it all.
   container's CPU, memory and network over time.
 - **Alert rules** on fixed thresholds, on readings that stray from a host's usual level, on hosts
   that stop reporting, on services that fail, on containers that go down or restart in a loop, and on
-  UPSes that lose line power or run low. Rules can cover every host, one host or a tag.
+  UPSes that lose line power or run low. Rules can cover every host, one host or a tag, and can shut
+  machines down when they fire, such as when a UPS runs low on battery, and wake them again after.
+- **Power:** shut machines down and restart them from the web app where they allow it, and wake them
+  with Wake-on-LAN, sent by the agents on the same network.
 - **Notifications** by email, Slack, Discord or webhook, with retries, plus daily and weekly
   reports.
 - **Accounts** for several people, each with their own hosts, and administrators who see them all.

@@ -242,7 +242,12 @@ internal sealed class AgentWorker(
             return;
         }
 
-        var report = new InventoryReport { AgentVersion = AgentInfo.Version, SystemInfo = systemInfo.Collect() };
+        var report = new InventoryReport
+        {
+            AgentVersion = AgentInfo.Version,
+            SystemInfo = systemInfo.Collect(),
+            Commands = Commands.CommandWorker.Supported(config),
+        };
         var result = await client.SendInventoryAsync(_state!.AgentKey, report, cancellationToken);
         if (result.IsSuccess)
         {

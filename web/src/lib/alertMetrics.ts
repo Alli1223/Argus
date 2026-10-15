@@ -27,6 +27,8 @@ export const METRIC_LABELS: Record<AlertMetric, string> = {
   UpsBatteryCharge: "UPS battery charge",
   UpsBatteryRuntime: "UPS battery runtime",
   UpsLoad: "UPS load",
+  UpsChargeOnBattery: "UPS charge on battery",
+  UpsRuntimeOnBattery: "UPS runtime on battery",
 };
 
 type MetricUnit = "percent" | "bytesPerSecond" | "perCore" | "restarts" | "seconds" | "none";
@@ -49,6 +51,8 @@ export const METRIC_UNITS: Record<AlertMetric, MetricUnit> = {
   UpsBatteryCharge: "percent",
   UpsBatteryRuntime: "seconds",
   UpsLoad: "percent",
+  UpsChargeOnBattery: "percent",
+  UpsRuntimeOnBattery: "seconds",
 };
 
 /** A reading or threshold of a metric: "93.2%", "12.0 MB/s", "1.50 per core", "4 restarts", "5m". */

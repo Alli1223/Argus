@@ -18,14 +18,17 @@ export const AGENT_IMAGE = "ghcr.io/alli1223/argus-agent:latest";
  * One-line installs: fetch the agent from this server, register it with the token, run it as a service.
  * With `docker`, the Linux agent may also watch Docker's containers. The container form watches the
  * machine from an image instead, for NAS boxes and appliances that have no systemd to run a service.
+ * With `powerActions`, Argus may shut the machine down and restart it.
  */
 export function installCommands(
   server: string,
   token: string,
-  { docker = false, containerActions = false } = {},
+  { docker = false, containerActions = false, powerActions = false } = {},
 ): InstallCommands {
   // Container actions need Docker, and the install script's option says so itself.
-  const linuxOption = containerActions ? " --container-actions" : docker ? " --docker" : "";
+  const linuxOption =
+    (containerActions ? " --container-actions" : docker ? " --docker" : "") +
+    (powerActions ? " --power-actions" : "");
   // The machine's own filesystem at /host, its processes and its network; Docker's socket only when asked.
   const dockerLines = [
     "docker run -d --name argus-agent --restart always \\",
@@ -36,6 +39,7 @@ export function installCommands(
     `  -e ARGUS_SERVERURL=${server} \\`,
     `  -e ARGUS_ENROLLMENTTOKEN=${token} \\`,
     ...(containerActions ? ["  -e ARGUS_CONTAINERACTIONS=true \\"] : []),
+    ...(powerActions ? ["  -e ARGUS_POWERACTIONS=true \\"] : []),
     `  ${AGENT_IMAGE}`,
   ];
 
@@ -43,7 +47,7 @@ export function installCommands(
     linux: `curl -fsSL ${server}/downloads/install.sh | sudo bash -s -- --server ${server} --token ${token}${linuxOption}`,
     windows:
       `& ([scriptblock]::Create((Invoke-RestMethod ${server}/downloads/install.ps1)))` +
-      ` -Server ${server} -Token ${token}`,
+      ` -Server ${server} -Token ${token}${powerActions ? " -PowerActions" : ""}`,
     docker: dockerLines.join("\n"),
   };
 }

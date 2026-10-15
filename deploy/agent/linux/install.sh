@@ -14,6 +14,8 @@
 #   --container-actions
 #                   Also let people who can see this machine in Argus read its containers' logs and start,
 #                   stop and restart them. Implies --docker. Reinstalling without it leaves this as it is.
+#   --power-actions Also let people who can see this machine in Argus, and their alert rules, shut it down and
+#                   restart it. Reinstalling without it leaves this as it is.
 set -euo pipefail
 
 SERVER=""
@@ -21,6 +23,7 @@ TOKEN=""
 BINARY=""
 DOCKER=false
 CONTAINER_ACTIONS=false
+POWER_ACTIONS=false
 INSTALL_DIR=/opt/argus-agent
 CONFIG_DIR=/etc/argus-agent
 STATE_DIR=/var/lib/argus-agent
@@ -43,7 +46,8 @@ while [ $# -gt 0 ]; do
     --binary) BINARY="${2:-}"; shift 2 ;;
     --docker) DOCKER=true; shift ;;
     --container-actions) CONTAINER_ACTIONS=true; DOCKER=true; shift ;;
-    *) fail "unknown option '$1' (expected --server, --token, --binary, --docker or --container-actions)" ;;
+    --power-actions) POWER_ACTIONS=true; shift ;;
+    *) fail "unknown option '$1' (expected --server, --token, --binary, --docker, --container-actions or --power-actions)" ;;
   esac
 done
 
@@ -92,9 +96,13 @@ if [ -z "$BINARY" ]; then
 fi
 [ -f "$BINARY" ] || fail "agent binary not found: $BINARY"
 
-# The agent's unit, and the updater's two, which install new agent versions when the web UI asks.
+# The agent's unit, and the updater's two, which install new agent versions when the web UI asks; with
+# --power-actions, the two that power the machine off or restart it when the agent asks.
 # Use the unit files shipped next to this script (archive installs), else fetch them from the server.
 UNITS=(argus-agent.service argus-agent-update.service argus-agent-update.path)
+if $POWER_ACTIONS; then
+  UNITS+=(argus-agent-power.service argus-agent-power.path)
+fi
 SCRIPT_DIR="$(dirname -- "${BASH_SOURCE[0]:-$0}")"
 for unit in "${UNITS[@]}"; do
   if [ -f "$SCRIPT_DIR/$unit" ]; then
@@ -149,8 +157,20 @@ if $CONTAINER_ACTIONS; then
     "Environment=ARGUS_CONTAINERACTIONS=true" > "/etc/systemd/system/$SERVICE.service.d/container-actions.conf"
   chmod 0644 "/etc/systemd/system/$SERVICE.service.d/container-actions.conf"
 fi
+
+if $POWER_ACTIONS; then
+  step "Letting Argus shut down and restart this machine"
+  install -d -m 0755 "/etc/systemd/system/$SERVICE.service.d"
+  printf '%s\n' "[Service]" \
+    "# People who can see this machine in Argus, and their alert rules, may shut it down and restart it." \
+    "Environment=ARGUS_POWERACTIONS=true" > "/etc/systemd/system/$SERVICE.service.d/power-actions.conf"
+  chmod 0644 "/etc/systemd/system/$SERVICE.service.d/power-actions.conf"
+fi
 systemctl daemon-reload
 systemctl enable --now argus-agent-update.path >/dev/null
+if $POWER_ACTIONS; then
+  systemctl enable --now argus-agent-power.path >/dev/null
+fi
 systemctl enable --now "$SERVICE" >/dev/null
 
 step "Done. The agent reports to $SERVER and shows up in the web UI within a minute."

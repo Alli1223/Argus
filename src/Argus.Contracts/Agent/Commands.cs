@@ -7,11 +7,21 @@ public enum AgentCommandKind
     ContainerStop,
     ContainerRestart,
     ContainerLogs,
+
+    /// <summary>Power the machine off. Only on machines whose agent configuration sets PowerActions.</summary>
+    Shutdown,
+
+    /// <summary>Restart the machine. Only on machines whose agent configuration sets PowerActions.</summary>
+    Restart,
+
+    /// <summary>Send a Wake-on-LAN packet onto the agent's own network, to wake another machine.</summary>
+    WakeOnLan,
 }
 
 /// <summary>
-/// A command for an agent to carry out and answer with an <see cref="AgentCommandResult"/>. Only agents
-/// whose machine allows container actions ask for commands, and they check that setting again themselves.
+/// A command for an agent to carry out and answer with an <see cref="AgentCommandResult"/>. Agents say which
+/// kinds they carry out in their inventory (<see cref="InventoryReport.Commands"/>) and check their own
+/// settings again before acting.
 /// </summary>
 public sealed record AgentCommand
 {
@@ -19,11 +29,23 @@ public sealed record AgentCommand
 
     public required AgentCommandKind Kind { get; init; }
 
-    /// <summary>The container's name.</summary>
-    public required string Container { get; init; }
+    /// <summary>For container commands: the container's name.</summary>
+    public string Container { get; init; } = "";
 
     /// <summary>For logs: how many of the newest lines to send.</summary>
     public int? Tail { get; init; }
+
+    /// <summary>For Wake-on-LAN: the hardware addresses of the machine to wake, as <c>aa:bb:cc:dd:ee:ff</c>.</summary>
+    public IReadOnlyList<string>? MacAddresses { get; init; }
+
+    /// <summary>
+    /// For Wake-on-LAN: the machine's last known addresses with their prefix length (<c>192.168.1.20/24</c>),
+    /// or broadcast addresses to send to, which tell the agent which of its networks the machine is on.
+    /// </summary>
+    public IReadOnlyList<string>? Addresses { get; init; }
+
+    /// <summary>For shutdown and restart: why, for the machine's own logs.</summary>
+    public string? Reason { get; init; }
 }
 
 public sealed record AgentCommandBatch

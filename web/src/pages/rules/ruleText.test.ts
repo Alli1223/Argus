@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AlertRule } from "../../api/types";
 import {
+  describeActions,
   describeRule,
   describeScope,
   inputToThreshold,
@@ -23,6 +24,8 @@ const rule: AlertRule = {
   tag: null,
   resourceFilter: null,
   enabled: true,
+  shutdownHostIds: [],
+  wakeOnResolve: false,
   firingAlerts: 2,
   createdAt: "2026-09-15T10:00:00Z",
   updatedAt: "2026-09-15T10:00:00Z",
@@ -31,6 +34,25 @@ const rule: AlertRule = {
 describe("describeRule", () => {
   it("describes UPS rules", () => {
     expect(describeRule({ ...rule, metric: "UpsOnBattery", durationSeconds: 0 })).toBe("Any UPS on battery");
+    expect(
+      describeRule({
+        ...rule,
+        metric: "UpsChargeOnBattery",
+        operator: "Below",
+        threshold: 40,
+        durationSeconds: 0,
+      }),
+    ).toBe("Any UPS on battery with charge below 40%");
+    expect(
+      describeRule({
+        ...rule,
+        metric: "UpsRuntimeOnBattery",
+        operator: "Below",
+        threshold: 300,
+        durationSeconds: 0,
+        resourceFilter: "ups",
+      }),
+    ).toBe("ups on battery with runtime below 5m");
     expect(
       describeRule({
         ...rule,
@@ -131,6 +153,18 @@ describe("ruleToRequest", () => {
       tag: null,
       resourceFilter: null,
       enabled: true,
+      shutdownHostIds: [],
+      wakeOnResolve: false,
     });
+  });
+});
+
+describe("describeActions", () => {
+  it("says what a rule shuts down and wakes", () => {
+    expect(describeActions(rule)).toBe("");
+    expect(describeActions({ shutdownHostIds: ["h1"], wakeOnResolve: false })).toBe("Shuts down 1 machine");
+    expect(describeActions({ shutdownHostIds: ["h1", "h2"], wakeOnResolve: true })).toBe(
+      "Shuts down 2 machines, and wakes them after",
+    );
   });
 });
