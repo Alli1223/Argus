@@ -104,7 +104,8 @@ public sealed class TelegramTests(TelegramFixture app) : IClassFixture<TelegramF
     public async Task Firing_alerts_arrive_with_acknowledge_and_ignore_buttons()
     {
         var (_, _, alert) = await FiringAlertAsync("tg-send@example.com", 1001);
-        Assert.Equal(1, (await app.DispatchAsync()).Sent);
+        // Other tests share the queue, so this may send their notifications too.
+        Assert.True((await app.DispatchAsync()).Sent >= 1);
 
         var fired = app.Telegram.Calls("sendMessage").Last(call => call["chat_id"]!.ToString() == "1001");
         Assert.Equal("HTML", fired["parse_mode"]!.ToString());
