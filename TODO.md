@@ -274,12 +274,22 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Alert rules shut hosts down when they fire and wake them when they resolve; UPS charge and runtime on battery as metrics
 - [x] Web: a Power menu and section on the host page, actions in the rule editor, and a box in the install commands
 
+## Phase 24 — Telegram, ignoring alerts and two-factor sign-in
+
+- [ ] Ignore an alert: stop watching that rule on that host and resource (alert_ignores), closing the alert quietly; list and resume
+- [ ] Web: Ignore on alerts, with a confirmation, and an Ignored tab to resume monitoring
+- [ ] Telegram bot: token in the Settings page (encrypted), checked with Telegram; a Telegram channel kind that takes a chat ID
+- [ ] Telegram bot: answers /start with the chat ID; Acknowledge and Ignore buttons on alerts, Ignore asking to confirm
+- [ ] Web: Telegram settings and channel form, with setup steps
+- [ ] Two-factor sign-in: authenticator app set up and removed from the Account page, recovery codes, a code step at sign-in; administrators can reset it
+- [ ] Web: two-factor setup with a QR code, and the code step on the sign-in page
+
 ---
 
 ## Future ideas (not scheduled)
 
 - Organizations / teams with shared systems
-- Single sign-on (OIDC) and two-factor authentication
+- Single sign-on (OIDC)
 - Per-core CPU, GPU and container (Docker) metrics
 - Temperature alert rules
 - Synthetic checks (HTTP, ping, TCP port)
