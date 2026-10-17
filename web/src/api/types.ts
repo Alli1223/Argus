@@ -536,7 +536,7 @@ export interface DashboardSummary {
   fullestDisks: HostSummary[];
 }
 
-export type NotificationChannelKind = "Email" | "Webhook" | "Slack" | "Discord";
+export type NotificationChannelKind = "Email" | "Webhook" | "Slack" | "Discord" | "Telegram";
 export type DeliveryStatus = "Pending" | "Sent" | "Failed";
 
 /** A channel's most recent notification: when it was queued, whether it went out, and why not. */
@@ -552,7 +552,7 @@ export interface NotificationChannel {
   id: string;
   name: string;
   kind: NotificationChannelKind;
-  /** Email addresses separated by commas, or the webhook URL. */
+  /** Email addresses separated by commas, a Telegram chat ID, or the webhook URL. */
   target: string;
   minimumSeverity: AlertSeverity;
   notifyOnResolved: boolean;
@@ -578,8 +578,22 @@ export interface NotificationChannelRequest {
 /** What the server can send (email needs a mail server in its settings), and when reports go out. */
 export interface NotificationSupport {
   email: boolean;
+  /** The server's Telegram bot's @name, without the @, or null when there is no bot. */
+  telegramBot?: string | null;
   reportHourUtc: number;
   weeklyReportDay: string;
+}
+
+/** The server's Telegram bot. The token is never sent back. */
+export interface TelegramSettings {
+  configured: boolean;
+  botUsername: string | null;
+  botName: string | null;
+  /** When the server last heard from Telegram, which is how button presses arrive. */
+  lastPolledAt: string | null;
+  lastError: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
 }
 
 /** How Argus connects to the mail server. `Auto` is TLS on port 465 and STARTTLS elsewhere. */

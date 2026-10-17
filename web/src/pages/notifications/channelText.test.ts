@@ -48,6 +48,10 @@ describe("targets", () => {
     expect(targetError("Discord", "https://discord.com/api/webhooks/1/abc")).toBeNull();
     expect(targetError("Webhook", "ftp://example.com/hook")).not.toBeNull();
     expect(targetError("Slack", "hooks.slack.com/services/x")).not.toBeNull();
+    expect(targetError("Telegram", " 123456789 ")).toBeNull();
+    expect(targetError("Telegram", "-1001234567890")).toBeNull();
+    expect(targetError("Telegram", "@argus_alerts")).toBeNull();
+    expect(targetError("Telegram", "https://t.me/argus")).not.toBeNull();
     expect(splitAddresses("a@x.com,b@y.com\nc@z.com")).toEqual(["a@x.com", "b@y.com", "c@z.com"]);
   });
 

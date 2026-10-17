@@ -11,6 +11,7 @@ export const MAX_ADDRESSES = 10;
 
 export const KIND_LABELS: Record<NotificationChannelKind, string> = {
   Email: "Email",
+  Telegram: "Telegram",
   Slack: "Slack",
   Discord: "Discord",
   Webhook: "Webhook",
@@ -25,6 +26,12 @@ export const TARGET_FIELDS: Record<
     label: "Email addresses",
     placeholder: "ops@example.com, oncall@example.com",
     description: `Separate addresses with commas, up to ${MAX_ADDRESSES}.`,
+  },
+  Telegram: {
+    label: "Telegram chat ID",
+    placeholder: "123456789",
+    description:
+      "The number the Argus bot replies with when you send it /start. Group IDs start with a minus.",
   },
   Slack: {
     label: "Slack webhook URL",
@@ -59,6 +66,11 @@ export function targetError(kind: NotificationChannelKind, target: string): stri
     const invalid = addresses.find((address) => !/^[^\s@]+@[^\s@]+$/.test(address));
     return invalid ? `'${invalid}' is not an email address.` : null;
   }
+  if (kind === "Telegram") {
+    return /^(-?\d{1,20}|@[A-Za-z][A-Za-z0-9_]{4,31})$/.test(value)
+      ? null
+      : "Enter the chat ID the bot sent you, such as 123456789 (groups start with -), or a public channel's @name.";
+  }
   try {
     const url = new URL(value);
     return url.protocol === "https:" || url.protocol === "http:" ? null : WEBHOOK_ERROR;
@@ -70,6 +82,7 @@ export function targetError(kind: NotificationChannelKind, target: string): stri
 /** Where a channel sends, without secrets: webhook addresses carry tokens, so only their host is shown. */
 export function describeTarget(channel: Pick<NotificationChannel, "kind" | "target">): string {
   if (channel.kind === "Email") return channel.target;
+  if (channel.kind === "Telegram") return `Telegram chat ${channel.target}`;
   try {
     return new URL(channel.target).host;
   } catch {

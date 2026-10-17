@@ -4,6 +4,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconBrandDiscord,
+  IconBrandTelegram,
   IconBrandSlack,
   IconCircleCheck,
   IconClock,
@@ -38,6 +39,7 @@ const KIND_ICONS: Record<NotificationChannelKind, typeof IconMail> = {
   Email: IconMail,
   Slack: IconBrandSlack,
   Discord: IconBrandDiscord,
+  Telegram: IconBrandTelegram,
   Webhook: IconWebhook,
 };
 

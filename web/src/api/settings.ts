@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type ApiError } from "./client";
 import { notificationKeys } from "./notifications";
-import type { EmailSettings, EmailSettingsRequest } from "./types";
+import type { EmailSettings, EmailSettingsRequest, TelegramSettings } from "./types";
 
 export const settingsKeys = {
   email: ["settings", "email"] as const,
+  telegram: ["settings", "telegram"] as const,
 };
 
 /** The mail server Argus sends notifications through. Administrators only. */
@@ -44,5 +45,39 @@ export function useForgetEmailSettings() {
 export function useSendTestEmail() {
   return useMutation<void, ApiError, string>({
     mutationFn: (to) => api.post("/api/settings/email/test", { to }),
+  });
+}
+
+/** The server's Telegram bot. Administrators only. */
+export function useTelegramSettings() {
+  return useQuery({
+    queryKey: settingsKeys.telegram,
+    queryFn: () => api.get<TelegramSettings>("/api/settings/telegram"),
+    // Shows whether the bot is hearing from Telegram, which changes on its own.
+    refetchInterval: 30_000,
+  });
+}
+
+/** Checks a bot token with Telegram and saves it for the whole server. */
+export function useSaveTelegramSettings() {
+  const client = useQueryClient();
+  return useMutation<TelegramSettings, ApiError, string>({
+    mutationFn: (botToken) => api.put<TelegramSettings>("/api/settings/telegram", { botToken }),
+    onSuccess: (saved) => {
+      client.setQueryData(settingsKeys.telegram, saved);
+      void client.invalidateQueries({ queryKey: notificationKeys.support });
+    },
+  });
+}
+
+/** Removes the bot, which stops every Telegram channel. */
+export function useRemoveTelegramBot() {
+  const client = useQueryClient();
+  return useMutation<void, ApiError>({
+    mutationFn: () => api.delete("/api/settings/telegram"),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: settingsKeys.telegram });
+      void client.invalidateQueries({ queryKey: notificationKeys.support });
+    },
   });
 }
