@@ -10,12 +10,20 @@ import {
   Table,
   Text,
 } from "@mantine/core";
+import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconCircleCheck } from "@tabler/icons-react";
 import { Link, useSearchParams } from "react-router";
-import { useAcknowledgeAlert, useAlertCounts, useAlerts } from "../../api/alerts";
+import {
+  useAcknowledgeAlert,
+  useAlertCounts,
+  useAlertIgnores,
+  useAlerts,
+  useIgnoreAlert,
+  useResumeMonitoring,
+} from "../../api/alerts";
 import { useHosts } from "../../api/hosts";
-import type { Alert, AlertCounts, AlertSeverity } from "../../api/types";
+import type { Alert, AlertCounts, AlertIgnore, AlertSeverity } from "../../api/types";
 import { PageHeader } from "../../components/PageHeader";
 import { ErrorScreen } from "../../components/Screens";
 import { SeverityLabel } from "../../components/SeverityLabel";
@@ -31,6 +39,7 @@ const STATUS_CHOICES: { label: string; value: StatusChoice }[] = [
   { label: "Firing", value: "Firing" },
   { label: "Resolved", value: "Resolved" },
   { label: "All", value: "all" },
+  { label: "Ignored", value: "Ignored" },
 ];
 
 function firingSentence(counts: AlertCounts): string {
@@ -51,8 +60,10 @@ function firingSentence(counts: AlertCounts): string {
 export function AlertsPage() {
   const [params, setParams] = useSearchParams();
   const view = viewFromParams(params);
+  const showIgnored = view.status === "Ignored";
+  const ignores = useAlertIgnores(showIgnored);
   const alerts = useAlerts({
-    status: view.status === "all" ? undefined : view.status,
+    status: view.status === "all" || view.status === "Ignored" ? undefined : view.status,
     severity: view.severity ?? undefined,
     hostId: view.hostId ?? undefined,
     page: view.page,
@@ -85,15 +96,17 @@ export function AlertsPage() {
           onChange={(status) => change({ status: status as StatusChoice })}
           data={STATUS_CHOICES}
         />
-        <Select
-          aria-label="Severity"
-          placeholder="Any severity"
-          data={["Critical", "Warning", "Info"]}
-          value={view.severity}
-          onChange={(severity) => change({ severity: severity as AlertSeverity | null })}
-          clearable
-          w={170}
-        />
+        {!showIgnored && (
+          <Select
+            aria-label="Severity"
+            placeholder="Any severity"
+            data={["Critical", "Warning", "Info"]}
+            value={view.severity}
+            onChange={(severity) => change({ severity: severity as AlertSeverity | null })}
+            clearable
+            w={170}
+          />
+        )}
         <Select
           aria-label="Host"
           placeholder="Any host"
@@ -107,72 +120,87 @@ export function AlertsPage() {
         />
       </Group>
 
-      <Box
-        className="argus-surface"
-        style={{
-          borderRadius: "var(--mantine-radius-sm)",
-          overflowX: "auto",
-          opacity: alerts.isPlaceholderData ? 0.55 : 1,
-          transition: "opacity 150ms ease",
-        }}
-      >
-        <Table miw={920}>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Severity</Table.Th>
-              <Table.Th>Alert</Table.Th>
-              <Table.Th>Reading</Table.Th>
-              <Table.Th>Started</Table.Th>
-              <Table.Th>State</Table.Th>
-              <Table.Th>Acknowledged</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {alerts.isPending &&
-              Array.from({ length: 3 }, (_, index) => (
-                <Table.Tr key={index}>
-                  <Table.Td colSpan={6}>
-                    <Skeleton h={28} />
-                  </Table.Td>
+      {showIgnored ? (
+        <IgnoredTable
+          ignores={(ignores.data ?? []).filter((ignore) => !view.hostId || ignore.hostId === view.hostId)}
+          loading={ignores.isPending}
+          now={now}
+        />
+      ) : (
+        <>
+          <Box
+            className="argus-surface"
+            style={{
+              borderRadius: "var(--mantine-radius-sm)",
+              overflowX: "auto",
+              opacity: alerts.isPlaceholderData ? 0.55 : 1,
+              transition: "opacity 150ms ease",
+            }}
+          >
+            <Table miw={920}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Severity</Table.Th>
+                  <Table.Th>Alert</Table.Th>
+                  <Table.Th>Reading</Table.Th>
+                  <Table.Th>Started</Table.Th>
+                  <Table.Th>State</Table.Th>
+                  <Table.Th>Acknowledged</Table.Th>
+                  <Table.Th aria-label="Actions" />
                 </Table.Tr>
-              ))}
-            {alerts.data?.items.map((alert) => (
-              <AlertRow key={alert.id} alert={alert} now={now} />
-            ))}
-            {alerts.data && alerts.data.items.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={6}>
-                  {filtered ? (
-                    <Group gap="sm" py="md" justify="center">
-                      <Text c="dimmed" fz="sm">
-                        No alerts match these filters.
-                      </Text>
-                      <Button
-                        variant="subtle"
-                        size="compact-sm"
-                        onClick={() => setParams({}, { replace: true })}
-                      >
-                        Clear filters
-                      </Button>
-                    </Group>
-                  ) : (
-                    <Group gap="xs" py="md" justify="center">
-                      <IconCircleCheck size={18} color="var(--mantine-color-healthy-filled)" aria-hidden />
-                      <Text fz="sm">Nothing is firing.</Text>
-                      <Anchor component={Link} to="/rules" fz="sm">
-                        See the alert rules
-                      </Anchor>
-                    </Group>
-                  )}
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
-      </Box>
+              </Table.Thead>
+              <Table.Tbody>
+                {alerts.isPending &&
+                  Array.from({ length: 3 }, (_, index) => (
+                    <Table.Tr key={index}>
+                      <Table.Td colSpan={7}>
+                        <Skeleton h={28} />
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                {alerts.data?.items.map((alert) => (
+                  <AlertRow key={alert.id} alert={alert} now={now} />
+                ))}
+                {alerts.data && alerts.data.items.length === 0 && (
+                  <Table.Tr>
+                    <Table.Td colSpan={7}>
+                      {filtered ? (
+                        <Group gap="sm" py="md" justify="center">
+                          <Text c="dimmed" fz="sm">
+                            No alerts match these filters.
+                          </Text>
+                          <Button
+                            variant="subtle"
+                            size="compact-sm"
+                            onClick={() => setParams({}, { replace: true })}
+                          >
+                            Clear filters
+                          </Button>
+                        </Group>
+                      ) : (
+                        <Group gap="xs" py="md" justify="center">
+                          <IconCircleCheck
+                            size={18}
+                            color="var(--mantine-color-healthy-filled)"
+                            aria-hidden
+                          />
+                          <Text fz="sm">Nothing is firing.</Text>
+                          <Anchor component={Link} to="/rules" fz="sm">
+                            See the alert rules
+                          </Anchor>
+                        </Group>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+              </Table.Tbody>
+            </Table>
+          </Box>
 
-      {pages > 1 && (
-        <Pagination total={pages} value={view.page} onChange={(page) => change({ page })} mt="md" />
+          {pages > 1 && (
+            <Pagination total={pages} value={view.page} onChange={(page) => change({ page })} mt="md" />
+          )}
+        </>
       )}
     </>
   );
@@ -215,6 +243,7 @@ function Reading({ alert }: { alert: Alert }) {
 
 function AlertRow({ alert, now }: { alert: Alert; now: number }) {
   const acknowledge = useAcknowledgeAlert();
+  const ignore = useIgnoreAlert();
   const firing = alert.status === "Firing";
   const lasted = ((alert.resolvedAt ? Date.parse(alert.resolvedAt) : now) - Date.parse(alert.firedAt)) / 1000;
 
@@ -226,6 +255,36 @@ function AlertRow({ alert, now }: { alert: Alert; now: number }) {
           color: "crimson",
           title: "The alert was not acknowledged",
           message: error.message,
+        }),
+    });
+
+  const where = alert.resourceKey ? `${alert.resourceKey} on ${alert.hostName}` : alert.hostName;
+  const confirmIgnore = () =>
+    modals.openConfirmModal({
+      title: "Stop monitoring this?",
+      children: (
+        <>
+          <Text fz="sm">
+            The rule <b>{alert.ruleName}</b> will no longer check {where}, so this alert will not fire again.
+            {firing && " The alert closes now, without a resolved notification."}
+          </Text>
+          <Text fz="sm" mt="sm" c="dimmed">
+            You can start monitoring it again from the Ignored tab.
+          </Text>
+        </>
+      ),
+      labels: { confirm: "Stop monitoring", cancel: "Keep monitoring" },
+      confirmProps: { color: "crimson" },
+      onConfirm: () =>
+        ignore.mutate(alert.id, {
+          onSuccess: () =>
+            notifications.show({ color: "healthy", message: `No longer monitoring ${where}.` }),
+          onError: (error) =>
+            notifications.show({
+              color: "crimson",
+              title: "The alert was not ignored",
+              message: error.message,
+            }),
         }),
     });
 
@@ -253,7 +312,7 @@ function AlertRow({ alert, now }: { alert: Alert; now: number }) {
           </Text>
         ) : (
           <Text fz="sm" c="dimmed">
-            Resolved after {formatDuration(lasted)}
+            {alert.ignoredAt ? "Ignored" : "Resolved"} after {formatDuration(lasted)}
           </Text>
         )}
       </Table.Td>
@@ -276,6 +335,96 @@ function AlertRow({ alert, now }: { alert: Alert; now: number }) {
             –
           </Text>
         )}
+      </Table.Td>
+      <Table.Td>
+        {alert.ruleId && firing && (
+          <Button
+            variant="subtle"
+            color="crimson"
+            size="compact-sm"
+            loading={ignore.isPending}
+            onClick={confirmIgnore}
+          >
+            Ignore
+          </Button>
+        )}
+      </Table.Td>
+    </Table.Tr>
+  );
+}
+
+/** What the rules were told to stop watching, each with a way to watch it again. */
+function IgnoredTable({ ignores, loading, now }: { ignores: AlertIgnore[]; loading: boolean; now: number }) {
+  return (
+    <Box className="argus-surface" style={{ borderRadius: "var(--mantine-radius-sm)", overflowX: "auto" }}>
+      <Table miw={720}>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Not monitored</Table.Th>
+            <Table.Th>Rule</Table.Th>
+            <Table.Th>Ignored</Table.Th>
+            <Table.Th aria-label="Actions" />
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {loading && (
+            <Table.Tr>
+              <Table.Td colSpan={4}>
+                <Skeleton h={28} />
+              </Table.Td>
+            </Table.Tr>
+          )}
+          {ignores.map((ignore) => (
+            <IgnoredRow key={ignore.id} ignore={ignore} now={now} />
+          ))}
+          {!loading && ignores.length === 0 && (
+            <Table.Tr>
+              <Table.Td colSpan={4}>
+                <Text c="dimmed" fz="sm" ta="center" py="md">
+                  Nothing is ignored: every rule watches all of its hosts.
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+          )}
+        </Table.Tbody>
+      </Table>
+    </Box>
+  );
+}
+
+function IgnoredRow({ ignore, now }: { ignore: AlertIgnore; now: number }) {
+  const resume = useResumeMonitoring();
+  const where = ignore.resourceKey ? `${ignore.resourceKey} on ${ignore.hostName}` : ignore.hostName;
+  const resumeMonitoring = () =>
+    resume.mutate(ignore.id, {
+      onSuccess: () => notifications.show({ color: "healthy", message: `Monitoring ${where} again.` }),
+      onError: (error) =>
+        notifications.show({ color: "crimson", title: "Monitoring did not resume", message: error.message }),
+    });
+
+  return (
+    <Table.Tr>
+      <Table.Td>
+        <Anchor component={Link} to={`/hosts/${ignore.hostId}`} fz="sm" fw={600}>
+          {where}
+        </Anchor>
+        <Text fz="xs" c="dimmed">
+          {ignore.title}
+        </Text>
+      </Table.Td>
+      <Table.Td>
+        <Text fz="sm">{ignore.ruleName}</Text>
+      </Table.Td>
+      <Table.Td title={dateTime.format(new Date(ignore.createdAt))}>
+        <Text fz="sm">
+          {ignore.createdBy ? `${ignore.createdBy}, ` : ""}
+          {formatAgo(ignore.createdAt, now)}
+        </Text>
+      </Table.Td>
+      <Table.Td>
+        <Button variant="light" size="compact-sm" loading={resume.isPending} onClick={resumeMonitoring}>
+          Resume monitoring
+        </Button>
       </Table.Td>
     </Table.Tr>
   );

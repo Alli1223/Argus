@@ -3,6 +3,7 @@ import { api, query, type ApiError } from "./client";
 import type {
   Alert,
   AlertCounts,
+  AlertIgnore,
   AlertPage,
   AlertRule,
   AlertRuleRequest,
@@ -23,6 +24,7 @@ export const alertKeys = {
   counts: ["alerts", "counts"] as const,
   list: (filter: AlertFilter) => ["alerts", "list", filter] as const,
   rules: ["alert-rules"] as const,
+  ignores: ["alerts", "ignores"] as const,
 };
 
 /** Firing alerts by severity, for the header. */
@@ -48,6 +50,38 @@ export function useAcknowledgeAlert() {
   return useMutation<Alert, ApiError, string>({
     mutationFn: (id) => api.post<Alert>(`/api/alerts/${id}/acknowledge`),
     onSuccess: () => void client.invalidateQueries({ queryKey: alertKeys.all }),
+  });
+}
+
+/** Stops the alert's rule watching its host and resource, closing the alert. */
+export function useIgnoreAlert() {
+  const client = useQueryClient();
+  return useMutation<AlertIgnore, ApiError, string>({
+    mutationFn: (id) => api.post<AlertIgnore>(`/api/alerts/${id}/ignore`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: alertKeys.all }),
+  });
+}
+
+/** What the user's rules have been told to stop watching. */
+export function useAlertIgnores(enabled = true) {
+  return useQuery({
+    queryKey: alertKeys.ignores,
+    queryFn: () => api.get<AlertIgnore[]>("/api/alert-ignores"),
+    enabled,
+  });
+}
+
+/** Watches an ignored host and resource again; a problem still there fires at the next check. */
+export function useResumeMonitoring() {
+  const client = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: (id) => api.delete(`/api/alert-ignores/${id}`),
+    onSuccess: (_, id) => {
+      client.setQueryData<AlertIgnore[]>(alertKeys.ignores, (ignores) =>
+        ignores?.filter((ignore) => ignore.id !== id),
+      );
+      void client.invalidateQueries({ queryKey: alertKeys.all });
+    },
   });
 }
 

@@ -1,6 +1,7 @@
 import type { AlertSeverity } from "../../api/types";
 
-export type StatusChoice = "Firing" | "Resolved" | "all";
+/** "Ignored" lists what the rules were told to stop watching, rather than alerts. */
+export type StatusChoice = "Firing" | "Resolved" | "all" | "Ignored";
 
 /** What the alerts page shows, kept in the URL so a view can be shared or bookmarked. */
 export interface AlertsView {
@@ -18,7 +19,7 @@ export function viewFromParams(params: URLSearchParams): AlertsView {
   const severity = params.get("severity");
   const page = Number(params.get("page"));
   return {
-    status: status === "Resolved" || status === "all" ? status : "Firing",
+    status: status === "Resolved" || status === "all" || status === "Ignored" ? status : "Firing",
     severity: severity && SEVERITIES.includes(severity) ? (severity as AlertSeverity) : null,
     hostId: params.get("host") || null,
     page: Number.isInteger(page) && page > 1 ? page : 1,

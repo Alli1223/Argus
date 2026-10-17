@@ -495,6 +495,21 @@ export interface Alert {
   resolvedAt: string | null;
   acknowledgedAt: string | null;
   acknowledgedBy: string | null;
+  /** Set when someone ignored the alert, which closed it and stopped its rule watching this resource. */
+  ignoredAt: string | null;
+}
+
+/** A rule that no longer watches one host and resource, because its alert was ignored. */
+export interface AlertIgnore {
+  id: string;
+  ruleId: string;
+  ruleName: string;
+  hostId: string;
+  hostName: string;
+  resourceKey: string;
+  title: string;
+  createdAt: string;
+  createdBy: string | null;
 }
 
 export interface AlertPage {
