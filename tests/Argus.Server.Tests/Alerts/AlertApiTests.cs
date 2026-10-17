@@ -185,6 +185,57 @@ public sealed class AlertApiTests(AlertsFixture app) : IClassFixture<AlertsFixtu
     }
 
     [Fact]
+    public async Task Ignoring_an_alert_closes_it_and_stops_the_rule_watching_that_host()
+    {
+        var (hostId, agent, owner) = await HostAsync("ignore-a@example.com", "db-1");
+        await FireCpuAlertAsync(owner, agent);
+        var alert = Assert.Single((await owner.GetJsonAsync<AlertPage>("/api/alerts?status=Firing"))!.Items);
+
+        var ignored = await owner.PostAsync($"/api/alerts/{alert.Id}/ignore", null, Ct);
+        ignored.EnsureSuccessStatusCode();
+        var ignore = (await ignored.Content.ReadFromJsonAsync<AlertIgnoreResponse>(TestJson.Options, Ct))!;
+        Assert.Equal(hostId, ignore.HostId);
+        Assert.Equal("Hot CPU", ignore.RuleName);
+        Assert.Equal("ignore-a", ignore.CreatedBy);
+
+        var closed = Assert.Single((await owner.GetJsonAsync<AlertPage>($"/api/alerts?hostId={hostId}"))!.Items);
+        Assert.Equal(AlertStatus.Resolved, closed.Status);
+        Assert.NotNull(closed.IgnoredAt);
+
+        // The CPU is still hot, but the rule no longer watches this host.
+        await agent.SendSamplesAsync(
+            MetricsIngestionTests.FullSample(app.Time.GetUtcNow().AddSeconds(-2)) with { Cpu = new CpuMetrics { UsagePercent = 99 } });
+        await app.EvaluateAsync();
+        Assert.Empty((await owner.GetJsonAsync<AlertPage>("/api/alerts?status=Firing"))!.Items);
+
+        // Ignoring twice changes nothing.
+        (await owner.PostAsync($"/api/alerts/{alert.Id}/ignore", null, Ct)).EnsureSuccessStatusCode();
+        Assert.Equal(ignore.Id, Assert.Single((await owner.GetJsonAsync<List<AlertIgnoreResponse>>("/api/alert-ignores"))!).Id);
+
+        // Resuming watches again, and the problem fires again.
+        Assert.Equal(HttpStatusCode.NoContent, (await owner.DeleteAsync($"/api/alert-ignores/{ignore.Id}", Ct)).StatusCode);
+        await app.EvaluateAsync();
+        Assert.Single((await owner.GetJsonAsync<AlertPage>("/api/alerts?status=Firing"))!.Items);
+        Assert.Empty((await owner.GetJsonAsync<List<AlertIgnoreResponse>>("/api/alert-ignores"))!);
+    }
+
+    [Fact]
+    public async Task Other_users_cannot_ignore_alerts_or_see_ignores()
+    {
+        var (_, agent, owner) = await HostAsync("ignore-b@example.com");
+        await FireCpuAlertAsync(owner, agent);
+        var alert = Assert.Single((await owner.GetJsonAsync<AlertPage>("/api/alerts"))!.Items);
+        var stranger = await app.CreateOwnerAsync("ignore-c@example.com");
+
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.PostAsync($"/api/alerts/{alert.Id}/ignore", null, Ct)).StatusCode);
+
+        var ignore = (await (await owner.PostAsync($"/api/alerts/{alert.Id}/ignore", null, Ct))
+            .Content.ReadFromJsonAsync<AlertIgnoreResponse>(TestJson.Options, Ct))!;
+        Assert.Empty((await stranger.GetJsonAsync<List<AlertIgnoreResponse>>("/api/alert-ignores"))!);
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.DeleteAsync($"/api/alert-ignores/{ignore.Id}", Ct)).StatusCode);
+    }
+
+    [Fact]
     public async Task Deleting_a_rule_resolves_its_alerts_but_keeps_the_history()
     {
         var (hostId, agent, owner) = await HostAsync("rules-h@example.com");

@@ -276,7 +276,7 @@ committed when it is done. New tasks discovered along the way are added in the r
 
 ## Phase 24 — Telegram, ignoring alerts and two-factor sign-in
 
-- [ ] Ignore an alert: stop watching that rule on that host and resource (alert_ignores), closing the alert quietly; list and resume
+- [x] Ignore an alert: stop watching that rule on that host and resource (alert_ignores), closing the alert quietly; list and resume
 - [ ] Web: Ignore on alerts, with a confirmation, and an Ignored tab to resume monitoring
 - [ ] Telegram bot: token in the Settings page (encrypted), checked with Telegram; a Telegram channel kind that takes a chat ID
 - [ ] Telegram bot: answers /start with the chat ID; Acknowledge and Ignore buttons on alerts, Ignore asking to confirm

@@ -55,6 +55,9 @@ public sealed class Alert
     public DateTimeOffset? AcknowledgedAt { get; set; }
 
     public Guid? AcknowledgedById { get; set; }
+
+    /// <summary>Set when someone ignored the alert, which closed it and stopped the rule watching its resource.</summary>
+    public DateTimeOffset? IgnoredAt { get; set; }
 }
 
 internal sealed class AlertConfiguration : IEntityTypeConfiguration<Alert>

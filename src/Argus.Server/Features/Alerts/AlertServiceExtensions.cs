@@ -8,6 +8,7 @@ public static class AlertServiceExtensions
     {
         services.AddValidatedOptions<AlertOptions>(AlertOptions.SectionName);
         services.AddScoped<AlertEvaluator>();
+        services.AddScoped<AlertActions>();
         services.AddSingleton<IAlertEventSink, LoggingAlertEventSink>();
         services.AddHostedService<AlertEvaluationService>();
         return services;

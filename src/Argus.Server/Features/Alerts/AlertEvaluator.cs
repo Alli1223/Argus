@@ -65,6 +65,11 @@ public sealed class AlertEvaluator(
         var openByKey = open
             .Where(alert => alert.RuleId is not null)
             .ToDictionary(alert => (RuleId: alert.RuleId!.Value, alert.HostId, alert.ResourceKey));
+        var ignored = (await db.AlertIgnores.AsNoTracking()
+                .Select(ignore => new { ignore.RuleId, ignore.HostId, ignore.ResourceKey })
+                .ToListAsync(cancellationToken))
+            .Select(ignore => (ignore.RuleId, ignore.HostId, ignore.ResourceKey))
+            .ToHashSet();
 
         var events = new List<AlertEvent>();
         foreach (var rule in rules)
@@ -75,6 +80,12 @@ public sealed class AlertEvaluator(
                 var observed = new HashSet<(Guid HostId, string ResourceKey)>();
                 foreach (var (host, resourceKey, verdict) in await ObserveAsync(rule, inScope, now, tolerance, cancellationToken))
                 {
+                    // Someone chose to stop watching this; an alert still open from before ends below.
+                    if (ignored.Contains((rule.Id, host.Id, resourceKey)))
+                    {
+                        continue;
+                    }
+
                     observed.Add((host.Id, resourceKey));
                     openByKey.TryGetValue((rule.Id, host.Id, resourceKey), out var alert);
                     if (alert is null && verdict.Fire)
@@ -99,6 +110,17 @@ public sealed class AlertEvaluator(
                 foreach (var alert in open.Where(alert => alert.RuleId == rule.Id && !scopeIds.Contains(alert.HostId)))
                 {
                     Resolve(alert, now, events);
+                }
+
+                // Ignoring closes the alert itself; this catches one that fired while the ignore was being saved.
+                // Like that, it ends without a "resolved" notification, since nothing recovered.
+                foreach (var alert in open.Where(alert => alert.RuleId == rule.Id
+                             && alert.Status == AlertStatus.Firing
+                             && ignored.Contains((rule.Id, alert.HostId, alert.ResourceKey))))
+                {
+                    alert.Status = AlertStatus.Resolved;
+                    alert.ResolvedAt = now;
+                    alert.IgnoredAt = now;
                 }
 
                 // A recovered service or container simply stops being observed, so its alert ends here. (For
