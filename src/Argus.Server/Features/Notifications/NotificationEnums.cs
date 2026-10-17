@@ -14,6 +14,9 @@ public enum NotificationChannelKind
 
     /// <summary>A Discord channel webhook URL.</summary>
     Discord,
+
+    /// <summary>A Telegram chat ID (or a public channel's @name), reached through the server's bot.</summary>
+    Telegram,
 }
 
 /// <summary>What a notification is about.</summary>

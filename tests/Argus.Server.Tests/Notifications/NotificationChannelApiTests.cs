@@ -148,7 +148,7 @@ public sealed class NotificationChannelApiTests(NotificationsFixture app) : ICla
     {
         var owner = await app.CreateOwnerAsync("channels-g@example.com");
 
-        Assert.Equal(new NotificationSupport(Email: true, ReportHourUtc: 7, WeeklyReportDay: DayOfWeek.Monday),
+        Assert.Equal(new NotificationSupport(Email: true, TelegramBot: null, ReportHourUtc: 7, WeeklyReportDay: DayOfWeek.Monday),
             await owner.GetJsonAsync<NotificationSupport>($"{Route}/support"));
     }
 }

@@ -4,6 +4,7 @@ using Argus.Server.Data;
 using Argus.Server.Features.Alerts;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Settings;
+using Argus.Server.Features.Telegram;
 using Argus.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -37,7 +38,7 @@ public sealed record NotificationChannelRequest
     [Required]
     public NotificationChannelKind? Kind { get; init; }
 
-    /// <summary>Email addresses separated by commas, or the webhook URL.</summary>
+    /// <summary>Email addresses separated by commas, a Telegram chat ID, or the webhook URL.</summary>
     [Required, MaxLength(2000)]
     public string Target { get; init; } = "";
 
@@ -54,11 +55,13 @@ public sealed record NotificationChannelRequest
     public bool WeeklyReport { get; init; }
 }
 
-/// <summary>What this server can send (email needs an SMTP server in its settings), and when reports go out.</summary>
-public sealed record NotificationSupport(bool Email, int ReportHourUtc, DayOfWeek WeeklyReportDay);
+/// <summary>
+/// What this server can send (email needs an SMTP server in its settings, Telegram a bot), and when reports go out.
+/// </summary>
+public sealed record NotificationSupport(bool Email, string? TelegramBot, int ReportHourUtc, DayOfWeek WeeklyReportDay);
 
 /// <summary>Notification channels are personal: each user decides where their own alerts go.</summary>
-public static class NotificationChannelEndpoints
+public static partial class NotificationChannelEndpoints
 {
     public const int MaxEmailAddresses = 10;
 
@@ -69,8 +72,13 @@ public static class NotificationChannelEndpoints
         var channels = routes.MapGroup("/notification-channels").WithTags("Notification channels");
 
         channels.MapGet("/", ListAsync);
-        channels.MapGet("/support", async (EmailSettingsStore email, IOptions<ReportOptions> reports, CancellationToken cancellationToken) =>
-            new NotificationSupport((await email.CurrentAsync(cancellationToken)).IsConfigured, reports.Value.SendHourUtc, reports.Value.WeeklyDay));
+        channels.MapGet("/support", async (
+                EmailSettingsStore email, TelegramSettingsStore telegram, IOptions<ReportOptions> reports, CancellationToken cancellationToken) =>
+            new NotificationSupport(
+                (await email.CurrentAsync(cancellationToken)).IsConfigured,
+                (await telegram.CurrentAsync(cancellationToken))?.Username,
+                reports.Value.SendHourUtc,
+                reports.Value.WeeklyDay));
         channels.MapGet("/{id:guid}", GetAsync);
         channels.MapPost("/", CreateAsync);
         channels.MapPut("/{id:guid}", UpdateAsync);
@@ -252,6 +260,13 @@ public static class NotificationChannelEndpoints
                 target = string.Join(", ", addresses);
             }
         }
+        else if (request.Kind == NotificationChannelKind.Telegram)
+        {
+            if (!TelegramChatPattern().IsMatch(target))
+            {
+                errors["target"] = ["Enter the chat ID the bot sent you, such as 123456789 (groups start with -), or a public channel's @name."];
+            }
+        }
         else if (!Uri.TryCreate(target, UriKind.Absolute, out var url) || url.Scheme is not ("https" or "http"))
         {
             errors["target"] = ["Enter the whole webhook address, starting with https://."];
@@ -284,4 +299,7 @@ public static class NotificationChannelEndpoints
         channel.Enabled = request.Enabled;
         channel.UpdatedAt = now;
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^(-?\d{1,20}|@[A-Za-z][A-Za-z0-9_]{4,31})$")]
+    private static partial System.Text.RegularExpressions.Regex TelegramChatPattern();
 }
