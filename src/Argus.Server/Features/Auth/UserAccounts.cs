@@ -43,7 +43,8 @@ internal static class UserAccounts
     public static async Task<CurrentUserResponse> ToResponseAsync(ArgusUser user, UserManager<ArgusUser> users)
     {
         var roles = (await users.GetRolesAsync(user)).Order(StringComparer.Ordinal).ToList();
-        return new CurrentUserResponse(user.Id, user.Email ?? "", user.DisplayName, roles, roles.Contains(Roles.Admin));
+        return new CurrentUserResponse(
+            user.Id, user.Email ?? "", user.DisplayName, roles, roles.Contains(Roles.Admin), await users.GetTwoFactorEnabledAsync(user));
     }
 
     /// <summary>Maps Identity errors onto the request fields they concern.</summary>

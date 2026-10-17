@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type ApiError } from "./client";
-import type { AuthStatus, Credentials, CurrentUser, NewAccount } from "./types";
+import type { AuthStatus, Credentials, CurrentUser, NewAccount, TwoFactorRequired } from "./types";
 
 export const authKeys = {
   status: ["auth", "status"] as const,
@@ -37,10 +37,26 @@ function useSignedIn() {
   };
 }
 
+export function isTwoFactorRequired(result: CurrentUser | TwoFactorRequired): result is TwoFactorRequired {
+  return "twoFactorRequired" in result && result.twoFactorRequired;
+}
+
+/** Checks the password. Accounts with two-factor sign-in then need {@link useLoginTwoFactor}. */
 export function useLogin() {
   const signedIn = useSignedIn();
-  return useMutation<CurrentUser, ApiError, Credentials>({
-    mutationFn: (credentials) => api.post<CurrentUser>("/api/auth/login", credentials),
+  return useMutation<CurrentUser | TwoFactorRequired, ApiError, Credentials>({
+    mutationFn: (credentials) => api.post<CurrentUser | TwoFactorRequired>("/api/auth/login", credentials),
+    onSuccess: (result) => {
+      if (!isTwoFactorRequired(result)) signedIn(result);
+    },
+  });
+}
+
+/** Finishes signing in with a code from the authenticator app, or a recovery code. */
+export function useLoginTwoFactor() {
+  const signedIn = useSignedIn();
+  return useMutation<CurrentUser, ApiError, { code: string; rememberMe: boolean }>({
+    mutationFn: (step) => api.post<CurrentUser>("/api/auth/login/two-factor", step),
     onSuccess: signedIn,
   });
 }

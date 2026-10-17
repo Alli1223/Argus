@@ -18,7 +18,7 @@ namespace Argus.Server.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "timescaledb");
@@ -56,6 +56,10 @@ namespace Argus.Server.Data.Migrations
                     b.Property<Guid>("HostId")
                         .HasColumnType("uuid")
                         .HasColumnName("host_id");
+
+                    b.Property<DateTimeOffset?>("IgnoredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ignored_at");
 
                     b.Property<string>("Metric")
                         .IsRequired()
@@ -131,6 +135,64 @@ namespace Argus.Server.Data.Migrations
                         .HasFilter("status = 'Firing'");
 
                     b.ToTable("alerts", (string)null);
+                });
+
+            modelBuilder.Entity("Argus.Server.Features.Alerts.AlertIgnore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("host_id");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("ResourceKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("resource_key");
+
+                    b.Property<Guid>("RuleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rule_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_alert_ignores");
+
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_alert_ignores_created_by_id");
+
+                    b.HasIndex("HostId")
+                        .HasDatabaseName("ix_alert_ignores_host_id");
+
+                    b.HasIndex("OwnerId")
+                        .HasDatabaseName("ix_alert_ignores_owner_id");
+
+                    b.HasIndex("RuleId", "HostId", "ResourceKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_alert_ignores_rule_id_host_id_resource_key");
+
+                    b.ToTable("alert_ignores", (string)null);
                 });
 
             modelBuilder.Entity("Argus.Server.Features.Alerts.AlertRule", b =>
@@ -1053,6 +1115,40 @@ namespace Argus.Server.Data.Migrations
                         .HasForeignKey("RuleId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_alerts_alert_rules_rule_id");
+
+                    b.Navigation("Host");
+
+                    b.Navigation("Rule");
+                });
+
+            modelBuilder.Entity("Argus.Server.Features.Alerts.AlertIgnore", b =>
+                {
+                    b.HasOne("Argus.Server.Features.Auth.ArgusUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_alert_ignores_users_created_by_id");
+
+                    b.HasOne("Argus.Server.Features.Hosts.MonitoredHost", "Host")
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_alert_ignores_hosts_host_id");
+
+                    b.HasOne("Argus.Server.Features.Auth.ArgusUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_alert_ignores_users_owner_id");
+
+                    b.HasOne("Argus.Server.Features.Alerts.AlertRule", "Rule")
+                        .WithMany()
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_alert_ignores_alert_rules_rule_id");
 
                     b.Navigation("Host");
 

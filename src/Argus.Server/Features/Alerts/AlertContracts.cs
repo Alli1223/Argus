@@ -87,7 +87,20 @@ public sealed record AlertResponse(
     DateTimeOffset FiredAt,
     DateTimeOffset? ResolvedAt,
     DateTimeOffset? AcknowledgedAt,
-    string? AcknowledgedBy);
+    string? AcknowledgedBy,
+    DateTimeOffset? IgnoredAt);
+
+/// <summary>A rule that no longer watches one host and resource, because its alert was ignored.</summary>
+public sealed record AlertIgnoreResponse(
+    Guid Id,
+    Guid RuleId,
+    string RuleName,
+    Guid HostId,
+    string HostName,
+    string ResourceKey,
+    string Title,
+    DateTimeOffset CreatedAt,
+    string? CreatedBy);
 
 public sealed record AlertPage(IReadOnlyList<AlertResponse> Items, int Total, int Page, int PageSize);
 

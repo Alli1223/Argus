@@ -21,7 +21,7 @@ public sealed class NotificationChannel
 
     public NotificationChannelKind Kind { get; set; }
 
-    /// <summary>For email: the addresses, separated by commas. For the webhook kinds: the URL.</summary>
+    /// <summary>For email: the addresses, separated by commas. For Telegram: the chat ID. For the webhook kinds: the URL.</summary>
     public string Target { get; set; } = "";
 
     public AlertSeverity MinimumSeverity { get; set; } = AlertSeverity.Warning;

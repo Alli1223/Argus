@@ -57,11 +57,17 @@ All paths start with `/api`.
 | `GET /auth/status` | Whether the first account still has to be set up, and whether registration is open. No sign-in needed. |
 | `POST /auth/setup` | Creates the first account, an administrator: `email`, `password`, `displayName`. Only works once. |
 | `POST /auth/register` | Creates an account when registration is open. |
-| `POST /auth/login` | Signs in: `email`, `password`, `rememberMe`. |
+| `POST /auth/login` | Signs in: `email`, `password`, `rememberMe`. Accounts with two-factor sign-in answer `202` with `{"twoFactorRequired": true}` instead, and finish with the next call. |
+| `POST /auth/login/two-factor` | Finishes signing in within five minutes of the password: `code` (6 digits from the authenticator app, or a recovery code), `rememberMe`. |
 | `POST /auth/logout` | Signs out. |
 | `GET /auth/me` | The signed-in person. |
 | `PUT /account/profile` | Changes your `displayName`. |
 | `POST /account/password` | Changes your password: `currentPassword`, `newPassword`. |
+| `GET /account/two-factor` | Whether two-factor sign-in is `enabled`, and `recoveryCodesLeft`. |
+| `POST /account/two-factor/setup` | Starts setting up with a new key: `sharedKey` and an `authenticatorUri` (`otpauth://`) for a QR code. |
+| `POST /account/two-factor/enable` | Turns two-factor sign-in on with a `code` from the app. The answer holds ten `recoveryCodes`, shown once. |
+| `POST /account/two-factor/disable` | Turns it off: `password`. |
+| `POST /account/two-factor/recovery-codes` | New recovery codes in place of the old ones: `password`. |
 | `GET /account/api-tokens` | Your API tokens, without their secrets. |
 | `POST /account/api-tokens` | Creates an API token: `name`. The answer holds the `token`, the only time it is shown. Needs a session. |
 | `DELETE /account/api-tokens/{id}` | Revokes one of your API tokens. |
@@ -75,6 +81,7 @@ All paths start with `/api`.
 | `PUT /users/{id}` | Changes `displayName` and `role`. |
 | `POST /users/{id}/disable`, `POST /users/{id}/enable` | Stops or restores someone's access. |
 | `POST /users/{id}/reset-password` | Sets a new password: `newPassword`. |
+| `POST /users/{id}/reset-two-factor` | Turns off someone's two-factor sign-in, for when they lost their authenticator app. |
 | `DELETE /users/{id}` | Deletes an account with its hosts, enrollment tokens, alert rules, alerts and notification channels. |
 
 ### Hosts
@@ -140,6 +147,9 @@ rather than the average, so short spikes still show over long ranges.
 | `GET /alerts` | Alerts, newest first. Filters: `status` (`Firing`, `Resolved`), `hostId`, `severity`; pages: `page`, `pageSize` (up to 200). |
 | `GET /alerts/summary` | Firing alerts by severity. |
 | `POST /alerts/{id}/acknowledge` | Marks a firing alert as seen. |
+| `POST /alerts/{id}/ignore` | Stops the alert's rule watching that host and resource (mount point, service, container or UPS), closing the alert without a resolved notification. |
+| `GET /alert-ignores` | What your rules no longer watch. |
+| `DELETE /alert-ignores/{id}` | Watches it again; a problem still there fires at the next check. |
 | `GET /alert-rules` | Your alert rules. |
 | `GET /alert-rules/{id}` | One rule. |
 | `POST /alert-rules` | Creates a rule. See below. |
@@ -188,13 +198,16 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
 | `PUT /settings/email` | Saves the mail server for the whole server, in place of anything the Compose file sets. Leave `password` out to keep the saved one, or send `""` to clear it. |
 | `DELETE /settings/email` | Forgets the saved settings, so the Compose file's are used again. |
 | `POST /settings/email/test` | Sends a test email to `to` with the saved settings. `204` when the mail server took it; `502` with its answer when it did not; `409` when no mail server is set. Rate limited. |
+| `GET /settings/telegram` | The server's Telegram bot: `configured`, `botUsername`, `botName`, and when the server `lastPolledAt` Telegram (or its `lastError`). The token is never sent back. |
+| `PUT /settings/telegram` | Saves a bot: `botToken` from BotFather, checked with Telegram first. |
+| `DELETE /settings/telegram` | Removes the bot, which stops every Telegram channel. |
 
 ### Notification channels
 
 | Method and path | What it does |
 | --- | --- |
 | `GET /notification-channels` | Your channels, each with how its latest notification went. |
-| `GET /notification-channels/support` | Whether the server can send email, and when reports go out. |
+| `GET /notification-channels/support` | Whether the server can send email, its Telegram bot's name (`telegramBot`) if it has one, and when reports go out. |
 | `GET /notification-channels/{id}` | One channel. |
 | `POST /notification-channels` | Creates a channel. See below. |
 | `PUT /notification-channels/{id}` | Replaces a channel. |
@@ -202,7 +215,8 @@ a `durationSeconds`, a `severity` (`Info`, `Warning` or `Critical`), `enabled`, 
 | `POST /notification-channels/{id}/test` | Sends a test message straight away. `204` when it went out; `502` with the reason when it did not. |
 
 A channel has a `name`, a `kind` and a `target`: for `Email`, up to 10 addresses separated by
-commas; for `Slack`, `Discord` and `Webhook`, the webhook URL. `minimumSeverity` (default
+commas; for `Telegram`, the chat ID the bot replies with to `/start` (or a public channel's `@name`);
+for `Slack`, `Discord` and `Webhook`, the webhook URL. `minimumSeverity` (default
 `Warning`) and `notifyOnResolved` (default `true`) choose which alerts it passes on, and
 `dailyReport` and `weeklyReport` add reports. `enabled` switches it on and off.
 

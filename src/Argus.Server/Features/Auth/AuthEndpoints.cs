@@ -24,6 +24,7 @@ public static class AuthEndpoints
         auth.MapPost("/setup", SetupAsync).AllowAnonymous().RequireRateLimiting(RateLimiting.AuthPolicy);
         auth.MapPost("/register", RegisterAsync).AllowAnonymous().RequireRateLimiting(RateLimiting.AuthPolicy);
         auth.MapPost("/login", LoginAsync).AllowAnonymous().RequireRateLimiting(RateLimiting.AuthPolicy);
+        auth.MapPost("/login/two-factor", LoginTwoFactorAsync).AllowAnonymous().RequireRateLimiting(RateLimiting.AuthPolicy);
         auth.MapPost("/logout", LogoutAsync).AllowAnonymous();
         auth.MapGet("/me", GetCurrentUserAsync);
 
@@ -102,7 +103,11 @@ public static class AuthEndpoints
         return TypedResults.Ok(await UserAccounts.ToResponseAsync(user, users));
     }
 
-    private static async Task<Results<Ok<CurrentUserResponse>, ProblemHttpResult>> LoginAsync(
+    /// <summary>
+    /// Checks the password. Accounts with two-factor sign-in answer 202 instead of signing in, with a short-lived
+    /// cookie that lets <c>/login/two-factor</c> finish with a code.
+    /// </summary>
+    private static async Task<Results<Ok<CurrentUserResponse>, Accepted<TwoFactorRequiredResponse>, ProblemHttpResult>> LoginAsync(
         LoginRequest request, UserManager<ArgusUser> users, SignInManager<ArgusUser> signIn, TimeProvider time)
     {
         var user = await users.FindByEmailAsync(request.Email.Trim());
@@ -113,33 +118,77 @@ public static class AuthEndpoints
             return InvalidCredentials();
         }
 
-        var result = await signIn.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-        if (result.IsLockedOut)
+        var result = await signIn.PasswordSignInAsync(user, request.Password, request.RememberMe, lockoutOnFailure: true);
+        if (result.RequiresTwoFactor)
         {
-            return TypedResults.Problem(
-                statusCode: StatusCodes.Status401Unauthorized,
-                title: "Account locked",
-                detail: "Too many failed sign-in attempts. Try again in a few minutes.");
-        }
-
-        if (result.IsNotAllowed)
-        {
-            return TypedResults.Problem(
-                statusCode: StatusCodes.Status401Unauthorized,
-                title: "Account disabled",
-                detail: "This account has been disabled by an administrator.");
+            return TypedResults.Accepted((string?)null, new TwoFactorRequiredResponse());
         }
 
         if (!result.Succeeded)
         {
-            return InvalidCredentials();
+            return SignInProblem(result);
         }
 
+        return TypedResults.Ok(await SignedInAsync(user, users, time));
+    }
+
+    /// <summary>Finishes signing in with a code from the authenticator app, or one of the recovery codes.</summary>
+    private static async Task<Results<Ok<CurrentUserResponse>, ProblemHttpResult>> LoginTwoFactorAsync(
+        TwoFactorLoginRequest request, UserManager<ArgusUser> users, SignInManager<ArgusUser> signIn, TimeProvider time)
+    {
+        var user = await signIn.GetTwoFactorAuthenticationUserAsync();
+        if (user is null)
+        {
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Sign in again",
+                detail: "Too long passed since the password was checked. Enter it again.");
+        }
+
+        var code = Account.TwoFactorEndpoints.NormalizeCode(request.Code);
+        var result = code.Length == 6 && code.All(char.IsAsciiDigit)
+            ? await signIn.TwoFactorAuthenticatorSignInAsync(code, request.RememberMe, rememberClient: false)
+            : await signIn.TwoFactorRecoveryCodeSignInAsync(RecoveryCode(code));
+
+        if (!result.Succeeded)
+        {
+            return result.IsLockedOut || result.IsNotAllowed
+                ? SignInProblem(result)
+                : TypedResults.Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Wrong code",
+                    detail: "That code is not right. Enter the 6 digits your authenticator app shows now, or a recovery code.");
+        }
+
+        return TypedResults.Ok(await SignedInAsync(user, users, time));
+    }
+
+    /// <summary>Recovery codes are shown as XXXXX-XXXXX; people may type them in lower case or without the dash.</summary>
+    private static string RecoveryCode(string code)
+    {
+        var upper = code.ToUpperInvariant();
+        return upper.Length == 10 ? $"{upper[..5]}-{upper[5..]}" : upper;
+    }
+
+    private static async Task<CurrentUserResponse> SignedInAsync(ArgusUser user, UserManager<ArgusUser> users, TimeProvider time)
+    {
         user.LastLoginAt = time.GetUtcNow();
         await users.UpdateAsync(user);
-        await signIn.SignInAsync(user, request.RememberMe);
-        return TypedResults.Ok(await UserAccounts.ToResponseAsync(user, users));
+        return await UserAccounts.ToResponseAsync(user, users);
     }
+
+    private static ProblemHttpResult SignInProblem(SignInResult result) => result switch
+    {
+        { IsLockedOut: true } => TypedResults.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Account locked",
+            detail: "Too many failed sign-in attempts. Try again in a few minutes."),
+        { IsNotAllowed: true } => TypedResults.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Account disabled",
+            detail: "This account has been disabled by an administrator."),
+        _ => InvalidCredentials(),
+    };
 
     private static async Task<NoContent> LogoutAsync(SignInManager<ArgusUser> signIn)
     {

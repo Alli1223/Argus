@@ -16,6 +16,7 @@ import {
   IconDots,
   IconKey,
   IconPencil,
+  IconShieldOff,
   IconPlus,
   IconTrash,
   IconUserCheck,
@@ -25,7 +26,7 @@ import { useState } from "react";
 import { useCurrentUser } from "../../api/auth";
 import type { ApiError } from "../../api/client";
 import type { UserSummary } from "../../api/types";
-import { useDeleteUser, useSetUserDisabled, useUsers } from "../../api/users";
+import { useDeleteUser, useResetTwoFactor, useSetUserDisabled, useUsers } from "../../api/users";
 import { PageHeader } from "../../components/PageHeader";
 import { ErrorScreen } from "../../components/Screens";
 import { formatAgo } from "../../lib/format";
@@ -129,6 +130,7 @@ interface UserRowProps {
 function UserRow({ user, isMe, now, onEdit, onReset }: UserRowProps) {
   const setDisabled = useSetUserDisabled();
   const remove = useDeleteUser();
+  const resetTwoFactor = useResetTwoFactor();
   const status = userStatus(user);
 
   const failed = (title: string) => (error: ApiError) =>
@@ -164,6 +166,28 @@ function UserRow({ user, isMe, now, onEdit, onReset }: UserRowProps) {
             onError: failed("The account was not disabled"),
           },
         ),
+    });
+
+  const confirmResetTwoFactor = () =>
+    modals.openConfirmModal({
+      title: `Turn off two-factor sign-in for ${user.displayName}?`,
+      children: (
+        <Text fz="sm">
+          For someone who lost their authenticator app and recovery codes. They then sign in with their
+          password alone, and can set two-factor sign-in up again on their Account page.
+        </Text>
+      ),
+      labels: { confirm: "Turn it off", cancel: "Cancel" },
+      confirmProps: { color: "crimson" },
+      onConfirm: () =>
+        resetTwoFactor.mutate(user.id, {
+          onSuccess: () =>
+            notifications.show({
+              color: "healthy",
+              message: `Two-factor sign-in is off for ${user.displayName}.`,
+            }),
+          onError: failed("Two-factor sign-in was not turned off"),
+        }),
     });
 
   const confirmDelete = () =>
@@ -234,6 +258,11 @@ function UserRow({ user, isMe, now, onEdit, onReset }: UserRowProps) {
             {!isMe && (
               <Menu.Item leftSection={<IconKey size={16} />} onClick={onReset}>
                 Set a new password
+              </Menu.Item>
+            )}
+            {!isMe && user.twoFactorEnabled && (
+              <Menu.Item leftSection={<IconShieldOff size={16} />} onClick={confirmResetTwoFactor}>
+                Turn off two-factor
               </Menu.Item>
             )}
             {!isMe &&

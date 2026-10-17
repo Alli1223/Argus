@@ -28,6 +28,8 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options)
 
     public DbSet<Alert> Alerts => Set<Alert>();
 
+    public DbSet<AlertIgnore> AlertIgnores => Set<AlertIgnore>();
+
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
 
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Argus.Server.Data;
+using Argus.Server.Features.Account;
 using Argus.Server.Features.Agents;
 using Argus.Server.Features.Auth;
 using Argus.Server.Features.Metrics;
@@ -27,6 +28,7 @@ public static class UserEndpoints
         users.MapPost("/{id:guid}/disable", DisableAsync);
         users.MapPost("/{id:guid}/enable", EnableAsync);
         users.MapPost("/{id:guid}/reset-password", ResetPasswordAsync);
+        users.MapPost("/{id:guid}/reset-two-factor", ResetTwoFactorAsync);
         users.MapDelete("/{id:guid}", DeleteAsync);
 
         return routes;
@@ -174,6 +176,19 @@ public static class UserEndpoints
         return TypedResults.NoContent();
     }
 
+    /// <summary>For someone who lost their authenticator app and recovery codes: they sign in with the password alone.</summary>
+    private static async Task<Results<NoContent, NotFound>> ResetTwoFactorAsync(Guid id, UserManager<ArgusUser> users)
+    {
+        var user = await users.FindByIdAsync(id.ToString());
+        if (user is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await TwoFactorEndpoints.TurnOffAsync(users, user);
+        return TypedResults.NoContent();
+    }
+
     private static async Task<Results<NoContent, NotFound, ProblemHttpResult>> DeleteAsync(
         Guid id,
         ClaimsPrincipal principal,
@@ -240,7 +255,8 @@ public static class UserEndpoints
     private static UserSummary ToSummary(ArgusUser user, string role, DateTimeOffset now) =>
         new(user.Id, user.Email ?? "", user.DisplayName, role, user.CreatedAt, user.LastLoginAt,
             IsDisabled: user.DisabledAt is not null,
-            IsLockedOut: user.LockoutEnd > now);
+            IsLockedOut: user.LockoutEnd > now,
+            TwoFactorEnabled: user.TwoFactorEnabled);
 
     private static ProblemHttpResult LastAdminProblem() =>
         TypedResults.Problem(

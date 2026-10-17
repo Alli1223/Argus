@@ -17,9 +17,11 @@ sends notifications; and a web app shows it all.
   machines down when they fire, such as when a UPS runs low on battery, and wake them again after.
 - **Power:** shut machines down and restart them from the web app where they allow it, and wake them
   with Wake-on-LAN, sent by the agents on the same network.
-- **Notifications** by email, Slack, Discord or webhook, with retries, plus daily and weekly
-  reports.
-- **Accounts** for several people, each with their own hosts, and administrators who see them all.
+- **Notifications** by email, Telegram, Slack, Discord or webhook, with retries, plus daily and weekly
+  reports. Telegram alerts come with Acknowledge and Ignore buttons.
+- **Ignore an alert** to stop its rule watching that host or resource, and resume it later.
+- **Accounts** for several people, each with their own hosts, and administrators who see them all;
+  two-factor sign-in with an authenticator app.
 - **Easy to run:** one Docker Compose file for the server and its database, optional automatic
   HTTPS with Caddy, and install commands for agents generated in the web app.
 - **Updates from the web app** for the server and the agents. The server backs up its database first

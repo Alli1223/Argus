@@ -1,4 +1,17 @@
-import { Alert, Button, Group, Modal, SegmentedControl, Stack, Switch, Text, TextInput } from "@mantine/core";
+import {
+  Alert,
+  Anchor,
+  Button,
+  Code,
+  Group,
+  List,
+  Modal,
+  SegmentedControl,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useId } from "react";
@@ -79,10 +92,11 @@ function ChannelForm({ channel, onClose }: { channel: NotificationChannel | null
   const values = form.values;
   const field = TARGET_FIELDS[values.kind];
 
-  // Addresses and webhook URLs do not carry over; one webhook URL can stand in for another.
+  // Addresses, chat IDs and webhook URLs do not carry over; one webhook URL can stand in for another.
   const changeKind = (next: string) => {
     const kind = next as NotificationChannelKind;
-    const sameShape = (kind === "Email") === (values.kind === "Email");
+    const shape = (k: NotificationChannelKind) => (k === "Email" || k === "Telegram" ? k : "webhook");
+    const sameShape = shape(kind) === shape(values.kind);
     form.setValues({ kind, target: sameShape ? values.target : "" });
     form.clearFieldError("target");
   };
@@ -140,6 +154,10 @@ function ChannelForm({ channel, onClose }: { channel: NotificationChannel | null
           </Alert>
         )}
 
+        {values.kind === "Telegram" && support.data && (
+          <TelegramSteps bot={support.data.telegramBot ?? null} />
+        )}
+
         <TextInput
           label={field.label}
           description={field.description}
@@ -195,5 +213,39 @@ function ChannelForm({ channel, onClose }: { channel: NotificationChannel | null
         </Group>
       </Stack>
     </form>
+  );
+}
+
+/** How to find the chat ID, or why there is none to find yet. */
+function TelegramSteps({ bot }: { bot: string | null }) {
+  if (!bot) {
+    return (
+      <Alert color="bronze" title="Telegram is not set up on this server">
+        Telegram channels cannot send until an administrator adds a Telegram bot on the Settings page.
+      </Alert>
+    );
+  }
+
+  const link = `https://t.me/${bot}`;
+  return (
+    <Alert color="blue" title="Getting your chat ID">
+      <List size="sm" spacing={4} type="ordered">
+        <List.Item>
+          Open{" "}
+          <Anchor href={link} target="_blank" rel="noreferrer" fz="sm">
+            @{bot}
+          </Anchor>{" "}
+          in Telegram and press <b>Start</b> (or send it <Code>/start</Code>).
+        </List.Item>
+        <List.Item>The bot replies with this chat&apos;s ID. Copy the number into the box below.</List.Item>
+        <List.Item>
+          For a group, add @{bot} to the group and send <Code>/chatid@{bot}</Code> there. Group IDs start with
+          a minus sign.
+        </List.Item>
+      </List>
+      <Text fz="xs" c="dimmed" mt="xs">
+        Alerts arrive with Acknowledge and Ignore buttons. Anyone in the chat can press them.
+      </Text>
+    </Alert>
   );
 }

@@ -19,6 +19,11 @@ public static class AlertEndpoints
         alerts.MapGet("/", ListAsync);
         alerts.MapGet("/summary", GetSummaryAsync);
         alerts.MapPost("/{id:guid}/acknowledge", AcknowledgeAsync);
+        alerts.MapPost("/{id:guid}/ignore", IgnoreAsync);
+
+        var ignores = routes.MapGroup("/alert-ignores").WithTags("Alerts");
+        ignores.MapGet("/", ListIgnoresAsync);
+        ignores.MapDelete("/{id:guid}", ResumeAsync);
 
         return routes;
     }
@@ -93,7 +98,7 @@ public static class AlertEndpoints
         CountFiringAsync(db.Alerts.VisibleTo(user), cancellationToken);
 
     private static async Task<Results<Ok<AlertResponse>, NotFound, ProblemHttpResult>> AcknowledgeAsync(
-        Guid id, ClaimsPrincipal user, ArgusDbContext db, TimeProvider time, CancellationToken cancellationToken)
+        Guid id, ClaimsPrincipal user, ArgusDbContext db, AlertActions actions, CancellationToken cancellationToken)
     {
         var alert = await db.Alerts.VisibleTo(user).SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
         if (alert is null)
@@ -101,7 +106,7 @@ public static class AlertEndpoints
             return TypedResults.NotFound();
         }
 
-        if (alert.Status != AlertStatus.Firing)
+        if (await actions.AcknowledgeAsync(alert, user.GetUserId(), cancellationToken) == AlertActionOutcome.NotFiring)
         {
             return TypedResults.Problem(
                 statusCode: StatusCodes.Status409Conflict,
@@ -109,15 +114,64 @@ public static class AlertEndpoints
                 detail: "Only firing alerts can be acknowledged.");
         }
 
-        if (alert.AcknowledgedAt is null)
-        {
-            alert.AcknowledgedAt = time.GetUtcNow();
-            alert.AcknowledgedById = user.GetUserId();
-            await db.SaveChangesAsync(cancellationToken);
-        }
-
         return TypedResults.Ok(await Project(db, db.Alerts.Where(a => a.Id == id)).SingleAsync(cancellationToken));
     }
+
+    /// <summary>Stops the alert's rule watching this host and resource, closing the alert if it is firing.</summary>
+    private static async Task<Results<Ok<AlertIgnoreResponse>, NotFound, ProblemHttpResult>> IgnoreAsync(
+        Guid id, ClaimsPrincipal user, ArgusDbContext db, AlertActions actions, CancellationToken cancellationToken)
+    {
+        var alert = await db.Alerts.VisibleTo(user).SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+        if (alert is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var (outcome, ignore) = await actions.IgnoreAsync(alert, user.GetUserId(), cancellationToken);
+        if (outcome == AlertActionOutcome.NoRule)
+        {
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "The rule is gone",
+                detail: "This alert's rule was deleted, so nothing is watching it any more.");
+        }
+
+        return TypedResults.Ok(await ProjectIgnores(db, db.AlertIgnores.Where(i => i.Id == ignore!.Id)).SingleAsync(cancellationToken));
+    }
+
+    private static Task<List<AlertIgnoreResponse>> ListIgnoresAsync(ClaimsPrincipal user, ArgusDbContext db, CancellationToken cancellationToken) =>
+        ProjectIgnores(db, IgnoresVisibleTo(db, user).OrderByDescending(i => i.CreatedAt)).ToListAsync(cancellationToken);
+
+    /// <summary>Starts watching the host and resource again. A problem that is still there fires again at the next check.</summary>
+    private static async Task<Results<NoContent, NotFound>> ResumeAsync(
+        Guid id, ClaimsPrincipal user, ArgusDbContext db, CancellationToken cancellationToken)
+    {
+        var deleted = await IgnoresVisibleTo(db, user).Where(i => i.Id == id).ExecuteDeleteAsync(cancellationToken);
+        return deleted == 0 ? TypedResults.NotFound() : TypedResults.NoContent();
+    }
+
+    private static IQueryable<AlertIgnore> IgnoresVisibleTo(ArgusDbContext db, ClaimsPrincipal user)
+    {
+        if (user.IsAdmin())
+        {
+            return db.AlertIgnores;
+        }
+
+        var userId = user.GetUserId();
+        return db.AlertIgnores.Where(ignore => ignore.OwnerId == userId);
+    }
+
+    private static IQueryable<AlertIgnoreResponse> ProjectIgnores(ArgusDbContext db, IQueryable<AlertIgnore> ignores) =>
+        ignores.Select(ignore => new AlertIgnoreResponse(
+            ignore.Id,
+            ignore.RuleId,
+            ignore.Rule!.Name,
+            ignore.HostId,
+            ignore.Host!.DisplayName,
+            ignore.ResourceKey,
+            ignore.Title,
+            ignore.CreatedAt,
+            db.Users.Where(u => u.Id == ignore.CreatedById).Select(u => u.DisplayName).FirstOrDefault()));
 
     private static IQueryable<AlertResponse> Project(ArgusDbContext db, IQueryable<Alert> alerts) =>
         alerts.Select(alert => new AlertResponse(
@@ -139,5 +193,6 @@ public static class AlertEndpoints
             alert.FiredAt,
             alert.ResolvedAt,
             alert.AcknowledgedAt,
-            db.Users.Where(u => u.Id == alert.AcknowledgedById).Select(u => u.DisplayName).FirstOrDefault()));
+            db.Users.Where(u => u.Id == alert.AcknowledgedById).Select(u => u.DisplayName).FirstOrDefault(),
+            alert.IgnoredAt));
 }

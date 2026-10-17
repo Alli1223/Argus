@@ -18,6 +18,7 @@ describe("viewFromParams", () => {
       hostId: "h1",
       page: 3,
     });
+    expect(viewFromParams(new URLSearchParams("status=Ignored")).status).toBe("Ignored");
     expect(viewFromParams(new URLSearchParams("status=nope&severity=Loud&page=-2"))).toEqual({
       status: "Firing",
       severity: null,

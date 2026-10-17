@@ -54,4 +54,8 @@ export const useResetPassword = () =>
     api.post(`/api/users/${id}/reset-password`, { newPassword }),
   );
 
+/** Turns off someone's two-factor sign-in, for when they lost their authenticator app. */
+export const useResetTwoFactor = () =>
+  useUserMutation((id: string) => api.post(`/api/users/${id}/reset-two-factor`));
+
 export const useDeleteUser = () => useUserMutation((id: string) => api.delete(`/api/users/${id}`));
