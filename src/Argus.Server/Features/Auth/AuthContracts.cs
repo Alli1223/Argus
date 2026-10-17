@@ -4,7 +4,20 @@ namespace Argus.Server.Features.Auth;
 
 public sealed record AuthStatusResponse(bool SetupRequired, bool RegistrationEnabled);
 
-public sealed record CurrentUserResponse(Guid Id, string Email, string DisplayName, IReadOnlyList<string> Roles, bool IsAdmin);
+public sealed record CurrentUserResponse(
+    Guid Id, string Email, string DisplayName, IReadOnlyList<string> Roles, bool IsAdmin, bool TwoFactorEnabled);
+
+/// <summary>The password was right; the account also wants a code from its authenticator app.</summary>
+public sealed record TwoFactorRequiredResponse(bool TwoFactorRequired = true);
+
+/// <summary>The second step of signing in: a code from the authenticator app, or a recovery code.</summary>
+public sealed record TwoFactorLoginRequest
+{
+    [Required, MaxLength(32)]
+    public string Code { get; init; } = "";
+
+    public bool RememberMe { get; init; }
+}
 
 /// <summary>Creates an account: the first administrator during setup, or a user via self-registration.</summary>
 public sealed record NewAccountRequest

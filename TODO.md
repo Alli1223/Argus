@@ -281,8 +281,8 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Telegram bot: token in the Settings page (encrypted), checked with Telegram; a Telegram channel kind that takes a chat ID
 - [x] Telegram bot: answers /start with the chat ID; Acknowledge and Ignore buttons on alerts, Ignore asking to confirm
 - [x] Web: Telegram settings and channel form, with setup steps
-- [ ] Two-factor sign-in: authenticator app set up and removed from the Account page, recovery codes, a code step at sign-in; administrators can reset it
-- [ ] Web: two-factor setup with a QR code, and the code step on the sign-in page
+- [x] Two-factor sign-in: authenticator app set up and removed from the Account page, recovery codes, a code step at sign-in; administrators can reset it
+- [x] Web: two-factor setup with a QR code, and the code step on the sign-in page
 
 ---
 

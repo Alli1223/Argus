@@ -47,6 +47,23 @@ export interface CurrentUser {
   displayName: string;
   roles: string[];
   isAdmin: boolean;
+  twoFactorEnabled: boolean;
+}
+
+/** The password was right; the account also wants a code from its authenticator app. */
+export interface TwoFactorRequired {
+  twoFactorRequired: true;
+}
+
+export interface TwoFactorStatus {
+  enabled: boolean;
+  recoveryCodesLeft: number;
+}
+
+/** What an authenticator app needs: the key to type in, and the same as an otpauth:// link for a QR code. */
+export interface TwoFactorSetup {
+  sharedKey: string;
+  authenticatorUri: string;
 }
 
 export interface NewAccount {
@@ -433,6 +450,7 @@ export interface UserSummary {
   lastLoginAt: string | null;
   isDisabled: boolean;
   isLockedOut: boolean;
+  twoFactorEnabled: boolean;
 }
 
 export interface AlertRule {

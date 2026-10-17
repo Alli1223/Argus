@@ -15,6 +15,7 @@ public static class AccountEndpoints
 
         account.MapPut("/profile", UpdateProfileAsync);
         account.MapPost("/password", ChangePasswordAsync).RequireRateLimiting(RateLimiting.AuthPolicy);
+        routes.MapTwoFactorEndpoints();
 
         return routes;
     }

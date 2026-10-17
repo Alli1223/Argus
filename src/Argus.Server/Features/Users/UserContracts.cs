@@ -11,7 +11,8 @@ public sealed record UserSummary(
     DateTimeOffset CreatedAt,
     DateTimeOffset? LastLoginAt,
     bool IsDisabled,
-    bool IsLockedOut);
+    bool IsLockedOut,
+    bool TwoFactorEnabled);
 
 public sealed record CreateUserRequest
 {
