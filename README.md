@@ -9,6 +9,8 @@ sends notifications; and a web app shows it all.
   machine, and every machine's temperature sensors on one page.
 - **UPSes** through Network UPS Tools: whether each runs on line power or its battery, its charge,
   runtime left and load.
+- **Proxmox VE** virtual machines and containers on each node, with their status and what they use;
+  start, shut down, restart and stop them from the web app where the node allows it.
 - **Docker containers** on every machine: state, health checks, restart loops and crashes, with each
   container's CPU, memory and network over time.
 - **Alert rules** on fixed thresholds, on readings that stray from a host's usual level, on hosts

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Removes the Argus agent. With --purge its configuration, identity and user are deleted too.
+# Removes the Argus agent. With --purge its configuration, identity and user are deleted too, and on
+# Proxmox VE its user argus@pve and role ArgusAgent.
 # The host stays listed in the web UI (with its history) until you delete it there.
 set -euo pipefail
 
@@ -23,6 +24,10 @@ rm -rf /opt/argus-agent
 if $PURGE; then
   rm -rf /etc/argus-agent /var/lib/argus-agent
   userdel argus-agent >/dev/null 2>&1 || true
+  if command -v pveum >/dev/null 2>&1; then
+    pveum user delete argus@pve >/dev/null 2>&1 || true
+    pveum role delete ArgusAgent >/dev/null 2>&1 || true
+  fi
 fi
 
 echo "Argus agent removed."

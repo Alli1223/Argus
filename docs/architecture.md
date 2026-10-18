@@ -128,7 +128,8 @@ Time-series tables (TimescaleDB hypertables, created with SQL in migrations):
 | `container_events` | `(host_id, container, time)` | Containers starting, stopping, restarting, failing health checks, appearing and going |
 
 Each host's newest container report is kept in `host_container_checks` and `host_containers`; events
-come from comparing each report with the one before.
+come from comparing each report with the one before. Each Proxmox VE node's newest list of guests is
+kept in `proxmox_checks`, one row per host with the guests as JSON.
 
 Rollups: `host_metrics_5m` and `host_metrics_1h` continuous aggregates (avg / max per bucket), and
 hourly rollups of the filesystem, network, temperature, UPS and container tables.
