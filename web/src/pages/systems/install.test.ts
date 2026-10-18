@@ -40,6 +40,15 @@ describe("installCommands", () => {
     expect(commands.docker).toContain("  -e ARGUS_POWERACTIONS=true \\\n");
   });
 
+  it("reads Proxmox VE's guests on Linux, and may start and stop them", () => {
+    const server = "https://argus.example.com";
+    expect(installCommands(server, "argus_et_abc", { proxmox: true }).linux).toMatch(/ --proxmox$/);
+    const actions = installCommands(server, "argus_et_abc", { proxmox: true, proxmoxActions: true });
+    expect(actions.linux).toMatch(/ --proxmox-actions$/);
+    expect(actions.docker).not.toContain("PROXMOX");
+    expect(actions.windows).not.toContain("roxmox");
+  });
+
   it("allows container actions, which include watching Docker", () => {
     const commands = installCommands("https://argus.example.com", "argus_et_abc", {
       docker: true,

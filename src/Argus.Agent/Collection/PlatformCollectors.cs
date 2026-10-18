@@ -1,5 +1,6 @@
 using Argus.Agent.Collection.Containers;
 using Argus.Agent.Collection.Linux;
+using Argus.Agent.Collection.Proxmox;
 using Argus.Agent.Collection.Windows;
 using Argus.Agent.Configuration;
 
@@ -67,6 +68,12 @@ internal static class PlatformCollectors
         string.IsNullOrWhiteSpace(config.UpsServer)
             ? new NoUps()
             : new NutUps(config.UpsServer, time, loggers.CreateLogger<NutUps>());
+
+    /// <summary>Proxmox VE's guests, on Linux machines whose agent has a token for it.</summary>
+    public static IProxmoxSource CreateProxmoxSource(ILoggerFactory loggers, AgentConfig config, ProxmoxNode? node, TimeProvider time) =>
+        OperatingSystem.IsLinux() && node is not null
+            ? new ProxmoxGuests(node, config.ProxmoxActions, time, loggers.CreateLogger<ProxmoxGuests>())
+            : new NoProxmox();
 
     public static ITemperatureSource CreateTemperatureSource(ILoggerFactory loggers, AgentConfig config)
     {

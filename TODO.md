@@ -284,6 +284,15 @@ committed when it is done. New tasks discovered along the way are added in the r
 - [x] Two-factor sign-in: authenticator app set up and removed from the Account page, recovery codes, a code step at sign-in; administrators can reset it
 - [x] Web: two-factor setup with a QR code, and the code step on the sign-in page
 
+## Phase 25 — Proxmox VE
+
+- [x] Agent: list the node's virtual machines and containers through Proxmox VE's API, with an API token (`ProxmoxToken`)
+- [x] Agent: start, shut down, reboot and stop guests on machines that allow it (`ProxmoxActions`), watching Proxmox VE's task
+- [x] Install script: `--proxmox` makes the argus@pve user, a role that may only look and a token; `--proxmox-actions` adds VM.PowerMgmt
+- [x] Server: the newest report per host (proxmox_checks), `GET /api/hosts/{id}/proxmox` and guest actions
+- [x] Web: a Virtual machines and containers section on the host page, and boxes in the install command
+- [ ] Check against a real Proxmox VE node and cluster
+
 ---
 
 ## Future ideas (not scheduled)

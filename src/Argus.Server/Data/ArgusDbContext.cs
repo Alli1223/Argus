@@ -5,6 +5,7 @@ using Argus.Server.Features.Enrollment;
 using Argus.Server.Features.Hosts;
 using Argus.Server.Features.Notifications;
 using Argus.Server.Features.Power;
+using Argus.Server.Features.Proxmox;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -35,6 +36,8 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options)
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
 
     public DbSet<PowerAction> PowerActions => Set<PowerAction>();
+
+    public DbSet<ProxmoxCheck> ProxmoxChecks => Set<ProxmoxCheck>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

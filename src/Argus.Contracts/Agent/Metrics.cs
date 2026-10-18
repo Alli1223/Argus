@@ -64,6 +64,13 @@ public sealed record MetricSample
     /// <summary>What each running container used over the interval; null from agents that do not watch Docker.</summary>
     public IReadOnlyList<ContainerUsage>? ContainerUsage { get; init; }
 
+    /// <summary>
+    /// The Proxmox VE virtual machines and containers on this node. Only on samples where their state
+    /// changed, or at least a minute after the last report; null on other samples and from agents that
+    /// do not read Proxmox VE.
+    /// </summary>
+    public ProxmoxReport? Proxmox { get; init; }
+
     /// <summary>Busiest processes; agents may only attach this to the newest sample of a batch.</summary>
     public IReadOnlyList<ProcessMetrics>? TopProcesses { get; init; }
 
@@ -224,6 +231,59 @@ public sealed record UpsMetrics
     public double? OutputVoltage { get; init; }
 
     public double? BatteryVoltage { get; init; }
+}
+
+/// <summary>A Proxmox VE node's guests, or why the agent could not list them.</summary>
+public sealed record ProxmoxReport
+{
+    /// <summary>The node's name in Proxmox VE, such as "pve".</summary>
+    public string? Node { get; init; }
+
+    /// <summary>Proxmox VE's version, such as "8.2.4".</summary>
+    public string? Version { get; init; }
+
+    /// <summary>Why the agent could not read Proxmox VE, such as its API token being refused.</summary>
+    public string? Problem { get; init; }
+
+    /// <summary>Whether this machine lets Argus start, shut down, restart and stop its guests.</summary>
+    public bool ActionsEnabled { get; init; }
+
+    public IReadOnlyList<ProxmoxGuest> Guests { get; init; } = [];
+}
+
+public sealed record ProxmoxGuest
+{
+    /// <summary>The guest's id (VMID), unique in its cluster.</summary>
+    public required int Id { get; init; }
+
+    /// <summary><c>qemu</c> for a virtual machine, <c>lxc</c> for a container.</summary>
+    public required string Type { get; init; }
+
+    public required string Name { get; init; }
+
+    /// <summary>running, stopped or paused. Hibernated virtual machines are stopped, with the lock "suspended".</summary>
+    public required string Status { get; init; }
+
+    /// <summary>What Proxmox VE is doing to the guest, such as "backup", "migrate" or "snapshot".</summary>
+    public string? Lock { get; init; }
+
+    /// <summary>Templates are never started; they are copied to make new guests.</summary>
+    public bool Template { get; init; }
+
+    public long UptimeSeconds { get; init; }
+
+    /// <summary>Share of its own processors in use (0–100); null when stopped.</summary>
+    public double? CpuPercent { get; init; }
+
+    public double? Cpus { get; init; }
+
+    public long? MemoryBytes { get; init; }
+
+    public long? MaxMemoryBytes { get; init; }
+
+    public long? MaxDiskBytes { get; init; }
+
+    public IReadOnlyList<string> Tags { get; init; } = [];
 }
 
 /// <summary>The containers on a machine, or why the agent could not list them.</summary>

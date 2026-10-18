@@ -1,11 +1,12 @@
 using Argus.Agent.Collection.Containers;
+using Argus.Agent.Collection.Proxmox;
 using Argus.Contracts.Agent;
 
 namespace Argus.Agent.Collection;
 
 /// <summary>
 /// Assembles complete samples from the platform's metrics source, the process collector, temperatures,
-/// UPSes, containers and service checks.
+/// UPSes, containers, Proxmox VE guests and service checks.
 /// </summary>
 internal sealed class SampleCollector(
     ISystemMetricsSource system,
@@ -14,7 +15,8 @@ internal sealed class SampleCollector(
     IUpsSource ups,
     IContainerSource containers,
     IServiceStatusSource services,
-    TimeProvider time)
+    TimeProvider time,
+    IProxmoxSource? proxmox = null)
 {
     /// <summary>Service checks can start a process, so they run at most this often.</summary>
     public static readonly TimeSpan ServiceCheckInterval = TimeSpan.FromMinutes(1);
@@ -60,6 +62,7 @@ internal sealed class SampleCollector(
             Ups = ups.Collect(),
             Containers = containerReading.Report,
             ContainerUsage = containerReading.Usage,
+            Proxmox = proxmox?.Collect(),
             TopProcesses = TopProcessCount > 0 ? topProcesses : null,
             FailedServices = failedServices,
         };

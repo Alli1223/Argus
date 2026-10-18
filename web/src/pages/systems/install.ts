@@ -18,17 +18,26 @@ export const AGENT_IMAGE = "ghcr.io/alli1223/argus-agent:latest";
  * One-line installs: fetch the agent from this server, register it with the token, run it as a service.
  * With `docker`, the Linux agent may also watch Docker's containers. The container form watches the
  * machine from an image instead, for NAS boxes and appliances that have no systemd to run a service.
- * With `powerActions`, Argus may shut the machine down and restart it.
+ * With `powerActions`, Argus may shut the machine down and restart it. On a Proxmox VE node, `proxmox`
+ * reports its guests and `proxmoxActions` lets Argus start and stop them (Linux only: the install script
+ * makes the API token).
  */
 export function installCommands(
   server: string,
   token: string,
-  { docker = false, containerActions = false, powerActions = false } = {},
+  {
+    docker = false,
+    containerActions = false,
+    powerActions = false,
+    proxmox = false,
+    proxmoxActions = false,
+  } = {},
 ): InstallCommands {
   // Container actions need Docker, and the install script's option says so itself.
   const linuxOption =
     (containerActions ? " --container-actions" : docker ? " --docker" : "") +
-    (powerActions ? " --power-actions" : "");
+    (powerActions ? " --power-actions" : "") +
+    (proxmoxActions ? " --proxmox-actions" : proxmox ? " --proxmox" : "");
   // The machine's own filesystem at /host, its processes and its network; Docker's socket only when asked.
   const dockerLines = [
     "docker run -d --name argus-agent --restart always \\",

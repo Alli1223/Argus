@@ -287,11 +287,19 @@ function InstallCommands({ token }: { token: string }) {
   const [docker, setDocker] = useState(false);
   const [containerActions, setContainerActions] = useState(false);
   const [powerActions, setPowerActions] = useState(false);
+  const [proxmox, setProxmox] = useState(false);
+  const [proxmoxActions, setProxmoxActions] = useState(false);
 
   if (info.isPending) return <Skeleton h={96} />;
 
   const server = serverAddress(info.data?.publicUrl, window.location.origin);
-  const commands = installCommands(server, token, { docker, containerActions, powerActions });
+  const commands = installCommands(server, token, {
+    docker,
+    containerActions,
+    powerActions,
+    proxmox,
+    proxmoxActions,
+  });
   return (
     <Stack gap="sm">
       <SegmentedControl
@@ -340,6 +348,23 @@ function InstallCommands({ token }: { token: string }) {
           label="Allow shutting down and restarting"
           description="Anyone who can see this machine in Argus, and their alert rules, can then power it off, such as when a UPS runs low."
         />
+        {platform === "linux" && (
+          <>
+            <Checkbox
+              checked={proxmox || proxmoxActions}
+              disabled={proxmoxActions}
+              onChange={(event) => setProxmox(event.currentTarget.checked)}
+              label="This is a Proxmox VE node: show its virtual machines and containers"
+              description="The install makes a Proxmox VE user, argus@pve, with an API token that can only look."
+            />
+            <Checkbox
+              checked={proxmoxActions}
+              onChange={(event) => setProxmoxActions(event.currentTarget.checked)}
+              label="Allow starting, shutting down and stopping them"
+              description="Anyone who can see this machine in Argus can then start and stop its virtual machines and containers."
+            />
+          </>
+        )}
       </Stack>
       <CommandBlock command={commands[platform]} />
       <Text fz="xs" c="dimmed">

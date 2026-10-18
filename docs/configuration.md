@@ -172,6 +172,10 @@ starting with `ARGUS_` override the file: `ARGUS_SERVERURL`, `ARGUS_ENROLLMENTTO
 | `BufferCapacity` | `2880` | 10–100000 | How many readings the agent holds while the server is unreachable: 12 hours at the default pace. |
 | `ContainerActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus read its containers' logs and start, stop and restart them; see [Containers](#containers). |
 | `PowerActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus, and their alert rules, shut it down and restart it; see [Power](#power). |
+| `ProxmoxToken` | none | `user@realm!tokenid=secret` | A Proxmox VE API token, for reading this node's virtual machines and containers; see [Proxmox VE](#proxmox-ve). `--proxmox` makes one. |
+| `ProxmoxActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus start, shut down, restart and stop its Proxmox VE guests. |
+| `ProxmoxUrl` | `https://127.0.0.1:8006` | an https address | Proxmox VE's API. Its certificate is checked unless it is on this machine. |
+| `ProxmoxFingerprint` | none | `AB:CD:…` | The SHA-256 fingerprint of Proxmox VE's certificate, for an API on another machine whose certificate no authority signed. |
 | `DockerSocket` | `/var/run/docker.sock` | a path | Docker's socket. On Linux the agent lists containers whenever the socket exists and it may use it; see [Containers](#containers). |
 | `HostRoot` | none | a path | Where the machine's own filesystem is mounted when the agent runs in a container, such as `/host`; see [The agent in a container](#the-agent-in-a-container). |
 | `UpsServer` | `localhost:3493` | `host` or `host:port`, or empty | The Network UPS Tools server (upsd) to read UPSes from; see [UPS](#ups). Empty stops the agent looking. |
@@ -267,6 +271,27 @@ three that are connected, preferring those on the same network. Every agent from
 needs no setting, as the packet can only ask a sleeping machine to start. A machine's **Wake-on-LAN
 settings** can give another hardware address, or an address to send the packet to, such as the
 network's broadcast address.
+
+### Proxmox VE
+
+On a Proxmox VE node, the agent lists its virtual machines and containers: their status, what each
+uses and how long it has run. The host's page shows them under **Virtual machines and containers**.
+Install with `--proxmox` (the web app's install command has a box for it), or run the install
+command again with it. The install script makes a Proxmox VE user, `argus@pve`, with a role,
+`ArgusAgent`, that may only look (`VM.Audit` and `Sys.Audit`), and an API token for it. It keeps the
+token in `/etc/argus-agent/proxmox.env`, which only root can read; systemd hands it to the agent.
+Running the install command again makes a new token.
+
+Starting, shutting down, restarting and stopping guests from Argus is off unless the machine allows
+it, as with container actions. Install with `--proxmox-actions` (which includes `--proxmox`): the role
+gains `VM.PowerMgmt`, and the agent's drop-in `proxmox.conf` sets `ARGUS_PROXMOXACTIONS=true`.
+Shutting down asks the guest to shut down cleanly, which a virtual machine notices through the QEMU
+guest agent or ACPI; stopping ends it at once. Guests that are templates, or locked for a backup or a
+migration, offer no actions.
+
+In a cluster, install the agent on every node: each lists only the guests running on it. Shutting a
+node down with [power actions](#power) shuts its guests down first, as Proxmox VE always does.
+`uninstall.sh --purge` deletes `argus@pve` and its role.
 
 ### Containers
 

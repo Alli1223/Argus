@@ -16,6 +16,13 @@
 #                   stop and restart them. Implies --docker. Reinstalling without it leaves this as it is.
 #   --power-actions Also let people who can see this machine in Argus, and their alert rules, shut it down and
 #                   restart it. Reinstalling without it leaves this as it is.
+#   --proxmox       On a Proxmox VE node: report its virtual machines and containers. Makes the Proxmox VE user
+#                   argus@pve with an API token that may only look (VM.Audit, Sys.Audit), for the agent alone.
+#                   Running it again makes a new token.
+#   --proxmox-actions
+#                   Also let people who can see this machine in Argus start, shut down, restart and stop its
+#                   guests (the token gains VM.PowerMgmt). Implies --proxmox. Reinstalling without it leaves
+#                   this as it is.
 set -euo pipefail
 
 SERVER=""
@@ -24,6 +31,8 @@ BINARY=""
 DOCKER=false
 CONTAINER_ACTIONS=false
 POWER_ACTIONS=false
+PROXMOX=false
+PROXMOX_ACTIONS=false
 INSTALL_DIR=/opt/argus-agent
 CONFIG_DIR=/etc/argus-agent
 STATE_DIR=/var/lib/argus-agent
@@ -47,7 +56,9 @@ while [ $# -gt 0 ]; do
     --docker) DOCKER=true; shift ;;
     --container-actions) CONTAINER_ACTIONS=true; DOCKER=true; shift ;;
     --power-actions) POWER_ACTIONS=true; shift ;;
-    *) fail "unknown option '$1' (expected --server, --token, --binary, --docker, --container-actions or --power-actions)" ;;
+    --proxmox) PROXMOX=true; shift ;;
+    --proxmox-actions) PROXMOX_ACTIONS=true; PROXMOX=true; shift ;;
+    *) fail "unknown option '$1' (expected --server, --token, --binary, --docker, --container-actions, --power-actions, --proxmox or --proxmox-actions)" ;;
   esac
 done
 
@@ -55,6 +66,9 @@ done
 command -v systemctl >/dev/null 2>&1 || fail "this installer needs systemd"
 if $DOCKER && ! getent group docker >/dev/null 2>&1; then
   fail "--docker needs Docker installed: this machine has no docker group"
+fi
+if $PROXMOX && ! command -v pveum >/dev/null 2>&1; then
+  fail "--proxmox needs Proxmox VE: this machine has no pveum"
 fi
 
 SERVER="${SERVER%/}"
@@ -166,6 +180,47 @@ if $POWER_ACTIONS; then
     "Environment=ARGUS_POWERACTIONS=true" > "/etc/systemd/system/$SERVICE.service.d/power-actions.conf"
   chmod 0644 "/etc/systemd/system/$SERVICE.service.d/power-actions.conf"
 fi
+if $PROXMOX; then
+  # A token made again keeps the actions an earlier install allowed, unless they are asked for now.
+  if grep -qs 'ARGUS_PROXMOXACTIONS=true' "/etc/systemd/system/$SERVICE.service.d/proxmox.conf"; then
+    PROXMOX_ACTIONS=true
+  fi
+  PRIVILEGES="VM.Audit Sys.Audit"
+  if $PROXMOX_ACTIONS; then
+    step "Letting Argus read Proxmox VE's guests, and start, shut down, restart and stop them"
+    PRIVILEGES="$PRIVILEGES VM.PowerMgmt"
+  else
+    step "Letting Argus read Proxmox VE's guests"
+  fi
+  pveum role modify ArgusAgent --privs "$PRIVILEGES" >/dev/null 2>&1 \
+    || pveum role add ArgusAgent --privs "$PRIVILEGES" >/dev/null \
+    || fail "could not make the Proxmox VE role ArgusAgent"
+  pveum user add argus@pve --comment "Argus agent" >/dev/null 2>&1 || true
+  pveum acl modify / --users argus@pve --roles ArgusAgent >/dev/null || fail "could not give argus@pve its role"
+  pveum user token remove argus@pve agent >/dev/null 2>&1 || true
+  SECRET="$(pveum user token add argus@pve agent --privsep 0 --comment "Argus agent" --output-format json \
+    | sed -n 's/.*"value"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  [ -n "$SECRET" ] || fail "could not make a Proxmox VE API token for argus@pve"
+  # systemd reads this as root before starting the agent, so only root may read the token.
+  (
+    umask 077
+    printf 'ARGUS_PROXMOXTOKEN=argus@pve!agent=%s\n' "$SECRET" > "$CONFIG_DIR/proxmox.env"
+  )
+  chown root:root "$CONFIG_DIR/proxmox.env"
+  chmod 0600 "$CONFIG_DIR/proxmox.env"
+  install -d -m 0755 "/etc/systemd/system/$SERVICE.service.d"
+  {
+    printf '%s\n' "[Service]" \
+      "# The agent's Proxmox VE API token, to read this node's virtual machines and containers." \
+      "EnvironmentFile=$CONFIG_DIR/proxmox.env"
+    if $PROXMOX_ACTIONS; then
+      printf '%s\n' "# People who can see this machine in Argus may start, shut down, restart and stop its guests." \
+        "Environment=ARGUS_PROXMOXACTIONS=true"
+    fi
+  } > "/etc/systemd/system/$SERVICE.service.d/proxmox.conf"
+  chmod 0644 "/etc/systemd/system/$SERVICE.service.d/proxmox.conf"
+fi
+
 systemctl daemon-reload
 systemctl enable --now argus-agent-update.path >/dev/null
 if $POWER_ACTIONS; then

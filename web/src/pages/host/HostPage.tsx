@@ -31,6 +31,7 @@ import classes from "./HostPage.module.css";
 import { hostCharts } from "./hostCharts";
 import { HostHeader } from "./HostHeader";
 import { PowerSection } from "./PowerControls";
+import { ProxmoxSection } from "./ProxmoxSection";
 import {
   ContainersSection,
   FilesystemsSection,
@@ -95,6 +96,7 @@ function HostView({ host, now }: { host: HostDetail; now: number }) {
       <NowPanel host={host} now={now} />
       <UpsSection hostId={host.id} now={now} />
       <ServicesSection hostId={host.id} now={now} />
+      <ProxmoxSection hostId={host.id} now={now} />
       <ContainersSection hostId={host.id} now={now} />
       <ProcessesSection hostId={host.id} now={now} />
       <PowerSection hostId={host.id} now={now} />
