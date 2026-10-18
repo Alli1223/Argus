@@ -1,4 +1,5 @@
 using Argus.Agent.Collection;
+using Argus.Agent.Collection.Proxmox;
 using Argus.Agent.Commands;
 using Argus.Agent.Configuration;
 using Argus.Agent.State;
@@ -59,6 +60,12 @@ internal static class AgentHost
             services.GetRequiredService<ILoggerFactory>(), agentConfig, services.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(services => PlatformCollectors.CreateContainerSource(
             services.GetRequiredService<ILoggerFactory>(), agentConfig, services.GetRequiredService<TimeProvider>()));
+        // One client for the guest list and the commands; null on machines that do not read Proxmox VE.
+        var proxmoxNode = ProxmoxNode.Create(agentConfig);
+        builder.Services.AddSingleton(services => PlatformCollectors.CreateProxmoxSource(
+            services.GetRequiredService<ILoggerFactory>(), agentConfig, proxmoxNode, services.GetRequiredService<TimeProvider>()));
+        builder.Services.AddSingleton(services => new ProxmoxCommands(
+            agentConfig, proxmoxNode, services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<ProxmoxCommands>>()));
         builder.Services.AddSingleton(services =>
             new ContainerCommands(agentConfig, services.GetRequiredService<ILogger<ContainerCommands>>()));
         builder.Services.AddSingleton(_ => PowerControls.Create(agentConfig));

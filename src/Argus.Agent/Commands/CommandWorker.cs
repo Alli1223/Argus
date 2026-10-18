@@ -8,7 +8,7 @@ namespace Argus.Agent.Commands;
 /// <summary>
 /// Keeps a request for commands open with the server and carries out what arrives, so that an action taken
 /// in the web app happens within a second or so. Every agent can send Wake-on-LAN packets for the server;
-/// container and power actions only happen on machines whose configuration allows them.
+/// container, power and Proxmox VE actions only happen on machines whose configuration allows them.
 /// </summary>
 internal sealed class CommandWorker(
     AgentConfig config,
@@ -17,6 +17,7 @@ internal sealed class CommandWorker(
     ContainerCommands containers,
     PowerCommands power,
     WakeOnLan wake,
+    ProxmoxCommands proxmox,
     TimeProvider time,
     ILogger<CommandWorker> logger) : BackgroundService
 {
@@ -41,6 +42,11 @@ internal sealed class CommandWorker(
             kinds.AddRange([AgentCommandKind.Shutdown, AgentCommandKind.Restart]);
         }
 
+        if (config.ProxmoxActions && config.ReadsProxmox && OperatingSystem.IsLinux())
+        {
+            kinds.AddRange([AgentCommandKind.GuestStart, AgentCommandKind.GuestShutdown, AgentCommandKind.GuestReboot, AgentCommandKind.GuestStop]);
+        }
+
         return kinds;
     }
 
@@ -61,6 +67,12 @@ internal sealed class CommandWorker(
         {
             logger.LogInformation("Power actions are on: people who can see this machine in Argus, and their alert rules, " +
                 "can shut it down and restart it");
+        }
+
+        if (config.ProxmoxActions && config.ReadsProxmox && OperatingSystem.IsLinux())
+        {
+            logger.LogInformation("Proxmox VE actions are on: people who can see this machine in Argus can start, shut down, " +
+                "restart and stop its virtual machines and containers");
         }
 
         var backoff = new Backoff(TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
@@ -105,6 +117,8 @@ internal sealed class CommandWorker(
     {
         AgentCommandKind.Shutdown or AgentCommandKind.Restart => power.RunAsync(command, cancellationToken),
         AgentCommandKind.WakeOnLan => wake.RunAsync(command, cancellationToken),
+        AgentCommandKind.GuestStart or AgentCommandKind.GuestShutdown or AgentCommandKind.GuestReboot or AgentCommandKind.GuestStop =>
+            proxmox.RunAsync(command, cancellationToken),
         _ when OperatingSystem.IsLinux() => containers.RunAsync(command, cancellationToken),
         _ => Task.FromResult(new AgentCommandResult { Id = command.Id, Succeeded = false, Error = "Container actions are only on Linux." }),
     };

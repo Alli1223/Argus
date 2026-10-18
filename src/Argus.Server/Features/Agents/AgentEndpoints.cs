@@ -155,6 +155,7 @@ public static class AgentEndpoints
         Live.LiveUpdates live,
         AgentUpdates updates,
         Containers.ContainerStore containers,
+        Proxmox.ProxmoxService proxmox,
         CancellationToken cancellationToken)
     {
         if (MetricsBatchValidator.ValidateShape(batch) is { } problem)
@@ -182,6 +183,11 @@ public static class AgentEndpoints
         if (samples.Where(sample => sample.Containers is not null).MaxBy(sample => sample.Timestamp) is { } containerCheck)
         {
             await containers.ApplyReportAsync(hostId, containerCheck.Timestamp, containerCheck.Containers!, cancellationToken);
+        }
+
+        if (samples.Where(sample => sample.Proxmox is not null).MaxBy(sample => sample.Timestamp) is { } proxmoxCheck)
+        {
+            await proxmox.ApplyReportAsync(hostId, proxmoxCheck.Timestamp, proxmoxCheck.Proxmox!, cancellationToken);
         }
 
         if (samples.Count > 0)

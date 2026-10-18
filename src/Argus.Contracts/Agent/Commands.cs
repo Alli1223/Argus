@@ -16,6 +16,18 @@ public enum AgentCommandKind
 
     /// <summary>Send a Wake-on-LAN packet onto the agent's own network, to wake another machine.</summary>
     WakeOnLan,
+
+    /// <summary>Start a Proxmox VE virtual machine or container. Only where the agent configuration sets ProxmoxActions.</summary>
+    GuestStart,
+
+    /// <summary>Ask a Proxmox VE guest to shut down cleanly, as its power button would.</summary>
+    GuestShutdown,
+
+    /// <summary>Ask a Proxmox VE guest to restart cleanly.</summary>
+    GuestReboot,
+
+    /// <summary>Stop a Proxmox VE guest at once, as pulling its plug would.</summary>
+    GuestStop,
 }
 
 /// <summary>
@@ -46,6 +58,12 @@ public sealed record AgentCommand
 
     /// <summary>For shutdown and restart: why, for the machine's own logs.</summary>
     public string? Reason { get; init; }
+
+    /// <summary>For Proxmox VE guests: the guest's id (VMID), such as 100.</summary>
+    public int? GuestId { get; init; }
+
+    /// <summary>For Proxmox VE guests: <c>qemu</c> for a virtual machine, <c>lxc</c> for a container.</summary>
+    public string? GuestType { get; init; }
 }
 
 public sealed record AgentCommandBatch
@@ -59,7 +77,7 @@ public sealed record AgentCommandResult
 
     public required bool Succeeded { get; init; }
 
-    /// <summary>Why the command failed, in Docker's words where it said.</summary>
+    /// <summary>Why the command failed, in Docker's or Proxmox VE's words where they said.</summary>
     public string? Error { get; init; }
 
     /// <summary>For logs: the lines, oldest first.</summary>

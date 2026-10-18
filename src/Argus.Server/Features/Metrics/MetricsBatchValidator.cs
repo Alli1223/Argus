@@ -16,6 +16,8 @@ public static class MetricsBatchValidator
     private static readonly HashSet<string> ContainerStates = ["created", "running", "paused", "restarting", "removing", "exited", "dead"];
     private static readonly HashSet<string> ContainerHealth = ["starting", "healthy", "unhealthy"];
     private static readonly HashSet<string> RestartPolicies = ["no", "always", "unless-stopped", "on-failure"];
+    private static readonly HashSet<string> GuestTypes = ["qemu", "lxc"];
+    private static readonly HashSet<string> GuestStatuses = ["running", "stopped", "paused"];
     private const double MaxCelsius = 1000;
 
     /// <summary>Problems that make the whole batch unacceptable; the agent should not resend it.</summary>
@@ -151,6 +153,7 @@ public static class MetricsBatchValidator
             })
             .ToList(),
         Containers = sample.Containers is { } report ? Clean(report) : null,
+        Proxmox = sample.Proxmox is { } proxmox ? Clean(proxmox) : null,
         ContainerUsage = sample.ContainerUsage?
             .Where(usage => !string.IsNullOrWhiteSpace(usage.Name))
             .DistinctBy(usage => usage.Name)
@@ -214,6 +217,33 @@ public static class MetricsBatchValidator
                 ComposeProject = ClipOptional(container.ComposeProject, NameLength),
                 ComposeService = ClipOptional(container.ComposeService, NameLength),
                 Ports = container.Ports.Take(AgentLimits.MaxContainerPorts).Select(port => Clip(port, PortLength)).ToList(),
+            })
+            .ToList(),
+    };
+
+    /// <summary>Guests listed once each, with Proxmox VE's words for types and states kept to the ones Argus knows.</summary>
+    private static ProxmoxReport Clean(ProxmoxReport report) => new()
+    {
+        Node = ClipOptional(report.Node, NameLength),
+        Version = ClipOptional(report.Version, FsTypeLength),
+        Problem = ClipOptional(report.Problem, ProblemLength),
+        ActionsEnabled = report.ActionsEnabled,
+        Guests = report.Guests
+            .Where(guest => guest.Id > 0 && GuestTypes.Contains(guest.Type))
+            .DistinctBy(guest => guest.Id)
+            .Take(AgentLimits.MaxProxmoxGuests)
+            .Select(guest => guest with
+            {
+                Name = Clip(string.IsNullOrWhiteSpace(guest.Name) ? $"{guest.Id}" : guest.Name.Trim(), NameLength),
+                Status = GuestStatuses.Contains(guest.Status) ? guest.Status : "unknown",
+                Lock = ClipOptional(guest.Lock, StateLength),
+                UptimeSeconds = Math.Max(0, guest.UptimeSeconds),
+                CpuPercent = Percent(Finite(guest.CpuPercent)),
+                Cpus = Finite(guest.Cpus) is > 0 and var cpus ? cpus : null,
+                MemoryBytes = guest.MemoryBytes is >= 0 and var memory ? memory : null,
+                MaxMemoryBytes = guest.MaxMemoryBytes is > 0 and var maxMemory ? maxMemory : null,
+                MaxDiskBytes = guest.MaxDiskBytes is > 0 and var maxDisk ? maxDisk : null,
+                Tags = guest.Tags.Where(tag => !string.IsNullOrWhiteSpace(tag)).Take(AgentLimits.MaxProxmoxTags).Select(tag => Clip(tag.Trim(), StateLength * 2)).ToList(),
             })
             .ToList(),
     };

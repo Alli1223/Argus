@@ -54,6 +54,31 @@ public sealed class AgentConfig
     /// </summary>
     public bool PowerActions { get; set; }
 
+    /// <summary>
+    /// A Proxmox VE API token, as <c>user@realm!tokenid=secret</c>, for reading this node's virtual machines
+    /// and containers. Empty on machines that are not Proxmox VE nodes. The install script's --proxmox
+    /// option makes one with only the privileges the agent needs.
+    /// </summary>
+    public string? ProxmoxToken { get; set; }
+
+    /// <summary>Where Proxmox VE's API is. Its certificate is checked unless it is on this machine.</summary>
+    public string ProxmoxUrl { get; set; } = "https://127.0.0.1:8006";
+
+    /// <summary>
+    /// The SHA-256 fingerprint of Proxmox VE's certificate, as <c>AB:CD:…</c>, for an API on another
+    /// machine whose certificate no authority signed.
+    /// </summary>
+    public string? ProxmoxFingerprint { get; set; }
+
+    /// <summary>
+    /// Lets people who can see this machine in Argus start, shut down, restart and stop its Proxmox VE
+    /// guests. Off by default, for the same reason as <see cref="ContainerActions"/>.
+    /// </summary>
+    public bool ProxmoxActions { get; set; }
+
+    /// <summary>Whether the agent reads Proxmox VE: it has a token for it.</summary>
+    public bool ReadsProxmox => !string.IsNullOrWhiteSpace(ProxmoxToken);
+
     public string ResolvedStateDirectory =>
         string.IsNullOrWhiteSpace(StateDirectory) ? AgentPaths.DefaultStateDirectory : StateDirectory;
 
@@ -71,6 +96,11 @@ public sealed class AgentConfig
         if (CollectionIntervalSeconds is < 5 or > 3600)
         {
             errors.Add("CollectionIntervalSeconds must be between 5 and 3600.");
+        }
+
+        if (ReadsProxmox && (!Uri.TryCreate(ProxmoxUrl, UriKind.Absolute, out var proxmox) || proxmox.Scheme != Uri.UriSchemeHttps))
+        {
+            errors.Add("ProxmoxUrl must be an absolute https URL, e.g. https://127.0.0.1:8006.");
         }
 
         if (BufferCapacity is < 10 or > 100_000)

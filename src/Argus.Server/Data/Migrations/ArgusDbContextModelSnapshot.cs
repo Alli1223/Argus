@@ -887,6 +887,46 @@ namespace Argus.Server.Data.Migrations
                     b.ToTable("power_actions", (string)null);
                 });
 
+            modelBuilder.Entity("Argus.Server.Features.Proxmox.ProxmoxCheck", b =>
+                {
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("host_id");
+
+                    b.Property<bool>("ActionsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("actions_enabled");
+
+                    b.Property<DateTimeOffset>("CheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("checked_at");
+
+                    b.Property<string>("Guests")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("guests");
+
+                    b.Property<string>("Node")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("node");
+
+                    b.Property<string>("Problem")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("problem");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("version");
+
+                    b.HasKey("HostId")
+                        .HasName("pk_proxmox_checks");
+
+                    b.ToTable("proxmox_checks", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
@@ -1253,6 +1293,18 @@ namespace Argus.Server.Data.Migrations
                     b.Navigation("Host");
 
                     b.Navigation("Rule");
+                });
+
+            modelBuilder.Entity("Argus.Server.Features.Proxmox.ProxmoxCheck", b =>
+                {
+                    b.HasOne("Argus.Server.Features.Hosts.MonitoredHost", "Host")
+                        .WithOne()
+                        .HasForeignKey("Argus.Server.Features.Proxmox.ProxmoxCheck", "HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_proxmox_checks_hosts_host_id");
+
+                    b.Navigation("Host");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

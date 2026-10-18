@@ -45,6 +45,8 @@ public static class AgentLimits
     public const int MaxUpsPerSample = 16;
     public const int MaxContainers = 500;
     public const int MaxContainerPorts = 32;
+    public const int MaxProxmoxGuests = 1000;
+    public const int MaxProxmoxTags = 16;
     public const int MaxLogLines = 5000;
     public const int MaxLogLineLength = 8192;
 

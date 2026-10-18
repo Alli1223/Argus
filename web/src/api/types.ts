@@ -684,3 +684,39 @@ export interface PowerSettingsRequest {
   wakeMacAddress: string | null;
   wakeAddress: string | null;
 }
+
+/** A Proxmox VE virtual machine (`qemu`) or container (`lxc`) as the host's agent last reported it. */
+export interface ProxmoxGuest {
+  /** The guest's VMID, such as 100. */
+  id: number;
+  type: "qemu" | "lxc";
+  name: string;
+  status: "running" | "stopped" | "paused" | "unknown";
+  /** What Proxmox VE is doing to the guest, such as "backup" or "migrate". */
+  lock: string | null;
+  template: boolean;
+  uptimeSeconds: number;
+  /** Share of its own processors in use; null when stopped. */
+  cpuPercent: number | null;
+  cpus: number | null;
+  memoryBytes: number | null;
+  maxMemoryBytes: number | null;
+  maxDiskBytes: number | null;
+  tags: string[];
+  /** When its status last changed, as far as Argus saw. */
+  statusSince: string;
+}
+
+/** A host's Proxmox VE guests; `checkedAt` is null for hosts whose agent does not read Proxmox VE. */
+export interface HostProxmox {
+  checkedAt: string | null;
+  node: string | null;
+  version: string | null;
+  /** Why the agent could not read Proxmox VE at its last report. */
+  problem: string | null;
+  /** Whether the machine lets Argus start, shut down, restart and stop its guests. */
+  actionsEnabled: boolean;
+  /** Whether the host's agent is connected for commands. */
+  listening: boolean;
+  guests: ProxmoxGuest[];
+}
