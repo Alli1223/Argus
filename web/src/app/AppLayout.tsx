@@ -16,6 +16,7 @@ import {
   IconAdjustmentsHorizontal,
   IconBell,
   IconBrandDocker,
+  IconChartBar,
   IconCircleCheck,
   IconDeviceDesktopAnalytics,
   IconEye,
@@ -51,6 +52,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: "/", label: "Overview", icon: IconEye },
   { to: "/hosts", label: "Hosts", icon: IconServer2 },
+  { to: "/summary", label: "Summary", icon: IconChartBar },
   { to: "/containers", label: "Containers", icon: IconBrandDocker },
   { to: "/temperatures", label: "Temperatures", icon: IconTemperature },
   { to: "/alerts", label: "Alerts", icon: IconBell },

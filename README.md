@@ -7,6 +7,8 @@ sends notifications; and a web app shows it all.
 - **Hosts at a glance:** CPU, memory, swap, load, disk and network, live and over time, with
   filesystems, network interfaces, temperatures, the busiest processes and failed services for each
   machine, and every machine's temperature sensors on one page.
+- **Summary** of the long run: data downloaded and uploaded, written to and read from disk, CPU,
+  memory, availability and alerts per day, month and year, for all machines together and each one.
 - **UPSes** through Network UPS Tools: whether each runs on line power or its battery, its charge,
   runtime left and load.
 - **Proxmox VE** virtual machines and containers on each node, with their status and what they use;

@@ -119,6 +119,7 @@ All paths start with `/api`.
 | `DELETE /hosts/{id}/agent-update` | Withdraws the request, and forgets why the last attempt failed. |
 | `POST /hosts/agent-updates` | Asks every host you can see whose agent is out of date. Answers how many were asked. |
 | `GET /dashboard/summary` | Host counts, active alerts by severity, and the busiest hosts. |
+| `GET /summary` | Totals by calendar period for every host you can see. See [Usage summary](#usage-summary). |
 
 A host's `agentUpdate` is `null`, or says which newer version is `available`, which one was
 `requested` and when, and the `error` of the last failed attempt.
@@ -129,6 +130,20 @@ The history endpoints take `from` and `to` (ISO 8601, defaulting to the last hou
 roughly how many points to return (10–2000, default 300). A range may cover up to two years. The
 answer is columnar: `time` holds Unix seconds and `series` holds one array per measure, with `null`
 where there was no reading. `resolution` and `bucketSeconds` say how the readings were averaged.
+
+#### Usage summary
+
+`GET /summary` takes `period` (`Day`, `Month` or `Year`, default `Day`), `count`, how many periods to
+cover up to the current one (default 30 days, 12 months or 3 years; at most 366, 36 or 10), and
+`timeZone`, an IANA name such as `Europe/London` (default `UTC`) whose midnights the periods start at.
+`periods` comes newest first; each has a `start` and `end`, the fleet's `totals`, and `hosts`, the
+figures of each host that reported or alerted in it. The figures are `diskReadBytes`,
+`diskWriteBytes`, `networkReceivedBytes` and `networkSentBytes`, worked out from each hour's average
+throughput over the time the host reported in it; `cpuAveragePercent`, `cpuPeakPercent`,
+`memoryAveragePercent` and `memoryPeakPercent`; `reportingSeconds`; `availabilityPercent`, the share of
+the period so far (since the host was added) that it reported; `temperaturePeakCelsius`; and `alerts`
+and `criticalAlerts` fired. The summary is built from the hourly rollups, so it reaches back as far as
+they are kept: `historyDays`.
 
 Temperature series are keyed `{device}/{sensor}`, such as `coretemp/Package id 0` or
 `nvme0/Composite`, split at the first slash. Their points are the highest reading in each bucket

@@ -720,3 +720,45 @@ export interface HostProxmox {
   listening: boolean;
   guests: ProxmoxGuest[];
 }
+
+export type SummaryPeriod = "Day" | "Month" | "Year";
+
+/**
+ * Figures for one host or the whole fleet over one period. Byte counts come from each hour's average
+ * throughput over the time the host reported in it. Figures without readings are null.
+ */
+export interface UsageStats {
+  diskReadBytes: number | null;
+  diskWriteBytes: number | null;
+  networkReceivedBytes: number | null;
+  networkSentBytes: number | null;
+  cpuAveragePercent: number | null;
+  cpuPeakPercent: number | null;
+  memoryAveragePercent: number | null;
+  memoryPeakPercent: number | null;
+  /** How long the host sent readings; summed across hosts for the fleet. */
+  reportingSeconds: number | null;
+  /** Share of the period so far, since the host was added, that it reported; the fleet's is the average. */
+  availabilityPercent: number | null;
+  temperaturePeakCelsius: number | null;
+  alerts: number;
+  criticalAlerts: number;
+}
+
+export interface UsagePeriod {
+  start: string;
+  end: string;
+  totals: UsageStats;
+  /** Hosts that reported or alerted in the period. */
+  hosts: { hostId: string; stats: UsageStats }[];
+}
+
+/** Usage by day, month or year, newest period first, on the calendar of `timeZone`. */
+export interface UsageSummary {
+  period: SummaryPeriod;
+  timeZone: string;
+  /** How far back the hourly rollups behind the summary are kept. */
+  historyDays: number;
+  hosts: { hostId: string; displayName: string }[];
+  periods: UsagePeriod[];
+}
