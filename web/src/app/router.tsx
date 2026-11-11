@@ -53,6 +53,10 @@ export const router = createBrowserRouter([
             }),
           },
           {
+            path: "summary",
+            lazy: async () => ({ Component: (await import("../pages/summary/SummaryPage")).SummaryPage }),
+          },
+          {
             path: "temperatures",
             lazy: async () => ({
               Component: (await import("../pages/temperatures/TemperaturesPage")).TemperaturesPage,
