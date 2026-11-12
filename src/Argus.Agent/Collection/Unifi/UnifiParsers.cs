@@ -56,6 +56,8 @@ internal static class UnifiParsers
         .Select(item =>
         {
             var stats = item.TryGetProperty("system-stats", out var system) && system.ValueKind == JsonValueKind.Object ? system : default;
+            // Newer consoles only give a device's rates on its uplink port.
+            var uplink = item.TryGetProperty("uplink", out var port) && port.ValueKind == JsonValueKind.Object ? port : default;
             var mac = Text(item, "mac")!;
             return new UnifiDevice
             {
@@ -68,8 +70,8 @@ internal static class UnifiParsers
                 UptimeSeconds = Number(item, "uptime") is { } uptime ? (long)uptime : null,
                 CpuPercent = stats.ValueKind == JsonValueKind.Object ? Number(stats, "cpu") : null,
                 MemoryPercent = stats.ValueKind == JsonValueKind.Object ? Number(stats, "mem") : null,
-                RxBytesPerSec = Number(item, "rx_bytes-r"),
-                TxBytesPerSec = Number(item, "tx_bytes-r"),
+                RxBytesPerSec = Number(item, "rx_bytes-r") ?? (uplink.ValueKind == JsonValueKind.Object ? Number(uplink, "rx_bytes-r") : null),
+                TxBytesPerSec = Number(item, "tx_bytes-r") ?? (uplink.ValueKind == JsonValueKind.Object ? Number(uplink, "tx_bytes-r") : null),
                 Clients = Number(item, "num_sta") is { } clients ? (int)clients : null,
             };
         })

@@ -33,7 +33,7 @@ public sealed class UnifiParsersTests
         var devices = UnifiParsers.ParseDevices(Json("""
             {"data":[
               {"mac":"aa:bb:cc:00:00:02","name":"Office AP","model":"U6LR","type":"uap","state":1,"uptime":86400,
-               "system-stats":{"cpu":"4.5","mem":"38.1","uptime":"86400"},"rx_bytes-r":1000,"tx_bytes-r":5000,"num_sta":12},
+               "system-stats":{"cpu":"4.5","mem":"38.1","uptime":"86400"},"uplink":{"rx_bytes-r":1000,"tx_bytes-r":5000},"num_sta":12},
               {"mac":"aa:bb:cc:00:00:01","model":"USW24","type":"usw","state":0},
               {"name":"no mac"}]}
             """));
