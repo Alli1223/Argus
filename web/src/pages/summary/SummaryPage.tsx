@@ -17,6 +17,8 @@ import { useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useUsageSummary } from "../../api/summary";
 import type { UsageStats, UsageSummary } from "../../api/types";
+import { BarChart, type BarCategory } from "../../components/charts/BarChart";
+import type { ChartSeries } from "../../components/charts/chartData";
 import { DISK_COLORS, SERIES_COLORS } from "../../components/charts/chartPalette";
 import { PageHeader } from "../../components/PageHeader";
 import { ErrorScreen, MessageScreen } from "../../components/Screens";
@@ -26,11 +28,15 @@ import { formatBytes, formatDuration, formatPercent, formatTemperature } from ".
 import {
   combineStats,
   hostUsage,
+  machineRanking,
+  machineSeries,
   periodDate,
   periodLabel,
   periodOption,
+  periodShort,
   PERIOD_OPTIONS,
   sortHostUsage,
+  type ByteMetric,
   type PeriodOption,
   type UsageSortKey,
 } from "../../lib/summary";
@@ -138,6 +144,14 @@ function SummaryContent({ summary, option, selected, onSelect, refreshing }: Sum
         previousLabel={previous && label(selected + 1)}
       />
 
+      <SummaryCharts
+        summary={summary}
+        label={label}
+        selected={selected}
+        onSelect={select}
+        refreshing={refreshing}
+      />
+
       <Section title={`All machines, ${option.label.toLowerCase()}`} mt="xl">
         <FleetTable summary={summary} option={option} label={label} selected={selected} onSelect={select} />
       </Section>
@@ -151,6 +165,231 @@ function SummaryContent({ summary, option, selected, onSelect, refreshing }: Sum
         onChoose={setChoice}
       />
     </Box>
+  );
+}
+
+interface SummaryChartsProps {
+  summary: UsageSummary;
+  label: (index: number) => string;
+  /** Periods are newest first; the charts run oldest to newest, left to right. */
+  selected: number;
+  onSelect: (index: number) => void;
+  refreshing: boolean;
+}
+
+const MACHINE_METRICS: { value: ByteMetric; label: string }[] = [
+  { value: "networkReceivedBytes", label: "Downloaded" },
+  { value: "networkSentBytes", label: "Uploaded" },
+  { value: "diskWriteBytes", label: "Written" },
+  { value: "diskReadBytes", label: "Read" },
+];
+
+/** Bars of traffic, disk activity, usage and each machine's share over the periods on show. */
+function SummaryCharts({ summary, label, selected, onSelect, refreshing }: SummaryChartsProps) {
+  const scheme = useComputedColorScheme("light");
+  const colors = useByteColors();
+  const [metric, setMetric] = useState<ByteMetric>("networkReceivedBytes");
+
+  const count = summary.periods.length;
+  const oldestFirst = [...summary.periods].reverse();
+  const categories: BarCategory[] = oldestFirst.map((period, index) => ({
+    key: period.start,
+    label: periodShort(summary.period, period.start, summary.timeZone),
+    title: `${label(count - 1 - index)}${count - 1 - index < 2 ? `, ${periodDate(summary.period, period.start, summary.timeZone)}` : ""}`,
+  }));
+  const pick = (value: (stats: UsageStats) => number | null) =>
+    oldestFirst.map((period) => (period.hosts.length === 0 ? null : value(period.totals)));
+  const toChart = (index: number) => count - 1 - index;
+  const chartProps = {
+    categories,
+    selected: toChart(selected),
+    onSelect: (index: number) => onSelect(toChart(index)),
+    refreshing,
+  };
+
+  const palette = SERIES_COLORS[scheme];
+  const machines: ChartSeries[] = machineSeries(summary, metric).map((series, index) => ({
+    ...series,
+    color: palette[index],
+  }));
+  const metricLabel = MACHINE_METRICS.find((item) => item.value === metric)!.label.toLowerCase();
+
+  return (
+    <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mt="xl">
+      <BarChart
+        {...chartProps}
+        title="Network"
+        description="Data downloaded and uploaded by all machines"
+        unit="bytes"
+        series={[
+          {
+            key: "received",
+            label: "Downloaded",
+            color: colors.networkReceivedBytes,
+            values: pick((stats) => stats.networkReceivedBytes),
+          },
+          {
+            key: "sent",
+            label: "Uploaded",
+            color: colors.networkSentBytes,
+            values: pick((stats) => stats.networkSentBytes),
+          },
+        ]}
+      />
+      <BarChart
+        {...chartProps}
+        title="Disk"
+        description="Data written to and read from disk by all machines"
+        unit="bytes"
+        series={[
+          {
+            key: "write",
+            label: "Written",
+            color: colors.diskWriteBytes,
+            values: pick((stats) => stats.diskWriteBytes),
+          },
+          {
+            key: "read",
+            label: "Read",
+            color: colors.diskReadBytes,
+            values: pick((stats) => stats.diskReadBytes),
+          },
+        ]}
+      />
+      <Box style={{ gridColumn: "1 / -1" }}>
+        <BarChart
+          {...chartProps}
+          title="By machine"
+          description={`Data ${metricLabel === "read" || metricLabel === "written" ? `${metricLabel} on disk` : metricLabel} by each machine`}
+          unit="bytes"
+          mode="stacked"
+          series={machines}
+          actions={
+            <SegmentedControl
+              size="xs"
+              aria-label="Figure by machine"
+              value={metric}
+              onChange={(value) => setMetric(value as ByteMetric)}
+              data={MACHINE_METRICS}
+            />
+          }
+        />
+      </Box>
+      <BarChart
+        {...chartProps}
+        title="CPU, memory and availability"
+        description="Averages across all machines"
+        unit="percent"
+        max={100}
+        series={[
+          { key: "cpu", label: "CPU", color: palette[0], values: pick((stats) => stats.cpuAveragePercent) },
+          {
+            key: "memory",
+            label: "Memory",
+            color: palette[1],
+            values: pick((stats) => stats.memoryAveragePercent),
+          },
+          {
+            key: "availability",
+            label: "Availability",
+            color: palette[2],
+            values: pick((stats) => stats.availabilityPercent),
+          },
+        ]}
+      />
+      <ShareByMachine summary={summary} index={selected} title={label(selected)} />
+    </SimpleGrid>
+  );
+}
+
+/** Each byte figure of one period split by machine, as bars that fill to 100%. */
+function ShareByMachine({ summary, index, title }: { summary: UsageSummary; index: number; title: string }) {
+  const scheme = useComputedColorScheme("light");
+  const palette = SERIES_COLORS[scheme];
+  const ranking = machineRanking(summary);
+  const period = summary.periods[index];
+  const colorOf = (hostId: string) => {
+    const rank = ranking.findIndex((host) => host.hostId === hostId);
+    return palette[rank < 0 || rank >= palette.length - 1 ? palette.length - 1 : rank];
+  };
+  const names = new Map(summary.hosts.map((host) => [host.hostId, host.displayName]));
+
+  return (
+    <Paper component="figure" className="argus-surface" m={0} p="md" radius="sm" miw={0}>
+      <Text fw={600} fz={15} className="argus-wide">
+        Share by machine
+      </Text>
+      <Text fz="xs" c="dimmed">
+        Who moved the data, {title.toLowerCase().startsWith("today") ? "today" : title}
+      </Text>
+      <Box mt="md">
+        {MACHINE_METRICS.map((item) => {
+          const parts = period.hosts
+            .map((usage) => ({ hostId: usage.hostId, value: usage.stats[item.value] ?? 0 }))
+            .filter((part) => part.value > 0)
+            .sort((a, b) => b.value - a.value);
+          const total = parts.reduce((sum, part) => sum + part.value, 0);
+          return (
+            <Box key={item.value} mb="md">
+              <Group justify="space-between" mb={4}>
+                <Text fz="sm">{item.label}</Text>
+                <Text fz="sm" className="argus-data" c="dimmed">
+                  {formatBytes(total || null)}
+                </Text>
+              </Group>
+              <Group
+                gap={1}
+                wrap="nowrap"
+                h={14}
+                style={{ borderRadius: 3, overflow: "hidden", background: "var(--argus-border)" }}
+                role="img"
+                aria-label={`${item.label}: ${
+                  parts.map((part) => `${names.get(part.hostId)} ${formatBytes(part.value)}`).join(", ") ||
+                  "nothing"
+                }`}
+              >
+                {parts.map((part) => (
+                  <Box
+                    key={part.hostId}
+                    h="100%"
+                    title={`${names.get(part.hostId)}: ${formatBytes(part.value)} (${formatPercent((100 * part.value) / total)})`}
+                    style={{
+                      width: `${(100 * part.value) / total}%`,
+                      background: colorOf(part.hostId),
+                      flexShrink: 0,
+                    }}
+                  />
+                ))}
+              </Group>
+            </Box>
+          );
+        })}
+      </Box>
+      <Group gap="md" wrap="wrap">
+        {period.hosts
+          .filter((usage) => ranking.some((host) => host.hostId === usage.hostId))
+          .sort(
+            (a, b) =>
+              ranking.findIndex((host) => host.hostId === a.hostId) -
+              ranking.findIndex((host) => host.hostId === b.hostId),
+          )
+          .map((usage) => (
+            <Group key={usage.hostId} gap={6} wrap="nowrap">
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: colorOf(usage.hostId),
+                  display: "inline-block",
+                }}
+                aria-hidden
+              />
+              <Text fz="xs">{names.get(usage.hostId)}</Text>
+            </Group>
+          ))}
+      </Group>
+    </Paper>
   );
 }
 

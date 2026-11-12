@@ -147,3 +147,82 @@ export function sortHostUsage(rows: HostUsageRow[], key: UsageSortKey, descendin
     return direction * (left - right) || a.displayName.localeCompare(b.displayName);
   });
 }
+
+/** A period's label under a bar: "11 Nov", "Nov 26", "2026". */
+export function periodShort(period: SummaryPeriod, start: string, timeZone: string): string {
+  const options: Intl.DateTimeFormatOptions =
+    period === "Day"
+      ? { day: "numeric", month: "short" }
+      : period === "Month"
+        ? { month: "short", year: "2-digit" }
+        : { year: "numeric" };
+  return new Intl.DateTimeFormat(undefined, { ...options, timeZone }).format(new Date(start));
+}
+
+export type ByteMetric = "networkReceivedBytes" | "networkSentBytes" | "diskWriteBytes" | "diskReadBytes";
+
+export interface MachineSeries {
+  key: string;
+  label: string;
+  /** Oldest period first, to line up with the chart's categories. */
+  values: (number | null)[];
+}
+
+const BYTE_METRICS: ByteMetric[] = [
+  "networkReceivedBytes",
+  "networkSentBytes",
+  "diskWriteBytes",
+  "diskReadBytes",
+];
+
+/**
+ * Machines that moved any bytes over the periods on show, busiest first (all byte figures together),
+ * so each machine keeps its place, and its colour, in every chart.
+ */
+export function machineRanking(summary: UsageSummary): { hostId: string; displayName: string }[] {
+  const totals = new Map<string, number>();
+  for (const period of summary.periods) {
+    for (const usage of period.hosts) {
+      const bytes = BYTE_METRICS.reduce((sum, metric) => sum + (usage.stats[metric] ?? 0), 0);
+      totals.set(usage.hostId, (totals.get(usage.hostId) ?? 0) + bytes);
+    }
+  }
+  return summary.hosts
+    .filter((host) => (totals.get(host.hostId) ?? 0) > 0)
+    .sort(
+      (a, b) => totals.get(b.hostId)! - totals.get(a.hostId)! || a.displayName.localeCompare(b.displayName),
+    );
+}
+
+/**
+ * One series per machine for a byte figure, oldest period first, in {@link machineRanking} order: the
+ * first `limit` - 1 machines, and the rest added up as "Other machines" so a chart never needs more
+ * than `limit` colours.
+ */
+export function machineSeries(summary: UsageSummary, metric: ByteMetric, limit = 8): MachineSeries[] {
+  const oldestFirst = [...summary.periods].reverse();
+  const all = machineRanking(summary).map((host) => ({
+    key: host.hostId,
+    label: host.displayName,
+    values: oldestFirst.map(
+      (period) => period.hosts.find((usage) => usage.hostId === host.hostId)?.stats[metric] ?? null,
+    ),
+  }));
+
+  if (all.length <= limit) return all;
+
+  const rest = all.slice(limit - 1);
+  return [
+    ...all.slice(0, limit - 1),
+    {
+      key: "other",
+      label: `Other machines (${rest.length})`,
+      values: oldestFirst.map((_, index) => {
+        const present = rest
+          .map((series) => series.values[index])
+          .filter((value): value is number => value != null);
+        return present.length === 0 ? null : present.reduce((sum, value) => sum + value, 0);
+      }),
+    },
+  ];
+}
