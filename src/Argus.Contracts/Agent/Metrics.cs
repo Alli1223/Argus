@@ -71,6 +71,13 @@ public sealed record MetricSample
     /// </summary>
     public ProxmoxReport? Proxmox { get; init; }
 
+    /// <summary>
+    /// The UniFi network this agent reads from its UniFi console: internet traffic and client counts on
+    /// every sample, devices and each client's traffic about once a minute. Null from agents that do not
+    /// read UniFi.
+    /// </summary>
+    public UnifiReport? Unifi { get; init; }
+
     /// <summary>Busiest processes; agents may only attach this to the newest sample of a batch.</summary>
     public IReadOnlyList<ProcessMetrics>? TopProcesses { get; init; }
 
@@ -231,6 +238,93 @@ public sealed record UpsMetrics
     public double? OutputVoltage { get; init; }
 
     public double? BatteryVoltage { get; init; }
+}
+
+/// <summary>A UniFi network as its console reports it, or why the agent could not read it.</summary>
+public sealed record UnifiReport
+{
+    /// <summary>The site's name in UniFi Network, such as "Default".</summary>
+    public string? Site { get; init; }
+
+    /// <summary>UniFi Network's version, such as "9.4.19".</summary>
+    public string? Version { get; init; }
+
+    /// <summary>Why the agent could not read the console, such as its API key being refused.</summary>
+    public string? Problem { get; init; }
+
+    /// <summary>Internet traffic coming in through the gateway's WAN, bytes per second.</summary>
+    public double? WanRxBytesPerSec { get; init; }
+
+    /// <summary>Internet traffic going out through the gateway's WAN, bytes per second.</summary>
+    public double? WanTxBytesPerSec { get; init; }
+
+    public int? WiredClients { get; init; }
+
+    public int? WirelessClients { get; init; }
+
+    /// <summary>Clients on guest networks, wired or wireless; also counted in the two above.</summary>
+    public int? GuestClients { get; init; }
+
+    /// <summary>The site's gateways, switches and access points; null on samples without a device report.</summary>
+    public IReadOnlyList<UnifiDevice>? Devices { get; init; }
+
+    /// <summary>What each connected client moved since the last client report; null on samples without one.</summary>
+    public IReadOnlyList<UnifiClientUsage>? Clients { get; init; }
+}
+
+public sealed record UnifiDevice
+{
+    public required string Mac { get; init; }
+
+    public required string Name { get; init; }
+
+    /// <summary>UniFi's model code, such as "UCGULTRA" or "U6LR".</summary>
+    public string? Model { get; init; }
+
+    /// <summary>UniFi's type: ugw, udm, usw, uap and so on.</summary>
+    public string? Type { get; init; }
+
+    /// <summary>Whether the console can reach and manage the device.</summary>
+    public required bool Online { get; init; }
+
+    public long? UptimeSeconds { get; init; }
+
+    public double? CpuPercent { get; init; }
+
+    public double? MemoryPercent { get; init; }
+
+    /// <summary>Traffic through the device, bytes per second, as the console last measured it.</summary>
+    public double? RxBytesPerSec { get; init; }
+
+    public double? TxBytesPerSec { get; init; }
+
+    /// <summary>Clients connected to or through the device.</summary>
+    public int? Clients { get; init; }
+}
+
+/// <summary>One client's traffic over the interval since the agent's previous client report.</summary>
+public sealed record UnifiClientUsage
+{
+    public required string Mac { get; init; }
+
+    /// <summary>The name set in UniFi, else the client's hostname, else its MAC address.</summary>
+    public required string Name { get; init; }
+
+    public string? Ip { get; init; }
+
+    public bool Wired { get; init; }
+
+    /// <summary>The wireless network (SSID) for wireless clients.</summary>
+    public string? Network { get; init; }
+
+    /// <summary>Bytes the client downloaded over the interval.</summary>
+    public long DownloadedBytes { get; init; }
+
+    /// <summary>Bytes the client uploaded over the interval.</summary>
+    public long UploadedBytes { get; init; }
+
+    /// <summary>How long the interval was, seconds.</summary>
+    public double IntervalSeconds { get; init; }
 }
 
 /// <summary>A Proxmox VE node's guests, or why the agent could not list them.</summary>

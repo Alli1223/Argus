@@ -66,6 +66,8 @@ internal static class AgentHost
             services.GetRequiredService<ILoggerFactory>(), agentConfig, proxmoxNode, services.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(services => new ProxmoxCommands(
             agentConfig, proxmoxNode, services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<ProxmoxCommands>>()));
+        builder.Services.AddSingleton(services => PlatformCollectors.CreateUnifiSource(
+            services.GetRequiredService<ILoggerFactory>(), agentConfig, services.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(services =>
             new ContainerCommands(agentConfig, services.GetRequiredService<ILogger<ContainerCommands>>()));
         builder.Services.AddSingleton(_ => PowerControls.Create(agentConfig));
