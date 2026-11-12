@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { UsageSummary } from "../api/types";
 import { stats } from "../test/usage";
-import { combineStats, hostUsage, periodLabel, periodOption, sortHostUsage } from "./summary";
+import {
+  combineStats,
+  hostUsage,
+  machineSeries,
+  periodLabel,
+  periodOption,
+  periodShort,
+  sortHostUsage,
+} from "./summary";
 
 describe("periodOption", () => {
   it("reads the grouping from the address, defaulting to days", () => {
@@ -114,5 +122,24 @@ describe("sortHostUsage", () => {
       "beta",
       "alpha",
     ]);
+  });
+});
+
+describe("machineSeries", () => {
+  it("puts each machine's figures oldest first, biggest machine first, and folds the rest into Other", () => {
+    expect(machineSeries(summary, "networkReceivedBytes")).toEqual([
+      { key: "b", label: "beta", values: [100, null] },
+      { key: "a", label: "alpha", values: [5, 10] },
+    ]);
+
+    const folded = machineSeries(summary, "networkReceivedBytes", 1);
+    expect(folded).toEqual([{ key: "other", label: "Other machines (2)", values: [105, 10] }]);
+  });
+});
+
+describe("periodShort", () => {
+  it("labels bars briefly", () => {
+    expect(periodShort("Year", "2026-01-01T00:00:00Z", "UTC")).toBe("2026");
+    expect(periodShort("Day", "2026-11-11T00:00:00Z", "UTC")).toMatch(/11/);
   });
 });

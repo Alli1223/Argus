@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BYTE_INCREMENTS, formatTick, formatValue, temperatureAxis } from "./chartData";
+import { BYTE_INCREMENTS, formatTick, formatValue, niceTicks, temperatureAxis } from "./chartData";
 
 describe("formatTick", () => {
   it("drops needless decimals", () => {
@@ -45,5 +45,13 @@ describe("BYTE_INCREMENTS", () => {
   it("rises in binary multiples", () => {
     expect(BYTE_INCREMENTS).toContain(1024 ** 2);
     expect([...BYTE_INCREMENTS].sort((a, b) => a - b)).toEqual(BYTE_INCREMENTS);
+  });
+});
+
+describe("niceTicks", () => {
+  it("steps bytes in binary multiples and percentages up to a fixed top", () => {
+    expect(niceTicks(3 * 1024 ** 3, "bytes")).toEqual([0, 1, 2, 3].map((n) => n * 1024 ** 3));
+    expect(niceTicks(30, "percent", 100)).toEqual([0, 25, 50, 75, 100]);
+    expect(niceTicks(0, "bytes")).toEqual([0, 1]);
   });
 });

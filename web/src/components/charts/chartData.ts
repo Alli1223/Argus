@@ -79,3 +79,15 @@ export function formatWindow(from: number, to: number): string {
   const sameDay = start.toDateString() === end.toDateString();
   return `${moment.format(start)} to ${sameDay ? clock.format(end) : moment.format(end)}`;
 }
+
+/** Round steps for the y-axis: binary multiples for bytes, 1-2-5 for the rest. */
+export function niceTicks(max: number, unit: ChartUnit, fixedMax?: number): number[] {
+  const top = fixedMax ?? (max > 0 ? max : 1);
+  const steps =
+    unit === "bytes" || unit === "bytesPerSecond"
+      ? BYTE_INCREMENTS.filter((step) => step > 0)
+      : [0, 1, 2, 3, 4, 5, 6].flatMap((power) => [1, 2, 2.5, 5].map((step) => step * 10 ** (power - 2)));
+  const step = steps.find((candidate) => top / candidate <= 4) ?? steps[steps.length - 1];
+  const count = Math.ceil(top / step - 1e-9);
+  return Array.from({ length: count + 1 }, (_, index) => index * step);
+}

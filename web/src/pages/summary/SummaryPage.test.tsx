@@ -50,7 +50,7 @@ describe("SummaryPage", () => {
     mockApi({ [path("Day", 30)]: days });
     renderWithApp(<SummaryPage />);
 
-    expect(await screen.findByText("Downloaded", { selector: "p" })).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: /^Network\./ })).toBeInTheDocument();
     expect(screen.getAllByText("3.0 GB").length).toBeGreaterThan(0);
     expect(screen.getByText("Yesterday: 5.0 GB")).toBeInTheDocument();
     expect(screen.getAllByText("1 critical").length).toBeGreaterThan(0);
@@ -59,6 +59,20 @@ describe("SummaryPage", () => {
     const rows = within(machines).getAllByRole("row").slice(1);
     // Most downloaded first.
     expect(rows.map((row) => within(row).getByRole("link").textContent)).toEqual(["web", "nas"]);
+  });
+
+  it("chooses a day from a bar", async () => {
+    mockApi({ [path("Day", 30)]: days });
+    const { user } = renderWithApp(<SummaryPage />);
+
+    const network = await screen.findByRole("group", { name: /^Network\./ });
+    network.focus();
+    await user.keyboard("{ArrowLeft}{Enter}");
+
+    expect(screen.getByRole("button", { name: "Yesterday" }).closest("tr")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("moves the machines to the day chosen in the fleet table", async () => {
