@@ -375,6 +375,9 @@ function Clients({ network, range }: { network: UnifiNetwork; range: TimeRange }
         />
       }
     >
+      <Text size="sm" c="dimmed" mb="sm">
+        Includes traffic between machines on your network, not only the internet.
+      </Text>
       <Table miw={860} highlightOnHover>
         <Table.Thead>
           <Table.Tr>

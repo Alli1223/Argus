@@ -322,7 +322,8 @@ one the console presented.
 
 The agent reads internet traffic and client counts with every reading, and devices and each client's
 traffic once a minute. Client traffic is how much the console's byte counters for the client grew
-between two reports, so a client's first minute after the agent starts is not counted. Everything is
+between two reports, so a client's first minute after the agent starts is not counted. It includes
+traffic between machines on the network, not only the internet. Everything is
 read only; Argus changes nothing on the console.
 
 ### Containers
