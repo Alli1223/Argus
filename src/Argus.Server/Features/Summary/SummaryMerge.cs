@@ -35,7 +35,8 @@ public static class SummaryMerge
         IEnumerable<HostPeriodRow> metrics,
         IEnumerable<HostPeriodTemperature> temperatures,
         IEnumerable<HostPeriodAlerts> alerts,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        IReadOnlyDictionary<int, InternetUsage>? internet = null)
     {
         var metricsBy = metrics.ToDictionary(row => (row.Period, row.HostId));
         var temperaturesBy = temperatures.ToDictionary(row => (row.Period, row.HostId));
@@ -64,7 +65,8 @@ public static class SummaryMerge
                     period.Start,
                     period.End,
                     Totals(hosts),
-                    hosts.Select(host => host.Usage).ToList());
+                    hosts.Select(host => host.Usage).ToList(),
+                    internet?.GetValueOrDefault(period.Index));
             })
             .ToList();
     }

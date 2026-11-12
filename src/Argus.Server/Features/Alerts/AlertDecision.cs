@@ -183,6 +183,11 @@ public static class AlertDecision
             return $"{resourceKey} is down on {hostName}";
         }
 
+        if (rule.Metric == AlertMetric.UnifiDeviceOffline)
+        {
+            return $"UniFi device {resourceKey} is offline";
+        }
+
         if (rule.Metric == AlertMetric.ContainerRestarts)
         {
             return $"{resourceKey} keeps restarting on {hostName}";

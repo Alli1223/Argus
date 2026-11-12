@@ -22,8 +22,15 @@ public sealed record UsageSummary(
 
 public sealed record SummaryHost(Guid HostId, string DisplayName);
 
-/// <summary>One period: the whole fleet's figures and each host's, for the hosts that reported or alerted in it.</summary>
-public sealed record UsagePeriod(DateTimeOffset Start, DateTimeOffset End, UsageStats Totals, IReadOnlyList<HostUsage> Hosts);
+/// <summary>
+/// One period: the whole fleet's figures and each host's, for the hosts that reported or alerted in it,
+/// and the internet traffic of the UniFi networks the hosts read (null when none reported in it).
+/// </summary>
+public sealed record UsagePeriod(
+    DateTimeOffset Start, DateTimeOffset End, UsageStats Totals, IReadOnlyList<HostUsage> Hosts, InternetUsage? Internet = null);
+
+/// <summary>Bytes that came in from and went out to the internet, through UniFi gateways.</summary>
+public sealed record InternetUsage(double DownloadedBytes, double UploadedBytes);
 
 public sealed record HostUsage(Guid HostId, UsageStats Stats);
 

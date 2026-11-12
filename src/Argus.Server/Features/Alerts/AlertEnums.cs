@@ -62,6 +62,9 @@ public enum AlertMetric
 
     /// <summary>A UPS's battery runtime while it runs on battery, seconds; evaluated per UPS.</summary>
     UpsRuntimeOnBattery,
+
+    /// <summary>A UniFi gateway, switch or access point the console cannot reach; evaluated per device, by name.</summary>
+    UnifiDeviceOffline,
 }
 
 /// <summary>How a rule decides that a reading is a problem.</summary>
@@ -114,17 +117,20 @@ public static class AlertMetrics
     /// narrow to one.
     /// </summary>
     public static bool IsPerResource(this AlertMetric metric) =>
-        metric.IsPerFilesystem() || metric == AlertMetric.ServiceFailed || metric.IsContainer() || metric.IsUps();
+        metric.IsPerFilesystem() || metric == AlertMetric.ServiceFailed || metric.IsContainer() || metric.IsUps()
+            || metric == AlertMetric.UnifiDeviceOffline;
 
     /// <summary>States rather than measurements: no threshold or direction, only how long they last.</summary>
     public static bool IsState(this AlertMetric metric) =>
-        metric is AlertMetric.HostOffline or AlertMetric.ServiceFailed or AlertMetric.ContainerDown or AlertMetric.UpsOnBattery;
+        metric is AlertMetric.HostOffline or AlertMetric.ServiceFailed or AlertMetric.ContainerDown or AlertMetric.UpsOnBattery
+            or AlertMetric.UnifiDeviceOffline;
 
     /// <summary>
     /// Alerts that end when their resource stops being observed, such as a service no longer failing or a
     /// container back up, rather than when a measurement returns to normal.
     /// </summary>
-    public static bool ResolvesWhenUnobserved(this AlertMetric metric) => metric is AlertMetric.ServiceFailed || metric.IsContainer();
+    public static bool ResolvesWhenUnobserved(this AlertMetric metric) =>
+        metric is AlertMetric.ServiceFailed or AlertMetric.UnifiDeviceOffline || metric.IsContainer();
 
     /// <summary>Host-wide measurements, which have the 5-minute rollup anomaly rules learn from.</summary>
     public static bool SupportsAnomaly(this AlertMetric metric) => !metric.IsState() && !metric.IsPerResource();
@@ -155,6 +161,7 @@ public static class AlertMetrics
         AlertMetric.UpsLoad => "UPS load",
         AlertMetric.UpsChargeOnBattery => "UPS charge on battery",
         AlertMetric.UpsRuntimeOnBattery => "UPS runtime on battery",
+        AlertMetric.UnifiDeviceOffline => "UniFi device offline",
         _ => metric.ToString(),
     };
 }

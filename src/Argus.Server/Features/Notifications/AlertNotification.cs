@@ -52,6 +52,7 @@ public sealed record AlertNotification(
             : "Has never reported",
         { Metric: AlertMetric.ServiceFailed } => $"{alert.ResourceKey} has failed",
         { Metric: AlertMetric.ContainerDown } => $"{alert.ResourceKey} is down",
+        { Metric: AlertMetric.UnifiDeviceOffline } => $"{alert.ResourceKey} cannot be reached by its UniFi console",
         { Condition: AlertCondition.Anomaly } => $"{Format(alert, alert.Value)}, usually {Format(alert, alert.Baseline)}",
         _ => $"{Format(alert, alert.Value)}, threshold {Format(alert, alert.Threshold)}",
     };

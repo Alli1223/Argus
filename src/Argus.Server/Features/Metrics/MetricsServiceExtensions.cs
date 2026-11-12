@@ -12,6 +12,7 @@ public static class MetricsServiceExtensions
         services.AddSingleton<MetricsIngestor>();
         services.AddSingleton<TimeSeriesQueries>();
         services.AddSingleton<Summary.SummaryQueries>();
+        services.AddSingleton<Unifi.UnifiQueries>();
         services.AddSingleton<Containers.ContainerStore>();
         services.AddSingleton<Containers.AgentCommandBroker>();
         return services;

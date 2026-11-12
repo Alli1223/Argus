@@ -225,6 +225,11 @@ public sealed class AlertEvaluator(
             return await ObserveContainerRestartsAsync(rule, hosts, duration, now, cancellationToken);
         }
 
+        if (rule.Metric == AlertMetric.UnifiDeviceOffline)
+        {
+            return await ObserveUnifiDevicesAsync(rule, hosts, duration, now, cancellationToken);
+        }
+
         var anomaly = rule.Condition == AlertCondition.Anomaly;
         if (anomaly && duration < AlertDecision.MinimumAnomalyDuration)
         {
@@ -320,6 +325,31 @@ public sealed class AlertEvaluator(
             FROM host_service_failures f
             JOIN host_service_checks c ON c.host_id = f.host_id AND c.checked_at = f.last_seen
             WHERE f.host_id = ANY(@host_ids) AND (@resource::text IS NULL OR f.service = @resource)
+            """,
+            new
+            {
+                host_ids = byId.Keys.ToArray(),
+                resource = string.IsNullOrWhiteSpace(rule.ResourceFilter) ? null : rule.ResourceFilter,
+            },
+            cancellationToken: cancellationToken));
+
+        return rows
+            .Where(row => byId.ContainsKey(row.HostId))
+            .Select(row => new Observation(
+                byId[row.HostId], row.Service, AlertDecision.EvaluateServiceFailure(row.SinceUtc, duration, now)))
+            .ToList();
+    }
+
+    /// <summary>UniFi devices offline in each console's newest report, each since it went offline.</summary>
+    private async Task<List<Observation>> ObserveUnifiDevicesAsync(
+        AlertRule rule, List<HostInfo> hosts, TimeSpan duration, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var byId = hosts.ToDictionary(host => host.Id);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<ServiceFailureRow>(new CommandDefinition("""
+            SELECT host_id, name AS service, state_since AS since
+            FROM unifi_devices
+            WHERE host_id = ANY(@host_ids) AND NOT online AND (@resource::text IS NULL OR name = @resource)
             """,
             new
             {

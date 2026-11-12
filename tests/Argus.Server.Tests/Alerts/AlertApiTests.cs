@@ -138,7 +138,7 @@ public sealed class AlertApiTests(AlertsFixture app) : IClassFixture<AlertsFixtu
             [
                 AlertMetric.CpuUsage, AlertMetric.MemoryUsage, AlertMetric.DiskUsage, AlertMetric.HostOffline, AlertMetric.ServiceFailed,
                 AlertMetric.ContainerDown, AlertMetric.ContainerRestarts, AlertMetric.UpsOnBattery, AlertMetric.UpsBatteryCharge,
-                AlertMetric.UpsBatteryCharge,
+                AlertMetric.UpsBatteryCharge, AlertMetric.UnifiDeviceOffline,
             ],
             rules.Select(rule => rule.Metric).Order());
         Assert.All(rules, rule => Assert.True(rule.Enabled));

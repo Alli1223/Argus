@@ -154,6 +154,7 @@ public static class MetricsBatchValidator
             .ToList(),
         Containers = sample.Containers is { } report ? Clean(report) : null,
         Proxmox = sample.Proxmox is { } proxmox ? Clean(proxmox) : null,
+        Unifi = sample.Unifi is { } unifi ? Clean(unifi) : null,
         ContainerUsage = sample.ContainerUsage?
             .Where(usage => !string.IsNullOrWhiteSpace(usage.Name))
             .DistinctBy(usage => usage.Name)
@@ -244,6 +245,51 @@ public static class MetricsBatchValidator
                 MaxMemoryBytes = guest.MaxMemoryBytes is > 0 and var maxMemory ? maxMemory : null,
                 MaxDiskBytes = guest.MaxDiskBytes is > 0 and var maxDisk ? maxDisk : null,
                 Tags = guest.Tags.Where(tag => !string.IsNullOrWhiteSpace(tag)).Take(AgentLimits.MaxProxmoxTags).Select(tag => Clip(tag.Trim(), StateLength * 2)).ToList(),
+            })
+            .ToList(),
+    };
+
+    /// <summary>Devices and clients listed once each by MAC address, with counts and rates that make sense.</summary>
+    private static UnifiReport Clean(UnifiReport report) => new()
+    {
+        Site = ClipOptional(report.Site, NameLength),
+        Version = ClipOptional(report.Version, FsTypeLength),
+        Problem = ClipOptional(report.Problem, ProblemLength),
+        WanRxBytesPerSec = Finite(report.WanRxBytesPerSec) is { } rx ? Rate(rx) : null,
+        WanTxBytesPerSec = Finite(report.WanTxBytesPerSec) is { } tx ? Rate(tx) : null,
+        WiredClients = report.WiredClients is { } wired ? Math.Max(0, wired) : null,
+        WirelessClients = report.WirelessClients is { } wireless ? Math.Max(0, wireless) : null,
+        GuestClients = report.GuestClients is { } guests ? Math.Max(0, guests) : null,
+        Devices = report.Devices?
+            .Where(device => !string.IsNullOrWhiteSpace(device.Mac))
+            .DistinctBy(device => device.Mac.Trim().ToLowerInvariant())
+            .Take(AgentLimits.MaxUnifiDevices)
+            .Select(device => device with
+            {
+                Mac = Clip(device.Mac.Trim().ToLowerInvariant(), StateLength * 2),
+                Name = Clip(string.IsNullOrWhiteSpace(device.Name) ? device.Mac.Trim() : device.Name.Trim(), NameLength),
+                Model = ClipOptional(device.Model, StateLength * 2),
+                Type = ClipOptional(device.Type, StateLength),
+                UptimeSeconds = device.UptimeSeconds is >= 0 and var uptime ? uptime : null,
+                CpuPercent = Percent(Finite(device.CpuPercent)),
+                MemoryPercent = Percent(Finite(device.MemoryPercent)),
+                RxBytesPerSec = Finite(device.RxBytesPerSec) is { } deviceRx ? Rate(deviceRx) : null,
+                TxBytesPerSec = Finite(device.TxBytesPerSec) is { } deviceTx ? Rate(deviceTx) : null,
+                Clients = device.Clients is >= 0 and var clients ? clients : null,
+            })
+            .ToList(),
+        Clients = report.Clients?
+            .Where(client => !string.IsNullOrWhiteSpace(client.Mac) && double.IsFinite(client.IntervalSeconds) && client.IntervalSeconds > 0)
+            .DistinctBy(client => client.Mac.Trim().ToLowerInvariant())
+            .Take(AgentLimits.MaxUnifiClients)
+            .Select(client => client with
+            {
+                Mac = Clip(client.Mac.Trim().ToLowerInvariant(), StateLength * 2),
+                Name = Clip(string.IsNullOrWhiteSpace(client.Name) ? client.Mac.Trim() : client.Name.Trim(), NameLength),
+                Ip = ClipOptional(client.Ip, StateLength * 2),
+                Network = ClipOptional(client.Network, NameLength),
+                DownloadedBytes = Math.Max(0, client.DownloadedBytes),
+                UploadedBytes = Math.Max(0, client.UploadedBytes),
             })
             .ToList(),
     };
