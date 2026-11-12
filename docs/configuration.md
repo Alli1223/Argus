@@ -176,6 +176,10 @@ starting with `ARGUS_` override the file: `ARGUS_SERVERURL`, `ARGUS_ENROLLMENTTO
 | `ProxmoxActions` | `false` | `true` or `false` | Lets people who can see this machine in Argus start, shut down, restart and stop its Proxmox VE guests. |
 | `ProxmoxUrl` | `https://127.0.0.1:8006` | an https address | Proxmox VE's API. Its certificate is checked unless it is on this machine. |
 | `ProxmoxFingerprint` | none | `AB:CD:…` | The SHA-256 fingerprint of Proxmox VE's certificate, for an API on another machine whose certificate no authority signed. |
+| `UnifiUrl` | none | an https address | A UniFi OS console to read the network from, such as `https://192.168.1.1`; see [UniFi](#unifi). `--unifi` sets it. |
+| `UnifiApiKey` | none | text | An API key made in UniFi Network under Settings → Control Plane → Integrations. |
+| `UnifiSite` | `default` | a site's short name | The UniFi site to read. |
+| `UnifiFingerprint` | none | `AB:CD:…` | The SHA-256 fingerprint of the console's certificate. The install script records it; without it the agent's problem report gives the fingerprint the console presented. |
 | `DockerSocket` | `/var/run/docker.sock` | a path | Docker's socket. On Linux the agent lists containers whenever the socket exists and it may use it; see [Containers](#containers). |
 | `HostRoot` | none | a path | Where the machine's own filesystem is mounted when the agent runs in a container, such as `/host`; see [The agent in a container](#the-agent-in-a-container). |
 | `UpsServer` | `localhost:3493` | `host` or `host:port`, or empty | The Network UPS Tools server (upsd) to read UPSes from; see [UPS](#ups). Empty stops the agent looking. |
@@ -292,6 +296,35 @@ migration, offer no actions.
 In a cluster, install the agent on every node: each lists only the guests running on it. Shutting a
 node down with [power actions](#power) shuts its guests down first, as Proxmox VE always does.
 `uninstall.sh --purge` deletes `argus@pve` and its role.
+
+### UniFi
+
+An agent on the same network as a UniFi OS console (a Dream Machine, Cloud Gateway, Cloud Key and so on,
+with UniFi Network 9.0 or later) can read the network from it: internet traffic through the gateway,
+how many clients are connected, each gateway, switch and access point with its state and what it uses,
+and how much each client downloads and uploads. One agent per network is enough. The **Network** page
+shows it all, the **Summary** page adds the internet traffic up by day, month and year, and the
+"UniFi device offline" alert rule watches the devices.
+
+Make an API key in UniFi Network under Settings → Control Plane → Integrations (a key made in the cloud
+Site Manager does not work on the console itself), save it in a file, and install or reinstall the
+agent with:
+
+```sh
+… | sudo bash -s -- --server … --unifi https://192.168.1.1 --unifi-key-file ./unifi.key
+```
+
+The install script keeps the address and key in `/etc/argus-agent/unifi.env`, which only root can read,
+and records the fingerprint of the certificate the console presents, which the agent then trusts:
+UniFi consoles sign their own. Elsewhere, such as on Windows or in the agent's container, set `UnifiUrl`,
+`UnifiApiKey` and `UnifiFingerprint` yourself; until the fingerprint is set, the Network page shows the
+one the console presented.
+
+The agent reads internet traffic and client counts with every reading, and devices and each client's
+traffic once a minute. Client traffic is how much the console's byte counters for the client grew
+between two reports, so a client's first minute after the agent starts is not counted. It includes
+traffic between machines on the network, not only the internet. Everything is
+read only; Argus changes nothing on the console.
 
 ### Containers
 

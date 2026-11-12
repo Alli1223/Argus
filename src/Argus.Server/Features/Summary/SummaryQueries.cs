@@ -120,6 +120,18 @@ public sealed class SummaryQueries(NpgsqlDataSource dataSource)
             GROUP BY 1, 2
             """, parameters, cancellationToken: cancellationToken));
 
+        var internet = (await connection.QueryAsync<InternetRow>(new CommandDefinition($"""
+            SELECT p.n AS period,
+                   sum(u.wan_rx_bps * least(u.samples * @interval, 3600))::float8 AS downloaded_bytes,
+                   sum(u.wan_tx_bps * least(u.samples * @interval, 3600))::float8 AS uploaded_bytes
+            FROM unifi_metrics_1h u
+            JOIN {Periods} ON u.bucket >= p.start AND u.bucket < p.finish
+            WHERE u.host_id = ANY(@host_ids) AND u.bucket >= @from AND u.bucket < @to
+            GROUP BY 1
+            HAVING count(u.wan_rx_bps) > 0 OR count(u.wan_tx_bps) > 0
+            """, parameters, cancellationToken: cancellationToken)))
+            .ToDictionary(row => row.Period, row => new InternetUsage(row.DownloadedBytes ?? 0, row.UploadedBytes ?? 0));
+
         return SummaryMerge.Merge(
             periods,
             hosts,
@@ -129,7 +141,8 @@ public sealed class SummaryQueries(NpgsqlDataSource dataSource)
                 row.MemoryAveragePercent, row.MemoryPeakPercent)),
             temperatures.Select(row => new HostPeriodTemperature(row.Period, row.HostId, row.PeakCelsius)),
             alerts.Select(row => new HostPeriodAlerts(row.Period, row.HostId, row.Alerts, row.CriticalAlerts)),
-            now);
+            now,
+            internet);
     }
 
     private static DateTimeOffset Utc(DateTime utc) => new(DateTime.SpecifyKind(utc, DateTimeKind.Utc));
@@ -162,6 +175,13 @@ public sealed class SummaryQueries(NpgsqlDataSource dataSource)
         public int Period { get; set; }
         public Guid HostId { get; set; }
         public double? PeakCelsius { get; set; }
+    }
+
+    private sealed class InternetRow
+    {
+        public int Period { get; set; }
+        public double? DownloadedBytes { get; set; }
+        public double? UploadedBytes { get; set; }
     }
 
     private sealed class AlertRow

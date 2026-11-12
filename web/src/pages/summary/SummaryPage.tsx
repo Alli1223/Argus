@@ -16,7 +16,7 @@ import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useUsageSummary } from "../../api/summary";
-import type { UsageStats, UsageSummary } from "../../api/types";
+import type { UsagePeriod, UsageStats, UsageSummary } from "../../api/types";
 import { BarChart, type BarCategory } from "../../components/charts/BarChart";
 import type { ChartSeries } from "../../components/charts/chartData";
 import { DISK_COLORS, SERIES_COLORS } from "../../components/charts/chartPalette";
@@ -142,6 +142,8 @@ function SummaryContent({ summary, option, selected, onSelect, refreshing }: Sum
         stats={current.totals}
         previous={previous?.totals}
         previousLabel={previous && label(selected + 1)}
+        internet={summary.periods.some((period) => period.internet) ? current.internet : undefined}
+        previousInternet={previous?.internet}
       />
 
       <SummaryCharts
@@ -216,10 +218,34 @@ function SummaryCharts({ summary, label, selected, onSelect, refreshing }: Summa
 
   return (
     <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mt="xl">
+      {oldestFirst.some((period) => period.internet) && (
+        <Box style={{ gridColumn: "1 / -1" }}>
+          <BarChart
+            {...chartProps}
+            title="Internet"
+            description="Data downloaded from and uploaded to the internet, through the UniFi gateway"
+            unit="bytes"
+            series={[
+              {
+                key: "down",
+                label: "Downloaded",
+                color: colors.networkReceivedBytes,
+                values: oldestFirst.map((period) => period.internet?.downloadedBytes ?? null),
+              },
+              {
+                key: "up",
+                label: "Uploaded",
+                color: colors.networkSentBytes,
+                values: oldestFirst.map((period) => period.internet?.uploadedBytes ?? null),
+              },
+            ]}
+          />
+        </Box>
+      )}
       <BarChart
         {...chartProps}
-        title="Network"
-        description="Data downloaded and uploaded by all machines"
+        title="Machine traffic"
+        description="Data received and sent by all machines, local network included"
         unit="bytes"
         series={[
           {
@@ -422,14 +448,34 @@ interface HeadlineProps {
   stats: UsageStats;
   previous?: UsageStats;
   previousLabel?: string;
+  /** The period's internet traffic; undefined hides it, for fleets without a UniFi network. */
+  internet?: UsagePeriod["internet"];
+  previousInternet?: UsagePeriod["internet"];
 }
 
 /** The selected period's fleet totals, each with the period before beside it. */
-function Headline({ stats, previous, previousLabel }: HeadlineProps) {
+function Headline({ stats, previous, previousLabel, internet, previousInternet }: HeadlineProps) {
   const before = (text: string) => (previous ? `${previousLabel}: ${text}` : undefined);
 
   return (
-    <SimpleGrid cols={{ base: 2, sm: 3, lg: 6 }} spacing="md">
+    <SimpleGrid
+      cols={internet === undefined ? { base: 2, sm: 3, lg: 6 } : { base: 2, sm: 4, xl: 8 }}
+      spacing="md"
+    >
+      {internet !== undefined && (
+        <>
+          <Tile
+            label="Internet down"
+            value={formatBytes(internet?.downloadedBytes)}
+            note={before(formatBytes(previousInternet?.downloadedBytes))}
+          />
+          <Tile
+            label="Internet up"
+            value={formatBytes(internet?.uploadedBytes)}
+            note={before(formatBytes(previousInternet?.uploadedBytes))}
+          />
+        </>
+      )}
       <Tile
         label="Downloaded"
         value={formatBytes(stats.networkReceivedBytes)}

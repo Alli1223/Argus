@@ -22,7 +22,8 @@ export type AlertMetric =
   | "UpsBatteryRuntime"
   | "UpsLoad"
   | "UpsChargeOnBattery"
-  | "UpsRuntimeOnBattery";
+  | "UpsRuntimeOnBattery"
+  | "UnifiDeviceOffline";
 export type AlertOperator = "Above" | "Below";
 /** A fixed threshold, or the host's usual level (the threshold then counts standard deviations). */
 export type AlertCondition = "Threshold" | "Anomaly";
@@ -751,6 +752,8 @@ export interface UsagePeriod {
   totals: UsageStats;
   /** Hosts that reported or alerted in the period. */
   hosts: { hostId: string; stats: UsageStats }[];
+  /** Internet traffic through the UniFi gateways the hosts read; null when none reported in the period. */
+  internet?: { downloadedBytes: number; uploadedBytes: number } | null;
 }
 
 /** Usage by day, month or year, newest period first, on the calendar of `timeZone`. */
@@ -761,4 +764,58 @@ export interface UsageSummary {
   historyDays: number;
   hosts: { hostId: string; displayName: string }[];
   periods: UsagePeriod[];
+}
+
+/** The newest reading of a UniFi network as a whole. */
+export interface UnifiNow {
+  time: string;
+  wanRxBytesPerSec: number | null;
+  wanTxBytesPerSec: number | null;
+  wiredClients: number | null;
+  wirelessClients: number | null;
+  guestClients: number | null;
+}
+
+export interface UnifiDevice {
+  mac: string;
+  name: string;
+  /** UniFi's model code, such as "U6LR". */
+  model: string | null;
+  /** UniFi's type: ugw, udm, usw, uap and so on. */
+  type: string | null;
+  online: boolean;
+  uptimeSeconds: number | null;
+  cpuPercent: number | null;
+  memoryPercent: number | null;
+  rxBytesPerSec: number | null;
+  txBytesPerSec: number | null;
+  clients: number | null;
+  seenAt: string;
+  /** When the device last went online or offline. */
+  stateSince: string;
+}
+
+/** A UniFi network one of the user's hosts reads from its console. */
+export interface UnifiNetwork {
+  hostId: string;
+  hostName: string;
+  checkedAt: string;
+  site: string | null;
+  version: string | null;
+  /** Why the agent could not read the console, when it could not. */
+  problem: string | null;
+  now: UnifiNow | null;
+  devices: UnifiDevice[];
+}
+
+/** What one client moved over a range. */
+export interface UnifiClientTotal {
+  mac: string;
+  name: string;
+  ip: string | null;
+  wired: boolean;
+  network: string | null;
+  downloadedBytes: number;
+  uploadedBytes: number;
+  lastSeen: string;
 }

@@ -23,6 +23,13 @@
 #                   Also let people who can see this machine in Argus start, shut down, restart and stop its
 #                   guests (the token gains VM.PowerMgmt). Implies --proxmox. Reinstalling without it leaves
 #                   this as it is.
+#   --unifi URL     Read the UniFi network from the UniFi OS console at URL, such as https://192.168.1.1: internet
+#                   traffic, devices and clients. One agent per network is enough. Needs --unifi-key-file.
+#   --unifi-key-file FILE
+#                   A file holding an API key made in UniFi Network under Settings > Control Plane > Integrations.
+#                   The installer trusts the certificate the console presents now, so run it on the network.
+#   --unifi-site SITE
+#                   The UniFi site to read, by its short name; "default" unless you made more sites.
 set -euo pipefail
 
 SERVER=""
@@ -33,6 +40,9 @@ CONTAINER_ACTIONS=false
 POWER_ACTIONS=false
 PROXMOX=false
 PROXMOX_ACTIONS=false
+UNIFI_URL=""
+UNIFI_KEY_FILE=""
+UNIFI_SITE=default
 INSTALL_DIR=/opt/argus-agent
 CONFIG_DIR=/etc/argus-agent
 STATE_DIR=/var/lib/argus-agent
@@ -58,7 +68,10 @@ while [ $# -gt 0 ]; do
     --power-actions) POWER_ACTIONS=true; shift ;;
     --proxmox) PROXMOX=true; shift ;;
     --proxmox-actions) PROXMOX_ACTIONS=true; PROXMOX=true; shift ;;
-    *) fail "unknown option '$1' (expected --server, --token, --binary, --docker, --container-actions, --power-actions, --proxmox or --proxmox-actions)" ;;
+    --unifi) UNIFI_URL="${2:-}"; shift 2 ;;
+    --unifi-key-file) UNIFI_KEY_FILE="${2:-}"; shift 2 ;;
+    --unifi-site) UNIFI_SITE="${2:-}"; shift 2 ;;
+    *) fail "unknown option '$1' (expected --server, --token, --binary, --docker, --container-actions, --power-actions, --proxmox, --proxmox-actions, --unifi, --unifi-key-file or --unifi-site)" ;;
   esac
 done
 
@@ -69,6 +82,22 @@ if $DOCKER && ! getent group docker >/dev/null 2>&1; then
 fi
 if $PROXMOX && ! command -v pveum >/dev/null 2>&1; then
   fail "--proxmox needs Proxmox VE: this machine has no pveum"
+fi
+if [ -n "$UNIFI_URL" ]; then
+  UNIFI_URL="${UNIFI_URL%/}"
+  case "$UNIFI_URL" in
+    https://*) ;;
+    *) fail "--unifi must be the console's https address, e.g. https://192.168.1.1" ;;
+  esac
+  case "$UNIFI_URL$UNIFI_SITE" in
+    *[[:space:]\"\\]*) fail "--unifi and --unifi-site cannot contain spaces, quotes or backslashes" ;;
+  esac
+  [ -n "$UNIFI_KEY_FILE" ] || fail "--unifi needs --unifi-key-file, a file holding the console's API key"
+  [ -r "$UNIFI_KEY_FILE" ] || fail "cannot read the UniFi API key file $UNIFI_KEY_FILE"
+  UNIFI_KEY="$(tr -d '[:space:]' < "$UNIFI_KEY_FILE")"
+  [ -n "$UNIFI_KEY" ] || fail "the UniFi API key file $UNIFI_KEY_FILE is empty"
+elif [ -n "$UNIFI_KEY_FILE" ]; then
+  fail "--unifi-key-file needs --unifi, the console's address"
 fi
 
 SERVER="${SERVER%/}"
@@ -219,6 +248,34 @@ if $PROXMOX; then
     fi
   } > "/etc/systemd/system/$SERVICE.service.d/proxmox.conf"
   chmod 0644 "/etc/systemd/system/$SERVICE.service.d/proxmox.conf"
+fi
+if [ -n "$UNIFI_URL" ]; then
+  step "Letting Argus read the UniFi network at $UNIFI_URL"
+  # UniFi consoles sign their own certificates: trust the one the console presents now.
+  FINGERPRINT=""
+  if command -v openssl >/dev/null 2>&1; then
+    HOSTPORT="${UNIFI_URL#https://}"
+    HOSTPORT="${HOSTPORT%%/*}"
+    case "$HOSTPORT" in *:*) ;; *) HOSTPORT="$HOSTPORT:443" ;; esac
+    FINGERPRINT="$(openssl s_client -connect "$HOSTPORT" </dev/null 2>/dev/null \
+      | openssl x509 -noout -fingerprint -sha256 2>/dev/null | sed -n 's/.*=//p')" || true
+  fi
+  if [ -z "$FINGERPRINT" ]; then
+    echo "    Could not read the console's certificate; the agent's first report will show its fingerprint."
+  fi
+  # systemd reads this as root before starting the agent, so only root may read the key.
+  (
+    umask 077
+    printf '%s\n' "ARGUS_UNIFIURL=$UNIFI_URL" "ARGUS_UNIFIAPIKEY=$UNIFI_KEY" "ARGUS_UNIFISITE=$UNIFI_SITE" \
+      "ARGUS_UNIFIFINGERPRINT=$FINGERPRINT" > "$CONFIG_DIR/unifi.env"
+  )
+  chown root:root "$CONFIG_DIR/unifi.env"
+  chmod 0600 "$CONFIG_DIR/unifi.env"
+  install -d -m 0755 "/etc/systemd/system/$SERVICE.service.d"
+  printf '%s\n' "[Service]" \
+    "# The UniFi console the agent reads the network from, and its API key." \
+    "EnvironmentFile=$CONFIG_DIR/unifi.env" > "/etc/systemd/system/$SERVICE.service.d/unifi.conf"
+  chmod 0644 "/etc/systemd/system/$SERVICE.service.d/unifi.conf"
 fi
 
 systemctl daemon-reload

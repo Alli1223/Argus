@@ -18,6 +18,8 @@ public static class RetentionPolicies
             ("temperature_metrics", options.RawDays),
             ("ups_metrics", options.RawDays),
             ("container_metrics", options.RawDays),
+            ("unifi_metrics", options.RawDays),
+            ("unifi_client_traffic", options.RawDays),
             ("host_metrics_5m", options.FiveMinuteDays),
             ("host_metrics_1h", options.HourlyDays),
             ("filesystem_metrics_1h", options.HourlyDays),
@@ -25,6 +27,8 @@ public static class RetentionPolicies
             ("temperature_metrics_1h", options.HourlyDays),
             ("ups_metrics_1h", options.HourlyDays),
             ("container_metrics_1h", options.HourlyDays),
+            ("unifi_metrics_1h", options.HourlyDays),
+            ("unifi_client_traffic_1h", options.HourlyDays),
             // What happened to containers is small and useful for longer than their readings.
             ("container_events", options.FiveMinuteDays),
         ];

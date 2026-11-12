@@ -29,6 +29,7 @@ export const METRIC_LABELS: Record<AlertMetric, string> = {
   UpsLoad: "UPS load",
   UpsChargeOnBattery: "UPS charge on battery",
   UpsRuntimeOnBattery: "UPS runtime on battery",
+  UnifiDeviceOffline: "UniFi device offline",
 };
 
 type MetricUnit = "percent" | "bytesPerSecond" | "perCore" | "restarts" | "seconds" | "none";
@@ -53,6 +54,7 @@ export const METRIC_UNITS: Record<AlertMetric, MetricUnit> = {
   UpsLoad: "percent",
   UpsChargeOnBattery: "percent",
   UpsRuntimeOnBattery: "seconds",
+  UnifiDeviceOffline: "none",
 };
 
 /** A reading or threshold of a metric: "93.2%", "12.0 MB/s", "1.50 per core", "4 restarts", "5m". */

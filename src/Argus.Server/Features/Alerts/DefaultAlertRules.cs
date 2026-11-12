@@ -25,6 +25,9 @@ public static class DefaultAlertRules
         Rule(ownerId, now, "UPS on battery", AlertMetric.UpsOnBattery, 0, AlertSeverity.Warning, TimeSpan.Zero),
         Rule(ownerId, now, "UPS battery low", AlertMetric.UpsBatteryCharge, 75, AlertSeverity.Warning, TimeSpan.FromMinutes(1), AlertOperator.Below),
         Rule(ownerId, now, "UPS battery critical", AlertMetric.UpsBatteryCharge, 40, AlertSeverity.Critical, TimeSpan.FromMinutes(1), AlertOperator.Below),
+
+        // Quiet without a UniFi console. Two minutes rides out a device restarting for an update.
+        Rule(ownerId, now, "UniFi device offline", AlertMetric.UnifiDeviceOffline, 0, AlertSeverity.Warning, TimeSpan.FromMinutes(2)),
     ];
 
     private static AlertRule Rule(

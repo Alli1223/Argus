@@ -430,6 +430,8 @@ public sealed class TimeSeriesQueries(NpgsqlDataSource dataSource)
             DELETE FROM ups_metrics WHERE host_id = @host_id;
             DELETE FROM container_metrics WHERE host_id = @host_id;
             DELETE FROM container_events WHERE host_id = @host_id;
+            DELETE FROM unifi_metrics WHERE host_id = @host_id;
+            DELETE FROM unifi_client_traffic WHERE host_id = @host_id;
             """, new { host_id = hostId }, cancellationToken: cancellationToken));
     }
 

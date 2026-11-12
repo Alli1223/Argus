@@ -211,6 +211,7 @@ function Reading({ alert }: { alert: Alert }) {
   if (alert.metric === "HostOffline") return <Text fz="sm">Not reporting</Text>;
   if (alert.metric === "ServiceFailed") return <Text fz="sm">Failed</Text>;
   if (alert.metric === "ContainerDown") return <Text fz="sm">Down</Text>;
+  if (alert.metric === "UnifiDeviceOffline") return <Text fz="sm">Offline</Text>;
   if (alert.metric === "ContainerRestarts") {
     return (
       <Text fz="sm">

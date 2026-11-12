@@ -82,7 +82,8 @@ internal static class AgentCommands
             PlatformCollectors.CreateContainerSource(loggers, config, TimeProvider.System),
             PlatformCollectors.CreateServiceStatusSource(loggers),
             TimeProvider.System,
-            PlatformCollectors.CreateProxmoxSource(loggers, config, Collection.Proxmox.ProxmoxNode.Create(config), TimeProvider.System));
+            PlatformCollectors.CreateProxmoxSource(loggers, config, Collection.Proxmox.ProxmoxNode.Create(config), TimeProvider.System),
+            PlatformCollectors.CreateUnifiSource(loggers, config, TimeProvider.System));
         collector.Prime();
 
         // Rates (CPU, disk, network) need an interval to measure over.

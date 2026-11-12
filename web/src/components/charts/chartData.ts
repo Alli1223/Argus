@@ -1,7 +1,7 @@
 import { formatBytes, formatPercent, formatRate, formatTemperature } from "../../lib/format";
 
 /** How a chart's values read: percentages, bytes, byte rates, load averages or temperatures. */
-export type ChartUnit = "percent" | "bytes" | "bytesPerSecond" | "load" | "celsius";
+export type ChartUnit = "percent" | "bytes" | "bytesPerSecond" | "load" | "celsius" | "count";
 
 /** One line on a chart. Values line up with the chart's timestamps; null is a gap. */
 export interface ChartSeries {
@@ -26,6 +26,7 @@ export function formatValue(value: number | null | undefined, unit: ChartUnit): 
   if (unit === "bytes") return formatBytes(value);
   if (unit === "bytesPerSecond") return formatRate(value);
   if (unit === "celsius") return formatTemperature(value);
+  if (unit === "count") return String(Math.round(value));
   return value.toFixed(2);
 }
 
@@ -36,6 +37,7 @@ export function formatTick(value: number, unit: ChartUnit): string {
   if (unit === "bytes") return formatBytes(value).replace(/\.0 /, " ");
   if (unit === "bytesPerSecond") return `${formatBytes(value).replace(/\.0 /, " ")}/s`;
   if (unit === "celsius") return `${Number(value.toFixed(1))} °C`;
+  if (unit === "count") return String(Math.round(value));
   return String(Number(value.toFixed(2)));
 }
 

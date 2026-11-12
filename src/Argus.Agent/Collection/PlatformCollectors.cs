@@ -1,6 +1,7 @@
 using Argus.Agent.Collection.Containers;
 using Argus.Agent.Collection.Linux;
 using Argus.Agent.Collection.Proxmox;
+using Argus.Agent.Collection.Unifi;
 using Argus.Agent.Collection.Windows;
 using Argus.Agent.Configuration;
 
@@ -74,6 +75,10 @@ internal static class PlatformCollectors
         OperatingSystem.IsLinux() && node is not null
             ? new ProxmoxGuests(node, config.ProxmoxActions, time, loggers.CreateLogger<ProxmoxGuests>())
             : new NoProxmox();
+
+    /// <summary>UniFi consoles are read over the network, so any agent on it can do it.</summary>
+    public static IUnifiSource CreateUnifiSource(ILoggerFactory loggers, AgentConfig config, TimeProvider time) =>
+        UnifiNetwork.Create(config, time, loggers) as IUnifiSource ?? new NoUnifi();
 
     public static ITemperatureSource CreateTemperatureSource(ILoggerFactory loggers, AgentConfig config)
     {

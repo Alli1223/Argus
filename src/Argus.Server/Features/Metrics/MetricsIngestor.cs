@@ -51,6 +51,27 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
             batch.BatchCommands.Add(ContainerMetrics(hostId, samples));
         }
 
+        var unifi = samples.Where(sample => sample.Unifi is not null).ToList();
+        if (unifi.Any(sample => sample.Unifi!.Problem is null))
+        {
+            batch.BatchCommands.Add(UnifiMetrics(hostId, unifi));
+        }
+
+        if (unifi.Any(sample => sample.Unifi!.Clients is { Count: > 0 }))
+        {
+            batch.BatchCommands.Add(UnifiClientTraffic(hostId, unifi));
+        }
+
+        if (unifi.MaxBy(sample => sample.Timestamp) is { } unifiCheck)
+        {
+            batch.BatchCommands.Add(UnifiCheck(hostId, unifiCheck));
+        }
+
+        if (unifi.Where(sample => sample.Unifi!.Devices is not null).MaxBy(sample => sample.Timestamp) is { } deviceReport)
+        {
+            batch.BatchCommands.Add(UnifiDevices(hostId, deviceReport));
+        }
+
         if (samples.Where(sample => sample.TopProcesses is not null).MaxBy(sample => sample.Timestamp) is { } latest)
         {
             batch.BatchCommands.Add(ProcessSnapshot(hostId, latest));
@@ -249,6 +270,127 @@ public sealed class MetricsIngestor(NpgsqlDataSource dataSource)
                 Param("memory_limit", rows.Select(r => r.Usage.MemoryLimitBytes).ToArray()),
                 Param("net_rx", rows.Select(r => r.Usage.NetRxBytesPerSec).ToArray()),
                 Param("net_tx", rows.Select(r => r.Usage.NetTxBytesPerSec).ToArray()),
+            },
+        };
+    }
+
+    /// <summary>Internet traffic and client counts, one row per sample the console answered.</summary>
+    private static NpgsqlBatchCommand UnifiMetrics(Guid hostId, IReadOnlyList<MetricSample> samples)
+    {
+        var rows = samples.Where(s => s.Unifi!.Problem is null).ToList();
+        return new NpgsqlBatchCommand("""
+            INSERT INTO unifi_metrics (host_id, time, wan_rx_bps, wan_tx_bps, wired_clients, wireless_clients, guest_clients)
+            SELECT @host_id, * FROM unnest(
+                @time::timestamptz[], @wan_rx::float8[], @wan_tx::float8[], @wired::integer[], @wireless::integer[], @guests::integer[])
+            ON CONFLICT DO NOTHING
+            """)
+        {
+            Parameters =
+            {
+                Param("host_id", hostId),
+                Param("time", rows.Select(r => r.Timestamp).ToArray()),
+                Param("wan_rx", rows.Select(r => r.Unifi!.WanRxBytesPerSec).ToArray()),
+                Param("wan_tx", rows.Select(r => r.Unifi!.WanTxBytesPerSec).ToArray()),
+                Param("wired", rows.Select(r => r.Unifi!.WiredClients).ToArray()),
+                Param("wireless", rows.Select(r => r.Unifi!.WirelessClients).ToArray()),
+                Param("guests", rows.Select(r => r.Unifi!.GuestClients).ToArray()),
+            },
+        };
+    }
+
+    /// <summary>What each client moved between the agent's client reports.</summary>
+    private static NpgsqlBatchCommand UnifiClientTraffic(Guid hostId, IReadOnlyList<MetricSample> samples)
+    {
+        var rows = samples.SelectMany(s => s.Unifi!.Clients ?? [], (s, client) => (s.Timestamp, Client: client)).ToList();
+        return new NpgsqlBatchCommand("""
+            INSERT INTO unifi_client_traffic (host_id, time, mac, name, ip, wired, network, downloaded_bytes, uploaded_bytes)
+            SELECT @host_id, * FROM unnest(
+                @time::timestamptz[], @mac::text[], @name::text[], @ip::text[], @wired::boolean[], @network::text[],
+                @downloaded::bigint[], @uploaded::bigint[])
+            ON CONFLICT DO NOTHING
+            """)
+        {
+            Parameters =
+            {
+                Param("host_id", hostId),
+                Param("time", rows.Select(r => r.Timestamp).ToArray()),
+                Param("mac", rows.Select(r => r.Client.Mac).ToArray()),
+                Param("name", rows.Select(r => r.Client.Name).ToArray()),
+                Param("ip", rows.Select(r => r.Client.Ip).ToArray()),
+                Param("wired", rows.Select(r => r.Client.Wired).ToArray()),
+                Param("network", rows.Select(r => r.Client.Network).ToArray()),
+                Param("downloaded", rows.Select(r => r.Client.DownloadedBytes).ToArray()),
+                Param("uploaded", rows.Select(r => r.Client.UploadedBytes).ToArray()),
+            },
+        };
+    }
+
+    /// <summary>The newest check of the console: when, which site and version, and what went wrong if anything.</summary>
+    private static NpgsqlBatchCommand UnifiCheck(Guid hostId, MetricSample sample) => new("""
+        INSERT INTO unifi_checks (host_id, checked_at, site, version, problem)
+        VALUES (@host_id, @checked_at, @site, @version, @problem)
+        ON CONFLICT (host_id) DO UPDATE
+            SET checked_at = excluded.checked_at,
+                site = coalesce(excluded.site, unifi_checks.site),
+                version = coalesce(excluded.version, unifi_checks.version),
+                problem = excluded.problem
+            WHERE unifi_checks.checked_at < excluded.checked_at
+        """)
+    {
+        Parameters =
+        {
+            Param("host_id", hostId),
+            Param("checked_at", sample.Timestamp),
+            Param("site", sample.Unifi!.Site),
+            Param("version", sample.Unifi.Version),
+            Param("problem", sample.Unifi.Problem),
+        },
+    };
+
+    /// <summary>
+    /// Replaces the site's devices with the newest report. A device keeps the time it went online or offline
+    /// until that changes; devices no longer listed are removed. An older report than the stored one changes nothing.
+    /// </summary>
+    private static NpgsqlBatchCommand UnifiDevices(Guid hostId, MetricSample sample)
+    {
+        var devices = sample.Unifi!.Devices!;
+        return new NpgsqlBatchCommand("""
+            WITH newest AS (
+                SELECT @seen_at::timestamptz AS seen_at
+                WHERE NOT EXISTS (SELECT 1 FROM unifi_devices WHERE host_id = @host_id AND seen_at >= @seen_at)),
+            gone AS (
+                DELETE FROM unifi_devices
+                WHERE host_id = @host_id AND EXISTS (SELECT 1 FROM newest) AND NOT (mac = ANY(@mac)))
+            INSERT INTO unifi_devices (
+                host_id, mac, name, model, type, online, uptime_seconds, cpu_pct, mem_pct, rx_bps, tx_bps, clients, seen_at, state_since)
+            SELECT @host_id, d.mac, d.name, d.model, d.type, d.online, d.uptime, d.cpu, d.mem, d.rx, d.tx, d.clients, n.seen_at, n.seen_at
+            FROM newest n
+            CROSS JOIN unnest(
+                @mac::text[], @name::text[], @model::text[], @type::text[], @online::boolean[], @uptime::bigint[],
+                @cpu::real[], @mem::real[], @rx::float8[], @tx::float8[], @clients::integer[])
+                AS d(mac, name, model, type, online, uptime, cpu, mem, rx, tx, clients)
+            ON CONFLICT (host_id, mac) DO UPDATE
+                SET name = excluded.name, model = excluded.model, type = excluded.type, online = excluded.online,
+                    uptime_seconds = excluded.uptime_seconds, cpu_pct = excluded.cpu_pct, mem_pct = excluded.mem_pct,
+                    rx_bps = excluded.rx_bps, tx_bps = excluded.tx_bps, clients = excluded.clients, seen_at = excluded.seen_at,
+                    state_since = CASE WHEN unifi_devices.online = excluded.online THEN unifi_devices.state_since ELSE excluded.seen_at END
+            """)
+        {
+            Parameters =
+            {
+                Param("host_id", hostId),
+                Param("seen_at", sample.Timestamp),
+                Param("mac", devices.Select(d => d.Mac).ToArray()),
+                Param("name", devices.Select(d => d.Name).ToArray()),
+                Param("model", devices.Select(d => d.Model).ToArray()),
+                Param("type", devices.Select(d => d.Type).ToArray()),
+                Param("online", devices.Select(d => d.Online).ToArray()),
+                Param("uptime", devices.Select(d => d.UptimeSeconds).ToArray()),
+                Param("cpu", devices.Select(d => Real(d.CpuPercent)).ToArray()),
+                Param("mem", devices.Select(d => Real(d.MemoryPercent)).ToArray()),
+                Param("rx", devices.Select(d => d.RxBytesPerSec).ToArray()),
+                Param("tx", devices.Select(d => d.TxBytesPerSec).ToArray()),
+                Param("clients", devices.Select(d => d.Clients).ToArray()),
             },
         };
     }

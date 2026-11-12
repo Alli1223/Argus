@@ -79,6 +79,28 @@ public sealed class AgentConfig
     /// <summary>Whether the agent reads Proxmox VE: it has a token for it.</summary>
     public bool ReadsProxmox => !string.IsNullOrWhiteSpace(ProxmoxToken);
 
+    /// <summary>
+    /// Where a UniFi OS console is, such as https://192.168.1.1, for reading its network: internet traffic,
+    /// devices and clients. One agent on the network is enough. Empty on the rest.
+    /// </summary>
+    public string? UnifiUrl { get; set; }
+
+    /// <summary>An API key made in UniFi Network under Settings → Control Plane → Integrations.</summary>
+    public string? UnifiApiKey { get; set; }
+
+    /// <summary>The site to read, by its short name in UniFi Network's addresses; "default" for most networks.</summary>
+    public string UnifiSite { get; set; } = "default";
+
+    /// <summary>
+    /// The SHA-256 fingerprint of the console's certificate, as <c>AB:CD:…</c>. UniFi consoles sign their own
+    /// certificates, so the agent only trusts one with this fingerprint unless an authority signed it. When it
+    /// is missing, the agent's problem report gives the fingerprint the console presented.
+    /// </summary>
+    public string? UnifiFingerprint { get; set; }
+
+    /// <summary>Whether the agent reads a UniFi console: it has an address and an API key for it.</summary>
+    public bool ReadsUnifi => !string.IsNullOrWhiteSpace(UnifiUrl) && !string.IsNullOrWhiteSpace(UnifiApiKey);
+
     public string ResolvedStateDirectory =>
         string.IsNullOrWhiteSpace(StateDirectory) ? AgentPaths.DefaultStateDirectory : StateDirectory;
 
@@ -101,6 +123,11 @@ public sealed class AgentConfig
         if (ReadsProxmox && (!Uri.TryCreate(ProxmoxUrl, UriKind.Absolute, out var proxmox) || proxmox.Scheme != Uri.UriSchemeHttps))
         {
             errors.Add("ProxmoxUrl must be an absolute https URL, e.g. https://127.0.0.1:8006.");
+        }
+
+        if (ReadsUnifi && (!Uri.TryCreate(UnifiUrl, UriKind.Absolute, out var unifi) || unifi.Scheme != Uri.UriSchemeHttps))
+        {
+            errors.Add("UnifiUrl must be an absolute https URL, e.g. https://192.168.1.1.");
         }
 
         if (BufferCapacity is < 10 or > 100_000)

@@ -388,13 +388,15 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
                 ? "How far back to count restarts."
                 : values.metric === "ContainerDown"
                   ? "How long a container must stay down. 0 raises the alert at the next report."
-                  : values.metric === "UpsOnBattery"
-                    ? "How long a UPS must run on its battery. 0 raises the alert within a reading or two."
-                    : isServiceMetric(values.metric)
-                      ? "How long a service must stay failed. 0 raises the alert at the next check."
-                      : anomaly
-                        ? "How long the average must stay unusual. At least 5 minutes."
-                        : "How long the condition must hold. 0 fires on the first reading."
+                  : values.metric === "UnifiDeviceOffline"
+                    ? "How long a device must stay offline. Two minutes rides out a restart for an update."
+                    : values.metric === "UpsOnBattery"
+                      ? "How long a UPS must run on its battery. 0 raises the alert within a reading or two."
+                      : isServiceMetric(values.metric)
+                        ? "How long a service must stay failed. 0 raises the alert at the next check."
+                        : anomaly
+                          ? "How long the average must stay unusual. At least 5 minutes."
+                          : "How long the condition must hold. 0 fires on the first reading."
           }
           suffix=" min"
           min={offline || restarts ? 1 : anomaly ? MIN_ANOMALY_MINUTES : 0}
@@ -429,6 +431,14 @@ function RuleForm({ rule, onClose }: { rule: AlertRule | null; onClose: () => vo
             label="UPS"
             description="Leave empty to watch every UPS. Use the name the machine's UPS server (NUT) gives it."
             placeholder="ups"
+            {...form.getInputProps("resourceFilter")}
+          />
+        )}
+        {resourceKind(values.metric) === "device" && (
+          <TextInput
+            label="Device"
+            description="Leave empty to watch every UniFi device. Use the name UniFi Network gives it."
+            placeholder="Office AP"
             {...form.getInputProps("resourceFilter")}
           />
         )}
