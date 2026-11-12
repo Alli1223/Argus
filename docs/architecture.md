@@ -126,13 +126,16 @@ Time-series tables (TimescaleDB hypertables, created with SQL in migrations):
 | `ups_metrics` | `(host_id, ups, time)` | Status, charge, runtime, load and voltages per UPS |
 | `container_metrics` | `(host_id, container, time)` | CPU, memory and traffic per running container |
 | `container_events` | `(host_id, container, time)` | Containers starting, stopping, restarting, failing health checks, appearing and going |
+| `unifi_metrics` | `(host_id, time)` | A UniFi network's internet traffic and connected clients |
+| `unifi_client_traffic` | `(host_id, mac, time)` | Bytes each UniFi client downloaded and uploaded between the agent's client reports |
 
 Each host's newest container report is kept in `host_container_checks` and `host_containers`; events
 come from comparing each report with the one before. Each Proxmox VE node's newest list of guests is
-kept in `proxmox_checks`, one row per host with the guests as JSON.
+kept in `proxmox_checks`, one row per host with the guests as JSON. Each UniFi console's newest check is
+kept in `unifi_checks` and its devices in `unifi_devices`, each with when it last went online or offline.
 
 Rollups: `host_metrics_5m` and `host_metrics_1h` continuous aggregates (avg / max per bucket), and
-hourly rollups of the filesystem, network, temperature, UPS and container tables.
+hourly rollups of the filesystem, network, temperature, UPS, container and UniFi tables.
 Raw data is compressed after a day and dropped after a configurable retention period; rollups
 are kept longer.
 

@@ -9,6 +9,8 @@ sends notifications; and a web app shows it all.
   machine, and every machine's temperature sensors on one page.
 - **Summary** of the long run: data downloaded and uploaded, written to and read from disk, CPU,
   memory, availability and alerts per day, month and year, for all machines together and each one.
+- **UniFi networks** read from a UniFi OS console: internet traffic, every gateway, switch and access
+  point, and how much each client downloads and uploads, with alerts when a device goes offline.
 - **UPSes** through Network UPS Tools: whether each runs on line power or its battery, its charge,
   runtime left and load.
 - **Proxmox VE** virtual machines and containers on each node, with their status and what they use;

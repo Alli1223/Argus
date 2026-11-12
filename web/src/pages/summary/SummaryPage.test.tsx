@@ -50,7 +50,7 @@ describe("SummaryPage", () => {
     mockApi({ [path("Day", 30)]: days });
     renderWithApp(<SummaryPage />);
 
-    expect(await screen.findByRole("group", { name: /^Network\./ })).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: /^Machine traffic\./ })).toBeInTheDocument();
     expect(screen.getAllByText("3.0 GB").length).toBeGreaterThan(0);
     expect(screen.getByText("Yesterday: 5.0 GB")).toBeInTheDocument();
     expect(screen.getAllByText("1 critical").length).toBeGreaterThan(0);
@@ -65,7 +65,7 @@ describe("SummaryPage", () => {
     mockApi({ [path("Day", 30)]: days });
     const { user } = renderWithApp(<SummaryPage />);
 
-    const network = await screen.findByRole("group", { name: /^Network\./ });
+    const network = await screen.findByRole("group", { name: /^Machine traffic\./ });
     network.focus();
     await user.keyboard("{ArrowLeft}{Enter}");
 
@@ -99,6 +99,23 @@ describe("SummaryPage", () => {
 
     expect(await screen.findByRole("button", { name: "This month" })).toBeInTheDocument();
     expect(calls.map((call) => call.path)).toContain(path("Month", 12).slice(4));
+  });
+
+  it("shows internet traffic when a UniFi network reports it", async () => {
+    const withInternet: UsageSummary = {
+      ...days,
+      periods: days.periods.map((period, index) => ({
+        ...period,
+        internet: { downloadedBytes: (index + 7) * GB, uploadedBytes: GB },
+      })),
+    };
+    mockApi({ [path("Day", 30)]: withInternet });
+    renderWithApp(<SummaryPage />);
+
+    expect(await screen.findByText("Internet down")).toBeInTheDocument();
+    expect(screen.getByText("7.0 GB")).toBeInTheDocument();
+    expect(screen.getByText("Yesterday: 8.0 GB")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /^Internet\./ })).toBeInTheDocument();
   });
 
   it("explains an empty fleet", async () => {

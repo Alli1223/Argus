@@ -120,6 +120,9 @@ All paths start with `/api`.
 | `POST /hosts/agent-updates` | Asks every host you can see whose agent is out of date. Answers how many were asked. |
 | `GET /dashboard/summary` | Host counts, active alerts by severity, and the busiest hosts. |
 | `GET /summary` | Totals by calendar period for every host you can see. See [Usage summary](#usage-summary). |
+| `GET /unifi` | The UniFi networks your hosts read: each host's `hostId` and `hostName`, when it last `checkedAt` its console, the `site`, UniFi Network's `version`, any `problem`, the newest internet traffic and client counts (`now`), and the console's `devices` with their state, uptime, CPU, memory, traffic and clients. |
+| `GET /unifi/{hostId}/history` | Internet traffic (`wanRx`, `wanTx`, bytes per second) and clients (`wired`, `wireless`, `guests`) over time. See [History queries](#history-queries). |
+| `GET /unifi/{hostId}/clients` | What each client downloaded and uploaded between `from` and `to`, busiest first, with its name, address and network. |
 
 A host's `agentUpdate` is `null`, or says which newer version is `available`, which one was
 `requested` and when, and the `error` of the last failed attempt.
@@ -142,7 +145,8 @@ figures of each host that reported or alerted in it. The figures are `diskReadBy
 throughput over the time the host reported in it; `cpuAveragePercent`, `cpuPeakPercent`,
 `memoryAveragePercent` and `memoryPeakPercent`; `reportingSeconds`; `availabilityPercent`, the share of
 the period so far (since the host was added) that it reported; `temperaturePeakCelsius`; and `alerts`
-and `criticalAlerts` fired. The summary is built from the hourly rollups, so it reaches back as far as
+and `criticalAlerts` fired. Each period also has `internet`, the `downloadedBytes` and `uploadedBytes`
+through the UniFi networks your hosts read, or `null` without one. The summary is built from the hourly rollups, so it reaches back as far as
 they are kept: `historyDays`.
 
 Temperature series are keyed `{device}/{sensor}`, such as `coretemp/Package id 0` or

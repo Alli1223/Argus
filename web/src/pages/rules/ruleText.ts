@@ -10,13 +10,17 @@ export const isServiceMetric = (metric: AlertMetric) => metric === "ServiceFaile
 export const isContainerMetric = (metric: AlertMetric) =>
   metric === "ContainerDown" || metric === "ContainerRestarts";
 export const isUpsMetric = (metric: AlertMetric) => metric.startsWith("Ups");
+export const isUnifiMetric = (metric: AlertMetric) => metric === "UnifiDeviceOffline";
 /** UPS readings that only count while it runs on battery: the ones to shut machines down on. */
 export const isOnBatteryMetric = (metric: AlertMetric) =>
   metric === "UpsChargeOnBattery" || metric === "UpsRuntimeOnBattery";
 
-/** What a rule can be narrowed to: a mount point, a service, a container or a UPS, or nothing. */
-export function resourceKind(metric: AlertMetric): "filesystem" | "service" | "container" | "ups" | null {
+/** What a rule can be narrowed to: a mount point, a service, a container, a UPS or a UniFi device, or nothing. */
+export function resourceKind(
+  metric: AlertMetric,
+): "filesystem" | "service" | "container" | "ups" | "device" | null {
   if (isFilesystemMetric(metric)) return "filesystem";
+  if (isUnifiMetric(metric)) return "device";
   if (isServiceMetric(metric)) return "service";
   if (isUpsMetric(metric)) return "ups";
   return isContainerMetric(metric) ? "container" : null;
@@ -27,7 +31,8 @@ export const isStateMetric = (metric: AlertMetric) =>
   metric === "HostOffline" ||
   metric === "ServiceFailed" ||
   metric === "ContainerDown" ||
-  metric === "UpsOnBattery";
+  metric === "UpsOnBattery" ||
+  metric === "UnifiDeviceOffline";
 
 /** Host-wide measurements, which anomaly rules can compare with each host's usual level. */
 export const supportsAnomaly = (metric: AlertMetric) =>
@@ -60,6 +65,8 @@ export function describeRule(rule: RuleCondition): string {
   if (rule.metric === "HostOffline") return `Not reporting${lasting}`;
   if (rule.metric === "ServiceFailed") return `${rule.resourceFilter ?? "Any service"} failed${lasting}`;
   if (rule.metric === "ContainerDown") return `${rule.resourceFilter ?? "Any container"} down${lasting}`;
+  if (rule.metric === "UnifiDeviceOffline")
+    return `${rule.resourceFilter ?? "Any UniFi device"} offline${lasting}`;
   if (rule.metric === "UpsOnBattery") return `${rule.resourceFilter ?? "Any UPS"} on battery${lasting}`;
   if (isOnBatteryMetric(rule.metric)) {
     const measure = rule.metric === "UpsChargeOnBattery" ? "charge" : "runtime";
